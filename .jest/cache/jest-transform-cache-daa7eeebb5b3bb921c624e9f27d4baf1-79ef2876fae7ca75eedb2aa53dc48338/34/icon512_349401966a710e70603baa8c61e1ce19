@@ -1,0 +1,5 @@
+5318353d3c32667fc278c7c9cd7d9ad3
+module.exports = {
+      testUri:
+        "../../../assets/logo/icon-512.png"
+    };

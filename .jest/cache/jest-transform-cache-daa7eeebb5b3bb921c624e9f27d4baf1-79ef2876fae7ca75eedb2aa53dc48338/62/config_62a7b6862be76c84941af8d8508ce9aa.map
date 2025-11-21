@@ -1,0 +1,1 @@
+{"version":3,"names":["API_BASE_URL","_default","exports","default"],"sources":["config.js"],"sourcesContent":["\r\nconst API_BASE_URL = \"http://192.168.137.189:3000\"; \r\n\r\nexport default API_BASE_URL;\r\n"],"mappings":";;;;AACA,IAAMA,YAAY,GAAG,6BAA6B;AAAC,IAAAC,QAAA,GAAAC,OAAA,CAAAC,OAAA,GAEpCH,YAAY","ignoreList":[]}

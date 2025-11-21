@@ -1,0 +1,8 @@
+48643f2846f38d99f6c3ce0d7e65053a
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var API_BASE_URL = "http://192.168.137.189:3000";
+var _default = exports.default = API_BASE_URL;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJBUElfQkFTRV9VUkwiLCJfZGVmYXVsdCIsImV4cG9ydHMiLCJkZWZhdWx0Il0sInNvdXJjZXMiOlsiY29uZmlnLmpzIl0sInNvdXJjZXNDb250ZW50IjpbIlxyXG5jb25zdCBBUElfQkFTRV9VUkwgPSBcImh0dHA6Ly8xOTIuMTY4LjEzNy4xODk6MzAwMFwiOyBcclxuXHJcbmV4cG9ydCBkZWZhdWx0IEFQSV9CQVNFX1VSTDtcclxuIl0sIm1hcHBpbmdzIjoiOzs7O0FBQ0EsSUFBTUEsWUFBWSxHQUFHLDZCQUE2QjtBQUFDLElBQUFDLFFBQUEsR0FBQUMsT0FBQSxDQUFBQyxPQUFBLEdBRXBDSCxZQUFZIiwiaWdub3JlTGlzdCI6W119
