@@ -12,14 +12,11 @@ const NotificationModel = require('./Notification');
 let sequelize;
 
 if (!sequelize) {
-  sequelize = new Sequelize(
-    process.env.DB_NAME || 'state_of_the_flock',
-    process.env.DB_USER || 'root',
-    process.env.DB_PASS || '',
-    {
-      host: process.env.DB_HOST || 'localhost',
-      port: process.env.DB_PORT || 3306,
-      dialect: 'mysql',
+  if (process.env.DATABASE_URL) {
+    // Pour Railway et autres plateformes avec DATABASE_URL
+    const dialect = process.env.DATABASE_URL.startsWith('postgres') ? 'postgres' : 'mysql';
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
+      dialect: dialect,
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
       pool: {
         max: 10,
@@ -29,11 +26,41 @@ if (!sequelize) {
       },
       define: {
         timestamps: true,
-        underscored: true
+        underscored: true,
+        ...(dialect === 'mysql' && {
+          charset: 'utf8mb4',
+          collate: 'utf8mb4_unicode_ci'
+        })
       },
       timezone: '+00:00' // UTC
-    }
-  );
+    });
+  } else {
+    // Configuration locale (MySQL)
+    sequelize = new Sequelize(
+      process.env.DB_NAME || 'state_of_the_flock',
+      process.env.DB_USER || 'root',
+      process.env.DB_PASS || '',
+      {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
+        dialect: 'mysql',
+        logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        pool: {
+          max: 10,
+          min: 0,
+          acquire: 30000,
+          idle: 10000
+        },
+        define: {
+          timestamps: true,
+          underscored: true,
+          charset: 'utf8mb4',
+          collate: 'utf8mb4_unicode_ci'
+        },
+        timezone: '+00:00' // UTC
+      }
+    );
+  }
 }
 
 // Initialisation des modèles

@@ -78,7 +78,12 @@ const bacentaController = {
         })) || []
       }));
 
-      res.json(mappedMeetings);
+      res.json({
+        meetings: mappedMeetings,
+        total: meetings.count,
+        page: parseInt(page),
+        totalPages: Math.ceil(meetings.count / limit)
+      });
     } catch (error) {
       console.error('Get bacenta meetings error:', error);
       res.status(500).json({ error: 'Erreur lors de la récupération des réunions' });
@@ -88,6 +93,9 @@ const bacentaController = {
   // Créer une réunion Bacenta
   createBacentaMeeting: async (req, res) => {
     try {
+      console.log('CreateBacentaMeeting - Received data:', req.body);
+      console.log('User ID:', req.user.userId);
+
       const {
         title,
         date,
@@ -112,9 +120,12 @@ const bacentaController = {
         special: 'Other'
       };
 
+      // Format date to YYYY-MM-DD for DATEONLY field
+      const formattedDate = new Date(date).toISOString().split('T')[0];
+
       const meeting = await BacentaMeeting.create({
         leader_id: req.user.userId,
-        meeting_date: date,
+        meeting_date: formattedDate,
         meeting_time: time,
         meeting_type: meetingTypeMap[type] || 'Weekly_Sharing',
         title,
@@ -125,7 +136,6 @@ const bacentaController = {
         location,
         offering_amount: offerings || 0,
         total_members_present: 0,
-        photo_url: familyPhoto,
         notes: agenda ? agenda.join('\n') : null,
         is_verified: false
       });
@@ -156,7 +166,9 @@ const bacentaController = {
       res.status(201).json(mappedMeeting);
     } catch (error) {
       console.error('Create bacenta meeting error:', error);
-      res.status(500).json({ error: 'Erreur lors de la création de la réunion' });
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ error: 'Erreur lors de la création de la réunion', details: error.message });
     }
   },
 
@@ -238,7 +250,7 @@ const bacentaController = {
       };
 
       const updateData = {
-        meeting_date: date,
+        meeting_date: date ? new Date(date).toISOString().split('T')[0] : meeting.meeting_date,
         meeting_time: time,
         meeting_type: meetingTypeMap[type] || meeting.meeting_type,
         title,
@@ -248,7 +260,6 @@ const bacentaController = {
         family_photo: familyPhoto,
         location,
         offering_amount: offerings,
-        photo_url: familyPhoto,
         notes: agenda ? agenda.join('\n') : meeting.notes
       };
 

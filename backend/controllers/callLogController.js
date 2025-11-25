@@ -6,26 +6,31 @@ const callLogController = {
   // Lister les appels
   getCallLogs: async (req, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        member_id, 
-        caller_id, 
+      const {
+        page = 1,
+        limit = 50,
+        member_id,
+        caller_id,
         outcome,
         start_date,
-        end_date 
+        end_date
       } = req.query;
-      
+
+      console.log('getCallLogs called by user:', req.user.userId, 'role:', req.user.role);
+
       const offset = (page - 1) * limit;
       const whereClause = {};
 
       // Filtrage basé sur le rôle
       if (req.user.role === 'Bacenta_Leader') {
         whereClause['$member.leader_id$'] = req.user.userId;
-      } else if (req.user.role === 'Area_Pastor' && req.user.areaId) {
-        whereClause['$member.area_id$'] = req.user.areaId;
-      } else if (req.user.role === 'Assisting_Overseer' && req.user.areaId) {
-        whereClause['$member.area_id$'] = req.user.areaId;
+        console.log('Filtering by leader_id:', req.user.userId);
+      } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
+        whereClause['$member.area_id$'] = req.user.area_id;
+        console.log('Filtering by area_id:', req.user.area_id);
+      } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
+        whereClause['$member.area_id$'] = req.user.area_id;
+        console.log('Filtering by area_id (overseer):', req.user.area_id);
       }
 
       // Filtres supplémentaires
@@ -43,8 +48,8 @@ const callLogController = {
       const callLogs = await CallLog.findAndCountAll({
         where: whereClause,
         include: [
-          { 
-            model: Member, 
+          {
+            model: Member,
             as: 'member',
             include: [
               { model: Area, as: 'area' },
@@ -57,6 +62,9 @@ const callLogController = {
         offset: parseInt(offset),
         order: [['call_date', 'DESC']]
       });
+
+      console.log('Found call logs:', callLogs.count);
+      console.log('Where clause:', JSON.stringify(whereClause, null, 2));
 
       res.json({
         callLogs: callLogs.rows,
@@ -73,6 +81,9 @@ const callLogController = {
   // Créer un log d'appel
   createCallLog: async (req, res) => {
     try {
+      console.log('CreateCallLog - Received data:', req.body);
+      console.log('User ID:', req.user.userId);
+
       const {
         member_id,
         outcome,
@@ -126,7 +137,9 @@ const callLogController = {
       res.status(201).json(newCallLog);
     } catch (error) {
       console.error('Create call log error:', error);
-      res.status(500).json({ error: 'Erreur lors de la création du log d\'appel' });
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ error: 'Erreur lors de la création du log d\'appel', details: error.message });
     }
   },
 

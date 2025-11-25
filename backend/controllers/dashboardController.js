@@ -9,6 +9,11 @@ const dashboardController = {
       const userId = req.user.userId;
       const userRole = req.user.role;
 
+      // Allow Governors/Bishops to view stats for a specific leader
+      const targetUserId = (req.query.user_id && ['Governor', 'Bishop', 'Assisting_Overseer'].includes(userRole))
+        ? req.query.user_id
+        : req.user.userId;
+
       const today = new Date();
 
       // Dernier dimanche
@@ -23,10 +28,11 @@ const dashboardController = {
 
       let dashboardData = {};
 
-      if (userRole === 'Bacenta_Leader') {
-        // 1️⃣ Statistiques de base du leader
+      // If viewing specific leader stats (Bacenta Leader role or viewing another user as Governor/Bishop)
+      if (userRole === 'Bacenta_Leader' || (targetUserId !== req.user.userId)) {
+        // 1️⃣ Statistiques de base du leader (targetUserId)
         const totalMembers = await Member.count({
-          where: { leader_id: userId, is_active: true }
+          where: { leader_id: targetUserId, is_active: true }
         });
 
         const lastAttendance = await Attendance.findOne({
@@ -34,7 +40,7 @@ const dashboardController = {
           include: [{
             model: Member,
             as: 'member',
-            where: { leader_id: userId }
+            where: { leader_id: targetUserId }
           }],
           attributes: [
             [sequelize.fn('COUNT', sequelize.col('Attendance.id')), 'total'],
@@ -53,14 +59,14 @@ const dashboardController = {
           include: [{
             model: Member,
             as: 'member',
-            where: { leader_id: userId }
+            where: { leader_id: targetUserId }
           }]
         });
 
         // 3️⃣ Réunions Bacenta récentes (7 derniers jours)
         const recentBacentaMeetings = await BacentaMeeting.count({
           where: {
-            leader_id: userId,
+            leader_id: targetUserId,
             meeting_date: { [Op.gte]: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) }
           }
         });
@@ -68,7 +74,7 @@ const dashboardController = {
         // 4️⃣ Statistiques des 30 derniers jours
         const recentBacentaStats = await BacentaMeeting.findOne({
           where: {
-            leader_id: userId,
+            leader_id: targetUserId,
             meeting_date: { [Op.gte]: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) }
           },
           attributes: [
@@ -98,7 +104,7 @@ const dashboardController = {
           ]
         };
 
-      } else if (userRole === 'Bishop' || userRole === 'Assisting_Overseer') {
+      } else if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
         // 1️⃣ Statistiques globales
         const totalMembers = await Member.count({ where: { is_active: true } });
         const totalLeaders = await User.count({ where: { role: 'Bacenta_Leader', is_active: true } });
@@ -153,6 +159,5 @@ const dashboardController = {
     }
   }
 };
-
 
 module.exports = dashboardController;

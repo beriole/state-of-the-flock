@@ -44,7 +44,8 @@ const userController = {
     try {
       const userId = req.params.id;
 
-      if (req.user.role !== 'Bishop' && req.user.userId !== userId) {
+      // Allow Bishop and Governor to view any user, otherwise only self
+      if (req.user.role !== 'Bishop' && req.user.role !== 'Governor' && req.user.userId !== userId) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
@@ -112,7 +113,8 @@ const userController = {
       const userId = req.params.id;
       const { first_name, last_name, role, area_id, phone, is_active } = req.body;
 
-      if (req.user.role !== 'Bishop' && req.user.userId !== userId) {
+      // Allow Bishop and Governor to update any user, otherwise only self
+      if (req.user.role !== 'Bishop' && req.user.role !== 'Governor' && req.user.userId !== userId) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
@@ -121,13 +123,16 @@ const userController = {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
+      // Only Bishop and Governor can change role and active status
+      const canChangeRole = req.user.role === 'Bishop' || req.user.role === 'Governor';
+
       await user.update({
         first_name,
         last_name,
-        role: req.user.role === 'Bishop' ? role : user.role,
+        role: canChangeRole ? role : user.role,
         area_id,
         phone,
-        is_active: req.user.role === 'Bishop' ? is_active : user.is_active
+        is_active: canChangeRole ? is_active : user.is_active
       });
 
       const updatedUser = await User.findByPk(userId, {
