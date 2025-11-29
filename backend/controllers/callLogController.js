@@ -40,6 +40,16 @@ const callLogController = {
       if (caller_id) whereClause.caller_id = caller_id;
       if (outcome) whereClause.outcome = outcome;
 
+      // Filtrage par zone ou leader pour Bishop/Governor
+      if (req.user.role === 'Bishop' || req.user.role === 'Governor') {
+        if (area_id) {
+          whereClause['$member.area_id$'] = area_id;
+        }
+        if (leader_id) {
+          whereClause['$member.leader_id$'] = leader_id;
+        }
+      }
+
       // Filtre de date
       if (start_date && end_date) {
         whereClause.call_date = {
@@ -47,26 +57,19 @@ const callLogController = {
         };
       }
 
-      // Build includes with conditional filtering
-      const includes = [
-        {
-          model: Member,
-          as: 'member',
-          where: (area_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ? { area_id } :
-                 (leader_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ? { leader_id } : undefined,
-          required: !!((area_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ||
-                      (leader_id && (req.user.role === 'Bishop' || req.user.role === 'Governor'))),
-          include: [
-            { model: Area, as: 'area' },
-            { model: User, as: 'leader' }
-          ]
-        },
-        { model: User, as: 'caller' }
-      ];
-
       const callLogs = await CallLog.findAndCountAll({
         where: whereClause,
-        include: includes,
+        include: [
+          {
+            model: Member,
+            as: 'member',
+            include: [
+              { model: Area, as: 'area' },
+              { model: User, as: 'leader' }
+            ]
+          },
+          { model: User, as: 'caller' }
+        ],
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [['call_date', 'DESC']]
