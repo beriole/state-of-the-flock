@@ -46,13 +46,8 @@ const AttendanceScreen = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Export States
+  // Export States - Simplified for selected date only
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportType, setExportType] = useState('single'); // 'single' or 'range'
-  const [exportStartDate, setExportStartDate] = useState(new Date());
-  const [exportEndDate, setExportEndDate] = useState(new Date());
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Charger les données au démarrage
   useEffect(() => {
@@ -330,10 +325,10 @@ const AttendanceScreen = () => {
     );
   };
 
-  // Generate PDF for Attendance
+  // Generate PDF for Attendance - Specific to selected date
   const generateAttendancePDF = async () => {
     try {
-      console.log('Starting attendance PDF generation...');
+      console.log('Starting attendance PDF generation for selected date...');
       setLoading(true);
       setShowExportModal(false);
 
@@ -346,112 +341,47 @@ const AttendanceScreen = () => {
 
       console.log('Members found:', members.length);
       console.log('Attendance records:', attendanceRecords.length);
-      console.log('Export type:', exportType);
-      console.log('Date range:', exportStartDate, 'to', exportEndDate);
+      console.log('Selected date:', selectedDate);
 
-      let title = '';
-      let data = [];
-      let statsSummary = { present: 0, absent: 0, total: 0 };
+      // Use the currently selected date
+      const dateKey = getDateKey(selectedDate);
+      const title = `Rapport de présence - ${formatDisplayDate(selectedDate)}`;
 
-      if (exportType === 'single') {
-        const dateKey = getDateKey(exportStartDate);
-        title = `Rapport de présence - ${formatDisplayDate(exportStartDate)}`;
+      // Use current attendance records for the selected date
+      const records = attendanceRecords;
 
-        // Fetch specific date data if not current selected
-        let records = attendanceRecords;
-        if (getDateKey(exportStartDate) !== getDateKey(selectedDate)) {
-          const response = await attendanceAPI.getAttendance({
-            sunday_date: dateKey,
-            limit: 1000
-          });
-          records = response.data.attendance || [];
-        }
+      // Calculate stats for the selected date
+      const presentCount = records.filter(r => r.present && r.sunday_date === dateKey).length;
+      const totalCount = members.filter(m => m.is_active).length;
+      const statsSummary = {
+        present: presentCount,
+        absent: totalCount - presentCount,
+        total: totalCount
+      };
 
-        // Calculate stats
-        const presentCount = records.filter(r => r.present).length;
-        const totalCount = members.filter(m => m.is_active).length;
-        statsSummary = {
-          present: presentCount,
-          absent: totalCount - presentCount,
-          total: totalCount
+      // Prepare data for the selected date
+      const data = members.filter(m => m.is_active).map(member => {
+        const record = records.find(r => r.member_id === member.id && r.sunday_date === dateKey);
+        return {
+          name: `${member.first_name} ${member.last_name}`,
+          status: record ? (record.present ? 'Présent' : 'Absent') : 'Inconnu',
+          group: member.area?.name || '-'
         };
-
-        // Prepare data for single date
-        data = members.filter(m => m.is_active).map(member => {
-          const record = records.find(r => r.member_id === member.id);
-          return {
-            name: `${member.first_name} ${member.last_name}`,
-            status: record ? (record.present ? 'Présent' : 'Absent') : 'Inconnu',
-            group: member.area?.name || '-'
-          };
-        });
-
-      } else {
-        // Range Export
-        title = `Rapport de présence - ${formatDisplayDate(exportStartDate)} au ${formatDisplayDate(exportEndDate)}`;
-
-        // For range, we might want a summary per date or a detailed matrix.
-        // For simplicity, let's do a summary per date in the range.
-        // We need to fetch history for the range.
-        // This part is tricky without a specific API for range.
-        // We will iterate days (limit to 31 days to avoid too many requests).
-
-        const start = new Date(exportStartDate);
-        const end = new Date(exportEndDate);
-        const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 31) {
-          Alert.alert('Erreur', 'La plage de dates ne peut pas dépasser 31 jours.');
-          setLoading(false);
-          return;
-        }
-
-        let currentDate = new Date(start);
-        while (currentDate <= end) {
-          const dateKey = getDateKey(currentDate);
-          try {
-            const response = await attendanceAPI.getAttendance({
-              sunday_date: dateKey,
-              limit: 1000
-            });
-            const records = response.data.attendance || [];
-            const presentCount = records.filter(r => r.present).length;
-            const totalCount = records.length > 0 ? records.length : 0; // Or total active members?
-
-            if (totalCount > 0) {
-              data.push({
-                date: formatDisplayDate(currentDate),
-                present: presentCount,
-                absent: totalCount - presentCount,
-                total: totalCount,
-                percentage: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
-              });
-
-              statsSummary.present += presentCount;
-              statsSummary.total += totalCount;
-            }
-          } catch (e) {
-            console.log(`No data for ${dateKey}`);
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        statsSummary.absent = statsSummary.total - statsSummary.present;
-      }
+      });
 
       // Validate that we have data to export
       console.log('Data prepared for PDF:', data.length, 'records');
       if (data.length === 0) {
-        console.log('No attendance data found for the selected period');
+        console.log('No attendance data found for the selected date');
         Alert.alert(
           'Aucune donnée',
-          'Aucune donnée de présence trouvée pour la période sélectionnée. Essayez de changer la date ou vérifiez que des présences ont été enregistrées.'
+          'Aucune donnée de présence trouvée pour la date sélectionnée. Essayez de changer la date ou vérifiez que des présences ont été enregistrées.'
         );
         return;
       }
 
       // Create HTML
-      let htmlContent = `
+      const htmlContent = `
         <html>
           <head>
             <style>
@@ -459,28 +389,28 @@ const AttendanceScreen = () => {
               .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #991B1B; padding-bottom: 20px; }
               h1 { color: #991B1B; margin: 0; font-size: 24px; text-transform: uppercase; }
               .meta { color: #666; font-size: 12px; margin-top: 5px; }
-              
-              .summary-box { 
-                background-color: #f9fafb; 
-                border: 1px solid #e5e7eb; 
-                border-radius: 8px; 
-                padding: 20px; 
-                margin-bottom: 30px; 
-                display: flex; 
+
+              .summary-box {
+                background-color: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 30px;
+                display: flex;
                 justify-content: space-around;
               }
               .summary-item { text-align: center; }
               .summary-value { font-size: 24px; font-weight: bold; color: #111827; }
               .summary-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-top: 5px; }
-              
+
               table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
               th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
               th { background-color: #f9fafb; color: #374151; font-weight: bold; text-transform: uppercase; font-size: 11px; }
               tr:nth-child(even) { background-color: #f9fafb; }
-              
+
               .status-present { color: #059669; font-weight: bold; background-color: #ecfdf5; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
               .status-absent { color: #dc2626; font-weight: bold; background-color: #fef2f2; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
-              
+
               .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; }
             </style>
           </head>
@@ -491,7 +421,7 @@ const AttendanceScreen = () => {
                 Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
               </div>
             </div>
-            
+
             <div class="summary-box">
               <div class="summary-item">
                 <div class="summary-value" style="color: #059669">${statsSummary.present}</div>
@@ -506,40 +436,26 @@ const AttendanceScreen = () => {
                 <div class="summary-label">Taux de présence</div>
               </div>
             </div>
-            
+
             <table>
               <thead>
                 <tr>
-                  ${exportType === 'single' ? `
-                    <th>Nom</th>
-                    <th>Groupe</th>
-                    <th>Statut</th>
-                  ` : `
-                    <th>Date</th>
-                    <th>Présents</th>
-                    <th>Absents</th>
-                    <th>Taux</th>
-                  `}
+                  <th>Nom</th>
+                  <th>Groupe</th>
+                  <th>Statut</th>
                 </tr>
               </thead>
               <tbody>
-                ${data.map(item => exportType === 'single' ? `
+                ${data.map(item => `
                   <tr>
                     <td><strong>${item.name}</strong></td>
                     <td>${item.group}</td>
                     <td><span class="${item.status === 'Présent' ? 'status-present' : 'status-absent'}">${item.status}</span></td>
                   </tr>
-                ` : `
-                  <tr>
-                    <td><strong>${item.date}</strong></td>
-                    <td><span style="color: #059669; font-weight: bold;">${item.present}</span></td>
-                    <td><span style="color: #dc2626; font-weight: bold;">${item.absent}</span></td>
-                    <td><strong>${item.percentage}%</strong></td>
-                  </tr>
                 `).join('')}
               </tbody>
             </table>
-            
+
             <div class="footer">
               <p>Document généré par l'application Bacenta Leader</p>
             </div>
@@ -547,18 +463,17 @@ const AttendanceScreen = () => {
         </html>
       `;
 
-      // Create PDF with error handling - use Download directory
-      const fileName = `Presence_Bacenta_${new Date().getTime()}`; // Remove .pdf extension as library adds it
+      // Create PDF with consistent file naming and location
+      const fileName = `Presence_${dateKey}`; // Use date key for consistent naming
 
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: 'Documents' // Try Documents directory which might be more accessible
+        directory: 'Documents' // Consistent location
       };
 
       console.log('Generating attendance PDF with options:', options);
       console.log('RNHTMLtoPDF available:', !!RNHTMLtoPDF);
-      console.log('RNHTMLtoPDF.convert available:', typeof RNHTMLtoPDF.convert);
 
       try {
         const file = await RNHTMLtoPDF.convert(options);
@@ -574,8 +489,7 @@ const AttendanceScreen = () => {
         let accessibleFilePath = file.filePath;
         console.log('PDF file path:', accessibleFilePath);
 
-        // Since file sharing from private directories doesn't work on Android,
-        // we'll show the file location with clear instructions for manual access
+        // Show file location with clear instructions
         console.log('PDF generated successfully, showing file location');
         showFileLocation(accessibleFilePath);
 
@@ -611,7 +525,6 @@ const AttendanceScreen = () => {
       setLoading(false);
     }
   };
-
   // Statistiques calculées
   const stats = useMemo(() => {
     try {
@@ -1138,108 +1051,22 @@ const AttendanceScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Exporter le rapport</Text>
+              <Text style={styles.modalTitle}>Générer PDF de présence</Text>
               <TouchableOpacity onPress={() => setShowExportModal(false)}>
                 <AntDesign name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.form}>
-              <Text style={styles.label}>Type de rapport</Text>
-              <View style={{ flexDirection: 'row', marginBottom: 20 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.groupOption,
-                    exportType === 'single' && styles.groupOptionSelected,
-                    { flex: 1, marginRight: 10 }
-                  ]}
-                  onPress={() => setExportType('single')}
-                >
-                  <Text style={[
-                    styles.groupOptionText,
-                    exportType === 'single' && styles.groupOptionTextSelected
-                  ]}>Date unique</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.groupOption,
-                    exportType === 'range' && styles.groupOptionSelected,
-                    { flex: 1 }
-                  ]}
-                  onPress={() => setExportType('range')}
-                >
-                  <Text style={[
-                    styles.groupOptionText,
-                    exportType === 'range' && styles.groupOptionTextSelected
-                  ]}>Période</Text>
-                </TouchableOpacity>
+              <Text style={styles.label}>Date sélectionnée</Text>
+              <View style={styles.dateDisplay}>
+                <Text style={styles.dateDisplayText}>{formatDisplayDate(selectedDate)}</Text>
               </View>
 
-              {exportType === 'single' ? (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Date</Text>
-                  <TouchableOpacity
-                    style={styles.textInput}
-                    onPress={() => setShowStartDatePicker(true)}
-                  >
-                    <Text>{formatDisplayDate(exportStartDate)}</Text>
-                  </TouchableOpacity>
-                  {showStartDatePicker && (
-                    <DateTimePicker
-                      value={exportStartDate}
-                      mode="date"
-                      display="default"
-                      onChange={(event, date) => {
-                        setShowStartDatePicker(false);
-                        if (date) setExportStartDate(date);
-                      }}
-                    />
-                  )}
-                </View>
-              ) : (
-                <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Date de début</Text>
-                    <TouchableOpacity
-                      style={styles.textInput}
-                      onPress={() => setShowStartDatePicker(true)}
-                    >
-                      <Text>{formatDisplayDate(exportStartDate)}</Text>
-                    </TouchableOpacity>
-                    {showStartDatePicker && (
-                      <DateTimePicker
-                        value={exportStartDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event, date) => {
-                          setShowStartDatePicker(false);
-                          if (date) setExportStartDate(date);
-                        }}
-                      />
-                    )}
-                  </View>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Date de fin</Text>
-                    <TouchableOpacity
-                      style={styles.textInput}
-                      onPress={() => setShowEndDatePicker(true)}
-                    >
-                      <Text>{formatDisplayDate(exportEndDate)}</Text>
-                    </TouchableOpacity>
-                    {showEndDatePicker && (
-                      <DateTimePicker
-                        value={exportEndDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event, date) => {
-                          setShowEndDatePicker(false);
-                          if (date) setExportEndDate(date);
-                        }}
-                      />
-                    )}
-                  </View>
-                </>
-              )}
+              <Text style={styles.description}>
+                Cette action générera un PDF contenant la liste de présence pour la date actuellement sélectionnée.
+                Le fichier sera enregistré dans le dossier Documents de votre appareil.
+              </Text>
             </View>
 
             <View style={styles.modalActions}>
@@ -1247,16 +1074,16 @@ const AttendanceScreen = () => {
                 style={styles.cancelBtn}
                 onPress={() => setShowExportModal(false)}
               >
-                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+                <Text style={styles.cancelBtnText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={() => {
-                  console.log('Export button pressed in modal');
+                  console.log('Generate PDF button pressed');
                   generateAttendancePDF();
                 }}
               >
-                <Text style={styles.saveBtnText}>Exporter</Text>
+                <Text style={styles.saveBtnText}>Générer PDF</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1952,6 +1779,27 @@ const styles = StyleSheet.create({
   },
   historySeparator: {
     height: 8,
+  },
+  dateDisplay: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  dateDisplayText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 20,
   },
 });
 
