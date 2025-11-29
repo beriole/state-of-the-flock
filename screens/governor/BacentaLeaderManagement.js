@@ -12,16 +12,18 @@ import {
     Alert,
     Modal
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { governorAPI } from '../../utils/api';
+import { governorAPI, areaAPI } from '../../utils/api';
 import Toast from 'react-native-toast-message';
 
 const BacentaLeaderManagement = () => {
     const navigation = useNavigation();
     const { t } = useTranslation();
     const [leaders, setLeaders] = useState([]);
+    const [areas, setAreas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
@@ -34,11 +36,22 @@ const BacentaLeaderManagement = () => {
         email: '',
         phone: '',
         password: '', // Only for creation
+        area_id: '', // Zone assignment
     });
 
     useEffect(() => {
         fetchLeaders();
+        fetchAreas();
     }, []);
+
+    const fetchAreas = async () => {
+        try {
+            const response = await areaAPI.getAreas();
+            setAreas(response.data.areas || []);
+        } catch (error) {
+            console.error('Error fetching areas:', error);
+        }
+    };
 
     const fetchLeaders = async () => {
         try {
@@ -58,6 +71,26 @@ const BacentaLeaderManagement = () => {
 
     const handleSave = async () => {
         try {
+            // Validation for new leader creation
+            if (!editingLeader) {
+                if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.email.trim() || !formData.password.trim()) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Erreur',
+                        text2: 'Tous les champs sont obligatoires'
+                    });
+                    return;
+                }
+                if (!formData.area_id) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Erreur',
+                        text2: 'Veuillez sélectionner une zone pour le leader'
+                    });
+                    return;
+                }
+            }
+
             if (editingLeader) {
                 await governorAPI.updateBacentaLeader(editingLeader.id, formData);
                 Toast.show({ type: 'success', text1: 'Succès', text2: 'Leader mis à jour avec succès' });
@@ -114,6 +147,7 @@ const BacentaLeaderManagement = () => {
                 email: leader.email,
                 phone: leader.phone || '',
                 password: '', // Don't show password
+                area_id: leader.area_id || '',
             });
         } else {
             setEditingLeader(null);
@@ -123,6 +157,7 @@ const BacentaLeaderManagement = () => {
                 email: '',
                 phone: '',
                 password: '',
+                area_id: '',
             });
         }
         setModalVisible(true);
@@ -251,6 +286,27 @@ const BacentaLeaderManagement = () => {
                                 keyboardType="phone-pad"
                             />
                         </View>
+                        {!editingLeader && (
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.label}>Zone *</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={formData.area_id}
+                                        onValueChange={(value) => setFormData({ ...formData, area_id: value })}
+                                        style={styles.picker}
+                                    >
+                                        <Picker.Item label="Sélectionner une zone" value="" />
+                                        {areas.map((area) => (
+                                            <Picker.Item
+                                                key={area.id}
+                                                label={`${area.name} (N°${area.number})`}
+                                                value={area.id}
+                                            />
+                                        ))}
+                                    </Picker>
+                                </View>
+                            </View>
+                        )}
                         {!editingLeader && (
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Mot de passe</Text>
@@ -446,6 +502,16 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+    },
+    picker: {
+        height: 50,
+        color: '#1F2937',
     },
     modalActions: {
         flexDirection: 'row',
