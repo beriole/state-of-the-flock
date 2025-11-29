@@ -13,7 +13,9 @@ const callLogController = {
         caller_id,
         outcome,
         start_date,
-        end_date
+        end_date,
+        area_id,
+        leader_id
       } = req.query;
 
       console.log('getCallLogs called by user:', req.user.userId, 'role:', req.user.role);
@@ -45,19 +47,26 @@ const callLogController = {
         };
       }
 
+      // Build includes with conditional filtering
+      const includes = [
+        {
+          model: Member,
+          as: 'member',
+          where: (area_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ? { area_id } :
+                 (leader_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ? { leader_id } : undefined,
+          required: !!((area_id && (req.user.role === 'Bishop' || req.user.role === 'Governor')) ||
+                      (leader_id && (req.user.role === 'Bishop' || req.user.role === 'Governor'))),
+          include: [
+            { model: Area, as: 'area' },
+            { model: User, as: 'leader' }
+          ]
+        },
+        { model: User, as: 'caller' }
+      ];
+
       const callLogs = await CallLog.findAndCountAll({
         where: whereClause,
-        include: [
-          {
-            model: Member,
-            as: 'member',
-            include: [
-              { model: Area, as: 'area' },
-              { model: User, as: 'leader' }
-            ]
-          },
-          { model: User, as: 'caller' }
-        ],
+        include: includes,
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [['call_date', 'DESC']]
