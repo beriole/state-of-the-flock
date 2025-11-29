@@ -142,51 +142,6 @@ const dashboardController = {
           where: { meeting_date: { [Op.gte]: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) } }
         });
 
-        // 4️⃣ Statistiques par zone (simplifiées)
-        const areas = await Area.findAll({
-          include: [{
-            model: User,
-            as: 'leaders',
-            where: { role: 'Bacenta_Leader', is_active: true },
-            attributes: ['id'],
-            required: false
-          }]
-        });
-
-        const areasStats = await Promise.all(areas.map(async (area) => {
-          const membersCount = await Member.count({
-            where: { area_id: area.id, is_active: true }
-          });
-
-          return {
-            id: area.id,
-            name: area.name,
-            number: area.number,
-            leaders_count: area.leaders?.length || 0,
-            members_count: membersCount
-          };
-        }));
-
-        // 5️⃣ Leaders avec statistiques (simplifiées)
-        const leaders = await User.findAll({
-          where: { role: 'Bacenta_Leader', is_active: true },
-          include: [{ model: Area, as: 'area', attributes: ['name'] }]
-        });
-
-        const leadersStats = await Promise.all(leaders.map(async (leader) => {
-          const membersCount = await Member.count({
-            where: { leader_id: leader.id, is_active: true }
-          });
-
-          return {
-            id: leader.id,
-            first_name: leader.first_name,
-            last_name: leader.last_name,
-            area_id: leader.area_id,
-            area_name: leader.area?.name,
-            members_count: membersCount
-          };
-        }));
 
         dashboardData = {
           summary: {
@@ -198,9 +153,7 @@ const dashboardController = {
             attendance_change: attendanceChange,
             recent_call_logs: recentCallLogs,
             recent_bacenta_meetings: recentBacentaMeetings
-          },
-          areas: areasStats,
-          leaders: leadersStats
+          }
         };
       }
 
