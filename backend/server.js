@@ -51,6 +51,7 @@ app.get('/fixbl', async (req, res) => {
     if (!area) {
       area = await Area.create({
         name: 'Zone Yaoundé',
+        number: 1,
         overseer_id: null
       });
     }
