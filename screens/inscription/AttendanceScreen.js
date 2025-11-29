@@ -46,8 +46,6 @@ const AttendanceScreen = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Export States - Simplified for selected date only
-  const [showExportModal, setShowExportModal] = useState(false);
 
   // Charger les données au démarrage
   useEffect(() => {
@@ -330,7 +328,6 @@ const AttendanceScreen = () => {
     try {
       console.log('Starting attendance PDF generation for selected date...');
       setLoading(true);
-      setShowExportModal(false);
 
       // Validate data
       if (!members || members.length === 0) {
@@ -380,84 +377,407 @@ const AttendanceScreen = () => {
         return;
       }
 
-      // Create HTML
+      // Create HTML with beautiful design
       const htmlContent = `
-        <html>
+        <!DOCTYPE html>
+        <html lang="fr">
           <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${title}</title>
             <style>
-              body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
-              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #991B1B; padding-bottom: 20px; }
-              h1 { color: #991B1B; margin: 0; font-size: 24px; text-transform: uppercase; }
-              .meta { color: #666; font-size: 12px; margin-top: 5px; }
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-              .summary-box {
-                background-color: #f9fafb;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 20px;
-                margin-bottom: 30px;
-                display: flex;
-                justify-content: space-around;
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
               }
-              .summary-item { text-align: center; }
-              .summary-value { font-size: 24px; font-weight: bold; color: #111827; }
-              .summary-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-top: 5px; }
 
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-              th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
-              th { background-color: #f9fafb; color: #374151; font-weight: bold; text-transform: uppercase; font-size: 11px; }
-              tr:nth-child(even) { background-color: #f9fafb; }
+              body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 40px 20px;
+                color: #1f2937;
+              }
 
-              .status-present { color: #059669; font-weight: bold; background-color: #ecfdf5; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
-              .status-absent { color: #dc2626; font-weight: bold; background-color: #fef2f2; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
+              .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: #ffffff;
+                border-radius: 24px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                overflow: hidden;
+              }
 
-              .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+              .header {
+                background: linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%);
+                padding: 40px 30px;
+                text-align: center;
+                position: relative;
+                overflow: hidden;
+              }
+
+              .header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                animation: pulse 4s ease-in-out infinite;
+              }
+
+              @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 0.5; }
+                50% { transform: scale(1.05); opacity: 0.8; }
+              }
+
+              .header-content {
+                position: relative;
+                z-index: 1;
+              }
+
+              .logo {
+                width: 60px;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 16px;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(10px);
+              }
+
+              .logo-text {
+                color: white;
+                font-size: 24px;
+                font-weight: 700;
+              }
+
+              h1 {
+                color: #ffffff;
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 8px;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+              }
+
+              .subtitle {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 16px;
+                font-weight: 400;
+              }
+
+              .meta {
+                background: #f8fafc;
+                padding: 20px 30px;
+                border-bottom: 1px solid #e2e8f0;
+                font-size: 14px;
+                color: #64748b;
+                text-align: center;
+              }
+
+              .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 20px;
+                padding: 30px;
+                background: #f8fafc;
+              }
+
+              .stat-card {
+                background: white;
+                padding: 24px;
+                border-radius: 16px;
+                text-align: center;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                border: 1px solid #e2e8f0;
+                transition: transform 0.2s ease;
+              }
+
+              .stat-card:hover {
+                transform: translateY(-2px);
+              }
+
+              .stat-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                margin: 0 auto 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+              }
+
+              .stat-present .stat-icon {
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+              }
+
+              .stat-absent .stat-icon {
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+              }
+
+              .stat-percentage .stat-icon {
+                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                color: white;
+              }
+
+              .stat-value {
+                font-size: 32px;
+                font-weight: 700;
+                color: #1f2937;
+                margin-bottom: 4px;
+              }
+
+              .stat-label {
+                font-size: 14px;
+                color: #64748b;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+
+              .content {
+                padding: 30px;
+              }
+
+              .section-title {
+                font-size: 20px;
+                font-weight: 600;
+                color: #1f2937;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #991B1B;
+              }
+
+              .attendance-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              }
+
+              .attendance-table thead {
+                background: linear-gradient(135deg, #991B1B, #7F1D1D);
+                color: white;
+              }
+
+              .attendance-table th {
+                padding: 16px 20px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+
+              .attendance-table td {
+                padding: 16px 20px;
+                border-bottom: 1px solid #e2e8f0;
+                font-size: 14px;
+              }
+
+              .attendance-table tbody tr {
+                transition: background-color 0.2s ease;
+              }
+
+              .attendance-table tbody tr:hover {
+                background-color: #f8fafc;
+              }
+
+              .member-name {
+                font-weight: 600;
+                color: #1f2937;
+              }
+
+              .member-group {
+                color: #991B1B;
+                font-weight: 500;
+              }
+
+              .status-badge {
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                display: inline-block;
+              }
+
+              .status-present {
+                background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+                color: #166534;
+                border: 1px solid #16a34a;
+              }
+
+              .status-absent {
+                background: linear-gradient(135deg, #fee2e2, #fecaca);
+                color: #991b1b;
+                border: 1px solid #dc2626;
+              }
+
+              .status-unknown {
+                background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+                color: #475569;
+                border: 1px solid #cbd5e1;
+              }
+
+              .footer {
+                background: #f8fafc;
+                padding: 30px;
+                text-align: center;
+                border-top: 1px solid #e2e8f0;
+              }
+
+              .footer-content {
+                max-width: 600px;
+                margin: 0 auto;
+              }
+
+              .footer-logo {
+                font-size: 18px;
+                font-weight: 700;
+                color: #991B1B;
+                margin-bottom: 8px;
+              }
+
+              .footer-text {
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.5;
+              }
+
+              .footer-meta {
+                margin-top: 16px;
+                padding-top: 16px;
+                border-top: 1px solid #e2e8f0;
+                font-size: 12px;
+                color: #94a3b8;
+              }
+
+              @media (max-width: 768px) {
+                body {
+                  padding: 20px 10px;
+                }
+
+                .container {
+                  margin: 0;
+                }
+
+                .header {
+                  padding: 30px 20px;
+                }
+
+                h1 {
+                  font-size: 24px;
+                }
+
+                .stats-grid {
+                  grid-template-columns: 1fr;
+                  padding: 20px;
+                }
+
+                .content {
+                  padding: 20px;
+                }
+
+                .attendance-table {
+                  font-size: 12px;
+                }
+
+                .attendance-table th,
+                .attendance-table td {
+                  padding: 12px 16px;
+                }
+              }
             </style>
           </head>
           <body>
-            <div class="header">
-              <h1>${title}</h1>
+            <div class="container">
+              <div class="header">
+                <div class="header-content">
+                  <div class="logo">
+                    <span class="logo-text">BL</span>
+                  </div>
+                  <h1>Rapport de Présence</h1>
+                  <div class="subtitle">${formatDisplayDate(selectedDate)}</div>
+                </div>
+              </div>
+
               <div class="meta">
-                Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+                <strong>Généré le:</strong> ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
               </div>
-            </div>
 
-            <div class="summary-box">
-              <div class="summary-item">
-                <div class="summary-value" style="color: #059669">${statsSummary.present}</div>
-                <div class="summary-label">Présents</div>
+              <div class="stats-grid">
+                <div class="stat-card stat-present">
+                  <div class="stat-icon">✓</div>
+                  <div class="stat-value">${statsSummary.present}</div>
+                  <div class="stat-label">Présents</div>
+                </div>
+                <div class="stat-card stat-absent">
+                  <div class="stat-icon">✗</div>
+                  <div class="stat-value">${statsSummary.absent}</div>
+                  <div class="stat-label">Absents</div>
+                </div>
+                <div class="stat-card stat-percentage">
+                  <div class="stat-icon">📊</div>
+                  <div class="stat-value">${statsSummary.total > 0 ? Math.round((statsSummary.present / statsSummary.total) * 100) : 0}%</div>
+                  <div class="stat-label">Taux de présence</div>
+                </div>
               </div>
-              <div class="summary-item">
-                <div class="summary-value" style="color: #dc2626">${statsSummary.absent}</div>
-                <div class="summary-label">Absents</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-value">${statsSummary.total > 0 ? Math.round((statsSummary.present / statsSummary.total) * 100) : 0}%</div>
-                <div class="summary-label">Taux de présence</div>
-              </div>
-            </div>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Groupe</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(item => `
-                  <tr>
-                    <td><strong>${item.name}</strong></td>
-                    <td>${item.group}</td>
-                    <td><span class="${item.status === 'Présent' ? 'status-present' : 'status-absent'}">${item.status}</span></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+              <div class="content">
+                <h2 class="section-title">Liste des Membres</h2>
 
-            <div class="footer">
-              <p>Document généré par l'application Bacenta Leader</p>
+                <table class="attendance-table">
+                  <thead>
+                    <tr>
+                      <th>Nom Complet</th>
+                      <th>Groupe</th>
+                      <th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${data.map(item => `
+                      <tr>
+                        <td>
+                          <span class="member-name">${item.name}</span>
+                        </td>
+                        <td>
+                          <span class="member-group">${item.group}</span>
+                        </td>
+                        <td>
+                          <span class="status-badge ${item.status === 'Présent' ? 'status-present' : item.status === 'Absent' ? 'status-absent' : 'status-unknown'}">
+                            ${item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="footer">
+                <div class="footer-content">
+                  <div class="footer-logo">Bacenta Leader</div>
+                  <div class="footer-text">
+                    Application de gestion des présences pour les groupes Bacenta
+                  </div>
+                  <div class="footer-meta">
+                    Rapport généré automatiquement • ${new Date().getFullYear()}
+                  </div>
+                </div>
+              </div>
             </div>
           </body>
         </html>
@@ -733,8 +1053,8 @@ const AttendanceScreen = () => {
             <TouchableOpacity
               style={[styles.notificationBtn, { marginRight: 10 }]}
               onPress={() => {
-                console.log('Export modal button pressed');
-                setShowExportModal(true);
+                console.log('Generate PDF button pressed');
+                generateAttendancePDF();
               }}
             >
               <Feather name="download" size={20} color="#FFFFFF" />
@@ -1041,54 +1361,6 @@ const AttendanceScreen = () => {
         {/* ... existing date modal content ... */}
       </Modal>
 
-      {/* Modal Export PDF */}
-      <Modal
-        visible={showExportModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowExportModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Générer PDF de présence</Text>
-              <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                <AntDesign name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.form}>
-              <Text style={styles.label}>Date sélectionnée</Text>
-              <View style={styles.dateDisplay}>
-                <Text style={styles.dateDisplayText}>{formatDisplayDate(selectedDate)}</Text>
-              </View>
-
-              <Text style={styles.description}>
-                Cette action générera un PDF contenant la liste de présence pour la date actuellement sélectionnée.
-                Le fichier sera enregistré dans le dossier Documents de votre appareil.
-              </Text>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setShowExportModal(false)}
-              >
-                <Text style={styles.cancelBtnText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={() => {
-                  console.log('Generate PDF button pressed');
-                  generateAttendancePDF();
-                }}
-              >
-                <Text style={styles.saveBtnText}>Générer PDF</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
       {/* Modal de sélection de date */}
       <Modal
         visible={showDateModal}
@@ -1779,27 +2051,6 @@ const styles = StyleSheet.create({
   },
   historySeparator: {
     height: 8,
-  },
-  dateDisplay: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  dateDisplayText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 20,
   },
 });
 
