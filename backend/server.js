@@ -41,33 +41,6 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// Temporary fix route for Bacenta Leader area
-app.get('/fixbl', async (req, res) => {
-  try {
-    const { User, Area } = require('./models');
-
-    // Create an Area if it doesn't exist
-    let area = await Area.findOne({ where: { name: 'Zone Yaoundé' } });
-    if (!area) {
-      area = await Area.create({
-        name: 'Zone Yaoundé',
-        number: 1,
-        overseer_id: null
-      });
-    }
-
-    // Update the Bacenta Leader to have the area
-    const bl = await User.findOne({ where: { email: 'berioletsague@gmail.com' } });
-    if (bl && !bl.area_id) {
-      await bl.update({ area_id: area.id });
-    }
-
-    res.json({ message: 'Area assigned to Bacenta Leader successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
