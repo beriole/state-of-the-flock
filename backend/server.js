@@ -41,6 +41,33 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// Temporary fix route for area
+app.get('/fixarea', async (req, res) => {
+  try {
+    const { User, Area } = require('./models');
+
+    // Create an Area if it doesn't exist
+    let area = await Area.findOne({ where: { name: 'Zone Centrale' } });
+    if (!area) {
+      area = await Area.create({
+        name: 'Zone Centrale',
+        overseer_id: null
+      });
+    }
+
+    // Update the Bishop user to have the area
+    const bishop = await User.findOne({ where: { email: 'john.doe@example.com' } });
+    if (bishop && !bishop.area_id) {
+      await bishop.update({ area_id: area.id });
+      await area.update({ overseer_id: bishop.id });
+    }
+
+    res.json({ message: 'Area assigned to Bishop successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
