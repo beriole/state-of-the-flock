@@ -23,6 +23,7 @@ const reportRoutes = require('./routes/reports');
 const syncRoutes = require('./routes/sync');
 const dashboardRoutes = require('./routes/dashboard');
 const notificationRoutes = require('./routes/notifications');
+const areaRoutes = require('./routes/areas');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/areas', areaRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found', path: req.originalUrl });

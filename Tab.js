@@ -17,6 +17,7 @@ import BacentaLeaderDetail from './screens/governor/BacentaLeaderDetail';
 import LeaderMembersScreen from './screens/governor/LeaderMembersScreen';
 import LeaderMeetingsScreen from './screens/governor/LeaderMeetingsScreen';
 import ReportsScreen from './screens/governor/ReportsScreen';
+import ZoneManagementScreen from './screens/inscription/ZoneManagementScreen';
 import { useAuth } from './contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
@@ -113,6 +114,25 @@ const LeaderNavigator = () => {
             ),
             tabBarLabel: ({ focused }) => (
               <Text style={[styles.label, focused && styles.activeLabel]}>{t('governor.leaders')}</Text>
+            ),
+          }}
+        />
+
+        <Tab.Screen
+          name="Zones"
+          component={ZoneManagementScreen}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+                <Icon
+                  name="map-marker-multiple"
+                  size={24}
+                  color={focused ? colors.primary : colors.inactive}
+                />
+              </View>
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={[styles.label, focused && styles.activeLabel]}>Zones</Text>
             ),
           }}
         />

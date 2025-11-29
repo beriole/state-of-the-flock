@@ -18,6 +18,7 @@ import NotificationScreen from './screens/inscription/NotificationScreen';
 import CallsScreen from './screens/inscription/CallsScreen';
 import BacentaScreen from './screens/inscription/BacentaScreen';
 import editProfile from './screens/inscription/editProfile';
+import ZoneManagementScreen from './screens/inscription/ZoneManagementScreen';
 
 // Governor screens
 import GovernorDashboard from './screens/governor/GovernorDashboard';
@@ -89,6 +90,7 @@ const StackNavigator = () => {
           <Stack.Screen name="CallsScreen" component={CallsScreen} />
           <Stack.Screen name="BacentaScreen" component={BacentaScreen} />
           <Stack.Screen name="editProfile" component={editProfile} />
+          <Stack.Screen name="ZoneManagementScreen" component={ZoneManagementScreen} />
         </>
       )}
     </Stack.Navigator>
