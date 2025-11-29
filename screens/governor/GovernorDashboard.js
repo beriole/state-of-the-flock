@@ -107,15 +107,27 @@ const GovernorDashboard = () => {
                     />
                     <StatCard
                         title="Taux Présence"
-                        value={`${stats?.summary?.overall_attendance_percentage || 0}%`}
+                        value={`${stats?.summary?.current_week_attendance || 0}%`}
                         icon="chart-line"
                         color="#16A34A"
+                    />
+                    <StatCard
+                        title="Évolution"
+                        value={`${stats?.summary?.attendance_change >= 0 ? '+' : ''}${stats?.summary?.attendance_change || 0}%`}
+                        icon={stats?.summary?.attendance_change >= 0 ? "trending-up" : "trending-down"}
+                        color={stats?.summary?.attendance_change >= 0 ? "#16A34A" : "#DC2626"}
+                    />
+                    <StatCard
+                        title="Appels Suivi"
+                        value={stats?.summary?.recent_call_logs || 0}
+                        icon="phone"
+                        color="#7C3AED"
                     />
                     <StatCard
                         title="Réunions Bacenta"
                         value={stats?.summary?.recent_bacenta_meetings || 0}
                         icon="home-group"
-                        color="#7C3AED"
+                        color="#F59E0B"
                     />
                 </View>
 
@@ -124,10 +136,20 @@ const GovernorDashboard = () => {
                     <View style={styles.actionsGrid}>
                         <TouchableOpacity
                             style={styles.actionButton}
-                            onPress={() => navigation.navigate('BacentaLeaderManagement')}
+                            onPress={() => navigation.navigate('ChurchMembers')}
                         >
                             <View style={[styles.actionIcon, { backgroundColor: '#DC2626' }]}>
                                 <Icon name="account-group" size={24} color="#FFFFFF" />
+                            </View>
+                            <Text style={styles.actionText}>Tous les Membres</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => navigation.navigate('BacentaLeaderManagement')}
+                        >
+                            <View style={[styles.actionIcon, { backgroundColor: '#7C3AED' }]}>
+                                <Icon name="crown" size={24} color="#FFFFFF" />
                             </View>
                             <Text style={styles.actionText}>Gestion Leaders</Text>
                         </TouchableOpacity>

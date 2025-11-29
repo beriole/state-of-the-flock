@@ -105,45 +105,104 @@ const dashboardController = {
         };
 
       } else if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
-        // 1️⃣ Statistiques globales
+        // 1️⃣ Statistiques globales complètes
         const totalMembers = await Member.count({ where: { is_active: true } });
         const totalLeaders = await User.count({ where: { role: 'Bacenta_Leader', is_active: true } });
+        const totalAreas = await Area.count();
 
-        const recentAttendance = await Attendance.findOne({
-          where: { sunday_date: lastSundayStr },
+        // Statistiques de présence (dernière semaine)
+        const weeklyAttendance = await Attendance.findAll({
+          where: {
+            sunday_date: { [Op.in]: [lastSundayStr, previousSundayStr] }
+          },
           attributes: [
-            [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
+            'sunday_date',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'total_records'],
             [sequelize.fn('SUM', sequelize.col('present')), 'present_count']
           ],
+          group: ['sunday_date'],
           raw: true
         });
 
-        const totalPresent = Number(recentAttendance?.present_count || 0);
-        const totalRecords = Number(recentAttendance?.total || 0);
-        const attendancePercentage = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
+        const lastWeekStats = weeklyAttendance.find(stat => stat.sunday_date === lastSundayStr);
+        const prevWeekStats = weeklyAttendance.find(stat => stat.sunday_date === previousSundayStr);
 
+        const currentWeekAttendance = lastWeekStats ? Math.round((Number(lastWeekStats.present_count) / Number(lastWeekStats.total_records)) * 100) : 0;
+        const previousWeekAttendance = prevWeekStats ? Math.round((Number(prevWeekStats.present_count) / Number(prevWeekStats.total_records)) * 100) : 0;
+
+        // Évolution de la présence
+        const attendanceChange = currentWeekAttendance - previousWeekAttendance;
+
+        // 2️⃣ Statistiques des appels de suivi (30 derniers jours)
+        const recentCallLogs = await CallLog.count({
+          where: {
+            createdAt: { [Op.gte]: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) }
+          }
+        });
+
+        // 3️⃣ Réunions Bacenta récentes (7 derniers jours)
         const recentBacentaMeetings = await BacentaMeeting.count({
           where: { meeting_date: { [Op.gte]: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) } }
         });
 
-        // 2️⃣ Liste des areas avec leurs leaders
-        const areas = await Area.findAll({
+        // 4️⃣ Statistiques par zone
+        const areasStats = await Area.findAll({
+          attributes: [
+            'id', 'name', 'number',
+            [sequelize.fn('COUNT', sequelize.col('leaders.id')), 'leaders_count'],
+            [sequelize.fn('COUNT', sequelize.col('members.id')), 'members_count']
+          ],
+          include: [
+            {
+              model: User,
+              as: 'leaders',
+              where: { role: 'Bacenta_Leader', is_active: true },
+              attributes: [],
+              required: false
+            },
+            {
+              model: Member,
+              as: 'members',
+              where: { is_active: true },
+              attributes: [],
+              required: false
+            }
+          ],
+          group: ['Area.id', 'Area.name', 'Area.number'],
+          raw: true
+        });
+
+        // 5️⃣ Leaders avec statistiques
+        const leadersStats = await User.findAll({
+          where: { role: 'Bacenta_Leader', is_active: true },
+          attributes: [
+            'id', 'first_name', 'last_name', 'area_id',
+            [sequelize.fn('COUNT', sequelize.col('members.id')), 'members_count']
+          ],
           include: [{
-            model: User,
-            as: 'leaders',
-            where: { role: 'Bacenta_Leader', is_active: true },
-            attributes: ['id', 'first_name', 'last_name', 'email']
-          }]
+            model: Member,
+            as: 'members',
+            where: { is_active: true },
+            attributes: [],
+            required: false
+          }],
+          group: ['User.id', 'User.first_name', 'User.last_name', 'User.area_id'],
+          raw: true
         });
 
         dashboardData = {
           summary: {
             total_members: totalMembers,
             total_leaders: totalLeaders,
-            overall_attendance_percentage: attendancePercentage,
+            total_areas: totalAreas,
+            current_week_attendance: currentWeekAttendance,
+            previous_week_attendance: previousWeekAttendance,
+            attendance_change: attendanceChange,
+            recent_call_logs: recentCallLogs,
             recent_bacenta_meetings: recentBacentaMeetings
           },
-          areas
+          areas: areasStats,
+          leaders: leadersStats
         };
       }
 

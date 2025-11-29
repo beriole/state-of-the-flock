@@ -26,6 +26,7 @@ import BacentaLeaderManagement from './screens/governor/BacentaLeaderManagement'
 import BacentaLeaderDetail from './screens/governor/BacentaLeaderDetail';
 import LeaderMeetingsScreen from './screens/governor/LeaderMeetingsScreen';
 import LeaderMembersScreen from './screens/governor/LeaderMembersScreen';
+import ChurchMembersScreen from './screens/governor/ChurchMembersScreen';
 import ReportsScreen from './screens/governor/ReportsScreen';
 import GovernorAttendanceReportScreen from './screens/governor/GovernorAttendanceReportScreen';
 
@@ -80,6 +81,7 @@ const StackNavigator = () => {
           <Stack.Screen name="BacentaLeaderDetail" component={BacentaLeaderDetail} />
           <Stack.Screen name="LeaderMeetingsScreen" component={LeaderMeetingsScreen} />
           <Stack.Screen name="LeaderMembersScreen" component={LeaderMembersScreen} />
+          <Stack.Screen name="ChurchMembers" component={ChurchMembersScreen} />
           <Stack.Screen name="ReportsScreen" component={ReportsScreen} />
           <Stack.Screen name="GovernorAttendanceReport" component={GovernorAttendanceReportScreen} />
 
