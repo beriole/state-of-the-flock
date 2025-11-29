@@ -145,50 +145,51 @@ const dashboardController = {
           where: { meeting_date: { [Op.gte]: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000) } }
         });
 
-        // 4️⃣ Statistiques par zone
-        const areasStats = await Area.findAll({
-          attributes: [
-            'id', 'name', 'number',
-            [sequelize.fn('COUNT', sequelize.col('leaders.id')), 'leaders_count'],
-            [sequelize.fn('COUNT', sequelize.col('members.id')), 'members_count']
-          ],
-          include: [
-            {
-              model: User,
-              as: 'leaders',
-              where: { role: 'Bacenta_Leader', is_active: true },
-              attributes: [],
-              required: false
-            },
-            {
-              model: Member,
-              as: 'members',
-              where: { is_active: true },
-              attributes: [],
-              required: false
-            }
-          ],
-          group: ['Area.id', 'Area.name', 'Area.number'],
-          raw: true
+        // 4️⃣ Statistiques par zone (simplifiées)
+        const areas = await Area.findAll({
+          include: [{
+            model: User,
+            as: 'leaders',
+            where: { role: 'Bacenta_Leader', is_active: true },
+            attributes: ['id'],
+            required: false
+          }]
         });
 
-        // 5️⃣ Leaders avec statistiques
-        const leadersStats = await User.findAll({
+        const areasStats = await Promise.all(areas.map(async (area) => {
+          const membersCount = await Member.count({
+            where: { area_id: area.id, is_active: true }
+          });
+
+          return {
+            id: area.id,
+            name: area.name,
+            number: area.number,
+            leaders_count: area.leaders?.length || 0,
+            members_count: membersCount
+          };
+        }));
+
+        // 5️⃣ Leaders avec statistiques (simplifiées)
+        const leaders = await User.findAll({
           where: { role: 'Bacenta_Leader', is_active: true },
-          attributes: [
-            'id', 'first_name', 'last_name', 'area_id',
-            [sequelize.fn('COUNT', sequelize.col('members.id')), 'members_count']
-          ],
-          include: [{
-            model: Member,
-            as: 'members',
-            where: { is_active: true },
-            attributes: [],
-            required: false
-          }],
-          group: ['User.id', 'User.first_name', 'User.last_name', 'User.area_id'],
-          raw: true
+          include: [{ model: Area, as: 'area', attributes: ['name'] }]
         });
+
+        const leadersStats = await Promise.all(leaders.map(async (leader) => {
+          const membersCount = await Member.count({
+            where: { leader_id: leader.id, is_active: true }
+          });
+
+          return {
+            id: leader.id,
+            first_name: leader.first_name,
+            last_name: leader.last_name,
+            area_id: leader.area_id,
+            area_name: leader.area?.name,
+            members_count: membersCount
+          };
+        }));
 
         dashboardData = {
           summary: {
