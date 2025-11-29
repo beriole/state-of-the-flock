@@ -504,7 +504,8 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
       return;
     }
 
-    if (!newMember.area_id) {
+    // Allow Bishops to create members without area_id
+    if (authUser?.role !== 'Bishop' && !newMember.area_id) {
       Alert.alert(t('common.error'), 'Zone non définie. Veuillez vous reconnecter.');
       return;
     }
@@ -518,12 +519,16 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
         phone_primary: newMember.phone_primary.trim(),
         phone_secondary: newMember.phone_secondary.trim() || null,
         gender: newMember.gender,
-        area_id: newMember.area_id,
         leader_id: newMember.leader_id,
         is_registered: false,
         state: 'Sheep',
         is_active: true
       };
+
+      // Only include area_id if it exists (Bishops can create members without area)
+      if (newMember.area_id) {
+        memberData.area_id = newMember.area_id;
+      }
 
       const response = await memberAPI.createMember(memberData);
 

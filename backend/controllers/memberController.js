@@ -126,8 +126,14 @@ const memberController = {
         notes
       } = req.body;
 
-      if (!first_name || !last_name || !phone_primary || !gender || !area_id || !leader_id) {
+      // Allow Bishops to create members without area_id (they can set it later)
+      if (!first_name || !last_name || !phone_primary || !gender || !leader_id) {
         return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
+      }
+
+      // For Bishops, area_id is optional
+      if (req.user.role !== 'Bishop' && !area_id) {
+        return res.status(400).json({ error: 'Zone requise pour ce rôle' });
       }
 
       const member = await Member.create({
