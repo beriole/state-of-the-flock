@@ -40,15 +40,6 @@ const callLogController = {
       if (caller_id) whereClause.caller_id = caller_id;
       if (outcome) whereClause.outcome = outcome;
 
-      // Filtrage par zone ou leader pour Bishop/Governor
-      if (req.user.role === 'Bishop' || req.user.role === 'Governor') {
-        if (area_id) {
-          whereClause['$member.area_id$'] = area_id;
-        }
-        if (leader_id) {
-          whereClause['$member.leader_id$'] = leader_id;
-        }
-      }
 
       // Filtre de date
       if (start_date && end_date) {
@@ -57,7 +48,8 @@ const callLogController = {
         };
       }
 
-      const callLogs = await CallLog.findAndCountAll({
+      // For Bishop/Governor filtering, we need to use a different approach
+      let queryOptions = {
         where: whereClause,
         include: [
           {
@@ -73,7 +65,17 @@ const callLogController = {
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [['call_date', 'DESC']]
-      });
+      };
+
+      // If Bishop/Governor is filtering by area or leader, use required includes
+      if ((req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id)) {
+        queryOptions.include[0].required = true;
+        queryOptions.include[0].where = {};
+        if (area_id) queryOptions.include[0].where.area_id = area_id;
+        if (leader_id) queryOptions.include[0].where.leader_id = leader_id;
+      }
+
+      const callLogs = await CallLog.findAndCountAll(queryOptions);
 
       console.log('Found call logs:', callLogs.count);
       console.log('Where clause:', JSON.stringify(whereClause, null, 2));
