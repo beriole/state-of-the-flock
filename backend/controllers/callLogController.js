@@ -40,15 +40,6 @@ const callLogController = {
       if (caller_id) whereClause.caller_id = caller_id;
       if (outcome) whereClause.outcome = outcome;
 
-      // Filtrage par zone ou leader pour Bishop/Governor
-      if (req.user.role === 'Bishop' || req.user.role === 'Governor') {
-        if (area_id) {
-          whereClause['$member.area_id$'] = area_id;
-        }
-        if (leader_id) {
-          whereClause['$member.leader_id$'] = leader_id;
-        }
-      }
 
 
       // Filtre de date
@@ -71,19 +62,35 @@ const callLogController = {
           },
           { model: User, as: 'caller' }
         ],
-        limit: parseInt(limit),
-        offset: parseInt(offset),
         order: [['call_date', 'DESC']]
       });
 
-      console.log('Found call logs:', callLogs.count);
-      console.log('Where clause:', JSON.stringify(whereClause, null, 2));
+      console.log('Found call logs before filtering:', callLogs.count);
+
+      let filteredCallLogs = callLogs.rows;
+
+      // Filtrage manuel pour Bishop/Governor si nécessaire
+      if ((req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id)) {
+        filteredCallLogs = callLogs.rows.filter(callLog => {
+          if (area_id && callLog.member.area_id !== area_id) return false;
+          if (leader_id && callLog.member.leader_id !== leader_id) return false;
+          return true;
+        });
+      }
+
+      // Appliquer pagination après filtrage
+      const totalFiltered = filteredCallLogs.length;
+      const startIndex = (parseInt(page) - 1) * parseInt(limit);
+      const endIndex = startIndex + parseInt(limit);
+      const paginatedCallLogs = filteredCallLogs.slice(startIndex, endIndex);
+
+      console.log('Filtered call logs:', totalFiltered);
 
       res.json({
-        callLogs: callLogs.rows,
-        total: callLogs.count,
+        callLogs: paginatedCallLogs,
+        total: totalFiltered,
         page: parseInt(page),
-        totalPages: Math.ceil(callLogs.count / limit)
+        totalPages: Math.ceil(totalFiltered / limit)
       });
     } catch (error) {
       console.error('Get call logs error:', error);
