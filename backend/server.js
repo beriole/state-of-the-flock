@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
     setupAssociations();
 
     // Synchronisation désactivée - tables déjà créées manuellement
-    // await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: true });
 
     app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT} (accessible sur http://${require('os').networkInterfaces().eth0?.[0]?.address || 'votre-ip'}:${PORT})`));
   } catch (error) {
