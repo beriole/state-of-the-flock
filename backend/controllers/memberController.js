@@ -126,14 +126,21 @@ const memberController = {
         notes
       } = req.body;
 
-      // Allow Bishops to create members without area_id (they can set it later)
       if (!first_name || !last_name || !phone_primary || !gender || !leader_id) {
         return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
       }
 
-      // For Bishops and Bacenta Leaders, area_id is optional
-      if (!['Bishop', 'Bacenta_Leader'].includes(req.user.role) && !area_id) {
-        return res.status(400).json({ error: 'Zone requise pour ce rôle' });
+      // Si area_id n'est pas fourni, utiliser l'area_id du leader
+      let finalAreaId = area_id;
+      if (!finalAreaId) {
+        const leader = await User.findByPk(leader_id);
+        if (leader && leader.area_id) {
+          finalAreaId = leader.area_id;
+        }
+      }
+
+      if (!finalAreaId) {
+        return res.status(400).json({ error: 'Zone non définie. Le leader doit avoir une zone assignée.' });
       }
 
       const member = await Member.create({
@@ -144,7 +151,7 @@ const memberController = {
         gender,
         is_registered: is_registered || false,
         state: state || 'Sheep',
-        area_id,
+        area_id: finalAreaId,
         leader_id,
         ministry,
         profession,

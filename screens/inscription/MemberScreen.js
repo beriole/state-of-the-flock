@@ -504,11 +504,7 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
       return;
     }
 
-    // Allow Bishops and Bacenta Leaders to create members without area_id
-    if (!['Bishop', 'Bacenta_Leader'].includes(authUser?.role) && !newMember.area_id) {
-      Alert.alert(t('common.error'), 'Zone non définie. Veuillez vous reconnecter.');
-      return;
-    }
+    // Area will be automatically set from leader's area
 
     setSaving(true);
 
