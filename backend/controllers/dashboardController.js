@@ -110,25 +110,22 @@ const dashboardController = {
         const totalLeaders = await User.count({ where: { role: 'Bacenta_Leader', is_active: true } });
         const totalAreas = await Area.count();
 
-        // Statistiques de présence (dernière semaine)
-        const weeklyAttendance = await Attendance.findAll({
-          where: {
-            sunday_date: { [Op.in]: [lastSundayStr, previousSundayStr] }
-          },
-          attributes: [
-            'sunday_date',
-            [sequelize.fn('COUNT', sequelize.col('id')), 'total_records'],
-            [sequelize.fn('SUM', sequelize.col('present')), 'present_count']
-          ],
-          group: ['sunday_date'],
-          raw: true
+        // Statistiques de présence simplifiées
+        const lastWeekAttendance = await Attendance.findAll({
+          where: { sunday_date: lastSundayStr }
         });
 
-        const lastWeekStats = weeklyAttendance.find(stat => stat.sunday_date === lastSundayStr);
-        const prevWeekStats = weeklyAttendance.find(stat => stat.sunday_date === previousSundayStr);
+        const prevWeekAttendance = await Attendance.findAll({
+          where: { sunday_date: previousSundayStr }
+        });
 
-        const currentWeekAttendance = lastWeekStats ? Math.round((Number(lastWeekStats.present_count) / Number(lastWeekStats.total_records)) * 100) : 0;
-        const previousWeekAttendance = prevWeekStats ? Math.round((Number(prevWeekStats.present_count) / Number(prevWeekStats.total_records)) * 100) : 0;
+        const currentWeekPresent = lastWeekAttendance.reduce((sum, att) => sum + (att.present ? 1 : 0), 0);
+        const currentWeekTotal = lastWeekAttendance.length;
+        const currentWeekAttendance = currentWeekTotal > 0 ? Math.round((currentWeekPresent / currentWeekTotal) * 100) : 0;
+
+        const prevWeekPresent = prevWeekAttendance.reduce((sum, att) => sum + (att.present ? 1 : 0), 0);
+        const prevWeekTotal = prevWeekAttendance.length;
+        const previousWeekAttendance = prevWeekTotal > 0 ? Math.round((prevWeekPresent / prevWeekTotal) * 100) : 0;
 
         // Évolution de la présence
         const attendanceChange = currentWeekAttendance - previousWeekAttendance;
