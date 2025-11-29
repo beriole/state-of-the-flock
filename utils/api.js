@@ -2,12 +2,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL du backend
-// Pour émulateur Android : utilisez 10.0.2.2
-// Pour téléphone réel : utilisez l'IP réseau de votre PC (ipconfig)
-// Pour iOS Simulator : utilisez localhost
-// const BASE_URL = 'http://10.0.2.2:5000/api'; // Pour émulateur Android
-const BASE_URL = 'http://192.168.137.2:5000/api'; // Pour téléphone réel sur même réseau
-// const BASE_URL = 'http://localhost:5000/api'; // Pour iOS Simulator
+// Production URL (Render deployment)
+const BASE_URL = 'https://state-of-the-flock.onrender.com/api';
+// const BASE_URL = 'http://10.0.2.2:5000/api'; // Pour émulateur Android (développement)
+// const BASE_URL = 'http://192.168.137.2:5000/api'; // Pour téléphone réel sur même réseau (développement)
+// const BASE_URL = 'http://localhost:5000/api'; // Pour iOS Simulator (développement)
 
 // Créer une instance axios
 const api = axios.create({
