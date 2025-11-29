@@ -41,6 +41,48 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// Temporary seed route for testing
+app.get('/seed', async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const { User, Area } = require('./models');
+
+    // Delete existing test users and areas
+    await User.destroy({ where: {} });
+    await Area.destroy({ where: {} });
+
+    // Create an Area first
+    const area = await Area.create({
+      name: 'Zone Centrale',
+      overseer_id: null // Will be assigned to Bishop
+    });
+
+    const usersData = [
+      { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123', area_id: area.id },
+      { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123', area_id: area.id },
+    ];
+
+    for (const u of usersData) {
+      const password_hash = await bcrypt.hash(u.password, 10);
+      await User.create({
+        first_name: u.first_name,
+        last_name: u.last_name,
+        email: u.email,
+        role: u.role,
+        password_hash,
+        area_id: u.area_id
+      });
+    }
+
+    // Update the Area to set the Bishop as overseer
+    await area.update({ overseer_id: usersData[0].id });
+
+    res.json({ message: 'Test users and area seeded successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
