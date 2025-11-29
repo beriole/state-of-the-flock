@@ -131,8 +131,8 @@ const memberController = {
         return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
       }
 
-      // For Bishops, area_id is optional
-      if (req.user.role !== 'Bishop' && !area_id) {
+      // For Bishops and Bacenta Leaders, area_id is optional
+      if (!['Bishop', 'Bacenta_Leader'].includes(req.user.role) && !area_id) {
         return res.status(400).json({ error: 'Zone requise pour ce rôle' });
       }
 
