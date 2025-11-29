@@ -40,6 +40,16 @@ const callLogController = {
       if (caller_id) whereClause.caller_id = caller_id;
       if (outcome) whereClause.outcome = outcome;
 
+      // Filtrage par zone ou leader pour Bishop/Governor
+      if (req.user.role === 'Bishop' || req.user.role === 'Governor') {
+        if (area_id) {
+          whereClause['$member.area_id$'] = area_id;
+        }
+        if (leader_id) {
+          whereClause['$member.leader_id$'] = leader_id;
+        }
+      }
+
 
       // Filtre de date
       if (start_date && end_date) {
@@ -54,11 +64,6 @@ const callLogController = {
           {
             model: Member,
             as: 'member',
-            required: (req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id),
-            where: (req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id) ? {
-              ...(area_id && { area_id }),
-              ...(leader_id && { leader_id })
-            } : undefined,
             include: [
               { model: Area, as: 'area' },
               { model: User, as: 'leader' }
