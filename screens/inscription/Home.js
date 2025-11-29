@@ -18,7 +18,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import { dashboardAPI, memberAPI } from '../../utils/api';
 
 /**
  * DashboardScreen - design avec palette rouge pour l'amour
@@ -61,7 +61,7 @@ const DashboardScreen = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await api.get('/dashboard');
+      const response = await dashboardAPI.getDashboard();
       setDashboardData(response.data);
     } catch (error) {
       console.error('Erreur lors du chargement du tableau de bord:', error);
@@ -70,7 +70,7 @@ const DashboardScreen = () => {
 
   const fetchRecentMembers = async () => {
     try {
-      const response = await api.get('/members', { params: { limit: 10, page: 1 } });
+      const response = await memberAPI.getMembers({ limit: 10, page: 1 });
       const members = response.data.members.map(member => ({
         id: member.id,
         name: `${member.first_name} ${member.last_name}`,
@@ -99,16 +99,16 @@ const DashboardScreen = () => {
   const handleQuickAction = (key) => {
     switch (key) {
       case 'attendance':
-        navigation.navigate('Menu', { screen: 'Attendance' });
+        navigation.navigate('AttendanceScreen');
         break;
       case 'members':
-        navigation.navigate('Menu', { screen: 'Members' });
+        navigation.navigate('MemberScreen');
         break;
       case 'calllist':
-        navigation.navigate('Menu', { screen: 'Calls' });
+        navigation.navigate('CallsScreen');
         break;
       case 'bacenta':
-        navigation.navigate('Menu', { screen: 'Bacenta' });
+        navigation.navigate('BacentaScreen');
         break;
       default:
         break;
@@ -183,41 +183,41 @@ const DashboardScreen = () => {
             {stats.map(renderStat)}
           </View>
 
-        {/* Quick actions (compact) */}
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
-          <FlatList
-            data={quickActions}
-            renderItem={renderAction}
-            keyExtractor={(i) => i.key}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 4 }}
-          />
-        </View>
-
-        {/* Derniers membres (10 derniers) */}
-        <View style={styles.recentContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('dashboard.recentMembers')}</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>{t('dashboard.seeAll')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.recentList}>
+          {/* Quick actions (compact) */}
+          <View style={styles.quickActionsContainer}>
+            <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
             <FlatList
-              data={recentMembers}
-              renderItem={renderMember}
-              keyExtractor={(i) => i.id}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              scrollEnabled={false}
+              data={quickActions}
+              renderItem={renderAction}
+              keyExtractor={(i) => i.key}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 4 }}
             />
           </View>
-        </View>
 
-        {/* Espace bottom padding */}
-        <View style={{ height: 48 }} />
+          {/* Derniers membres (10 derniers) */}
+          <View style={styles.recentContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('dashboard.recentMembers')}</Text>
+              <TouchableOpacity>
+                <Text style={styles.seeAll}>{t('dashboard.seeAll')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.recentList}>
+              <FlatList
+                data={recentMembers}
+                renderItem={renderMember}
+                keyExtractor={(i) => i.id}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                scrollEnabled={false}
+              />
+            </View>
+          </View>
+
+          {/* Espace bottom padding */}
+          <View style={{ height: 48 }} />
         </ScrollView>
       )}
     </SafeAreaView>

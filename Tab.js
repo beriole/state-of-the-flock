@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 import DashboardScreen from './screens/inscription/Home';
 import MembersScreen from './screens/inscription/MemberScreen';
@@ -10,6 +10,14 @@ import MemberDetailScreen from './screens/inscription/MemberDetailScreen';
 import AttendanceScreen from './screens/inscription/AttendanceScreen';
 import BacentaScreen from './screens/inscription/BacentaScreen';
 import CallsScreen from './screens/inscription/CallsScreen';
+
+import GovernorDashboard from './screens/governor/GovernorDashboard';
+import BacentaLeaderManagement from './screens/governor/BacentaLeaderManagement';
+import BacentaLeaderDetail from './screens/governor/BacentaLeaderDetail';
+import LeaderMembersScreen from './screens/governor/LeaderMembersScreen';
+import LeaderMeetingsScreen from './screens/governor/LeaderMeetingsScreen';
+import ReportsScreen from './screens/governor/ReportsScreen';
+import { useAuth } from './contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -31,9 +39,88 @@ const MembersStack = () => {
   );
 };
 
+// Stack navigator for Governor's Home (Dashboard + Reports)
+const GovernorHomeStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="GovernorDashboardMain" component={GovernorDashboard} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="BacentaLeaderManagement" component={BacentaLeaderManagement} />
+    </Stack.Navigator>
+  );
+};
+
+// Stack navigator for Governor's Leader Management
+const GovernorLeadersStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BacentaLeaderManagementList" component={BacentaLeaderManagement} />
+      <Stack.Screen name="BacentaLeaderDetail" component={BacentaLeaderDetail} />
+      <Stack.Screen name="LeaderMembers" component={LeaderMembersScreen} />
+      <Stack.Screen name="LeaderMeetings" component={LeaderMeetingsScreen} />
+    </Stack.Navigator>
+  );
+};
+
 const LeaderNavigator = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
+  // Governor Navigation
+  if (user?.role === 'Governor' || user?.role === 'Bishop') {
+    return (
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: styles.tabBar,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.inactive,
+          tabBarShowLabel: true,
+        }}
+      >
+        <Tab.Screen
+          name="GovernorDashboard"
+          component={GovernorHomeStack}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+                <Icon
+                  name="view-dashboard"
+                  size={24}
+                  color={focused ? colors.primary : colors.inactive}
+                />
+                {focused && <View style={styles.activeDot} />}
+              </View>
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={[styles.label, focused && styles.activeLabel]}>{t('dashboard.title')}</Text>
+            ),
+          }}
+        />
+
+        <Tab.Screen
+          name="Leaders"
+          component={GovernorLeadersStack}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+                <Icon
+                  name="account-supervisor"
+                  size={24}
+                  color={focused ? colors.primary : colors.inactive}
+                />
+              </View>
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={[styles.label, focused && styles.activeLabel]}>{t('governor.leaders')}</Text>
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    );
+  }
+
+  // Standard Bacenta Leader Navigation
   return (
     <Tab.Navigator
       screenOptions={{
@@ -50,8 +137,8 @@ const LeaderNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialIcons
-                name="dashboard"
+              <Icon
+                name="view-dashboard"
                 size={24}
                 color={focused ? colors.primary : colors.inactive}
               />
@@ -70,8 +157,8 @@ const LeaderNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialIcons
-                name="people"
+              <Icon
+                name="account-group"
                 size={24}
                 color={focused ? colors.primary : colors.inactive}
               />
@@ -89,8 +176,8 @@ const LeaderNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialIcons
-                name="event-available"
+              <Icon
+                name="calendar-check"
                 size={24}
                 color={focused ? colors.primary : colors.inactive}
               />
@@ -108,8 +195,8 @@ const LeaderNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialIcons
-                name="groups"
+              <Icon
+                name="account-multiple"
                 size={24}
                 color={focused ? colors.primary : colors.inactive}
               />
@@ -127,7 +214,7 @@ const LeaderNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <MaterialIcons
+              <Icon
                 name="phone"
                 size={24}
                 color={focused ? colors.primary : colors.inactive}

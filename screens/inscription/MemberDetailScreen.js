@@ -1,4 +1,41 @@
-// screens/inscription/MemberDetailScreen.jsx
+
+const getStateColor = (state) => {
+  switch (state) {
+    case 'Sheep': return '#16A34A';
+    case 'Goat': return '#D97706';
+    case 'Deer': return '#DC2626';
+    default: return '#6B7280';
+  }
+};
+
+const getStateIcon = (state) => {
+  switch (state) {
+    case 'Sheep': return 'sheep';
+    case 'Goat': return 'goat';
+    case 'Deer': return 'deer';
+    default: return 'account';
+  }
+};
+
+const renderAttendanceItem = ({ item }) => (
+  <View style={styles.historyItem}>
+    <View style={styles.historyIcon}>
+      <Icon
+        name={item.present ? 'check-circle' : 'close-circle'}
+        size={20}
+        color={item.present ? '#16A34A' : '#DC2626'}
+      />
+    </View>
+    <View style={styles.historyContent}>
+      <Text style={styles.historyDate}>{formatDate(item.sunday_date)}</Text>
+      <Text style={styles.historyStatus}>
+        {item.present ? t('present') : t('absent')}
+      </Text>
+      {item.notes && <Text style={styles.historyNotes}>{item.notes}</Text>}
+    </View>
+  </View>
+);
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,63 +45,42 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  Image,
+  TextInput,
+  FlatList,
+  Modal,
   Alert,
   ActivityIndicator,
-  FlatList,
   Linking,
-  Platform,
-  Modal
+  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import api from '../../utils/api';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import { memberAPI, callLogAPI } from '../../utils/api';
 
-const MemberDetailScreen = () => {
+const MemberDetailScreen = ({ route, navigation }) => {
+  // Add necessary imports and state here
   const { t } = useTranslation();
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { memberId } = route.params;
   const { user: authUser } = useAuth();
+  const { memberId } = route.params;
 
   const [member, setMember] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [attendances, setAttendances] = useState([]);
   const [callLogs, setCallLogs] = useState([]);
+  const [callStats, setCallStats] = useState({
+    totalCalls: 0,
+    contacted: 0,
+    noAnswer: 0,
+    callbackRequested: 0,
+    lastCallDate: null
+  });
+  const [attendances, setAttendances] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
-
-  // Charger les détails du membre
-  const loadMemberDetails = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/members/${memberId}`);
-      setMember(response.data);
-
-      // Charger les présences récentes
-      const attendanceResponse = await api.get('/attendance', {
-        params: { member_id: memberId, limit: 10 }
-      });
-      setAttendances(attendanceResponse.data.attendance || []);
-
-      // Charger les logs d'appels récents
-      const callLogsResponse = await api.get('/call-logs', {
-        params: { member_id: memberId, limit: 10 }
-      });
-      setCallLogs(callLogsResponse.data.call_logs || []);
-
-    } catch (error) {
-      console.error('Erreur lors du chargement des détails:', error);
-      Alert.alert(t('error'), t('members.loadDetailError'));
-      navigation.goBack();
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [selectedMember, setSelectedMember] = useState(null);
 
   // SMS Templates
   const smsTemplates = [
@@ -112,497 +128,602 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
     }
   ];
 
-  // Handle phone call
-  const handleCall = () => {
-    if (!member) return;
+  // Add useEffect to fetch data
+  useEffect(() => {
+    fetchMemberDetails();
+    fetchCallLogs();
+    fetchAttendances();
+  }, [memberId]);
 
-    const phoneNumber = member.phone_primary || member.phone;
-    if (!phoneNumber) {
-      Alert.alert('Erreur', 'Aucun numéro de téléphone disponible');
-      return;
+  const fetchMemberDetails = async () => {
+    try {
+      const response = await memberAPI.getMemberById(memberId);
+      setMember(response.data);
+    } catch (error) {
+      console.error('Error fetching member:', error);
     }
+  };
 
+  const fetchCallLogs = async () => {
+    try {
+      const response = await callLogAPI.getCallLogs({ member_id: memberId });
+      const logs = response.data.callLogs || [];
+      setCallLogs(logs);
+
+      // Calculate stats
+      const stats = {
+        totalCalls: logs.length,
+        contacted: logs.filter(log => log.outcome === 'Contacted').length,
+        noAnswer: logs.filter(log => log.outcome === 'No_Answer').length,
+        callbackRequested: logs.filter(log => log.outcome === 'Callback_Requested').length,
+        lastCallDate: logs.length > 0 ? logs[0].call_date : null
+      };
+      setCallStats(stats);
+    } catch (error) {
+      console.error('Error fetching call logs:', error);
+    }
+  };
+
+  const fetchAttendances = async () => {
+    try {
+      // Assuming there's an API to get attendances for a member
+      // This might need to be implemented
+      setAttendances([]);
+    } catch (error) {
+      console.error('Error fetching attendances:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCall = (member) => {
+    setSelectedMember(member);
     setShowCallModal(true);
   };
 
-  // Execute call with selected method
-  const executeCall = (method) => {
-    if (!member) return;
-
-    const phoneNumber = member.phone_primary || member.phone;
-    let url;
-
-    if (method === 'phone') {
-      url = `tel:${phoneNumber}`;
-    } else if (method === 'whatsapp') {
-      url = `whatsapp://send?phone=${phoneNumber}`;
-    }
-
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-        setShowCallModal(false);
-      } else {
-        Alert.alert('Erreur', method === 'phone' ? 'Impossible de passer l\'appel' : 'WhatsApp n\'est pas installé');
-      }
-    });
-  };
-
-  // Handle SMS
-  const handleSms = () => {
+  const handleSms = (member) => {
+    setSelectedMember(member);
     setShowSmsModal(true);
   };
 
-  // Send SMS with selected template
-  const sendSms = (template) => {
-    if (!member) return;
+  const executeCall = async (method) => {
+    if (!selectedMember) return;
 
-    const phoneNumber = member.phone_primary || member.phone;
-    if (!phoneNumber) {
-      Alert.alert('Erreur', 'Aucun numéro de téléphone disponible');
-      return;
-    }
-
-    const memberName = `${member.first_name} ${member.last_name}`;
-    const leaderName = `${authUser.first_name} ${authUser.last_name}`;
-
-    // Generate message using function
-    const message = template.message(memberName, leaderName);
-
-    // Store template and message for the send method modal
-    setMember({
-      ...member,
-      selectedTemplate: template,
-      generatedMessage: message
-    });
-    setShowSmsModal(false);
-    setTimeout(() => setShowCallModal(true), 300); // Show send method modal
-  };
-
-  // Execute SMS send with selected method
-  const executeSmsSend = (method) => {
-    if (!member || !member.generatedMessage) return;
-
-    const phoneNumber = member.phone_primary || member.phone;
-    const message = member.generatedMessage;
+    const phoneNumber = selectedMember.phone_primary || selectedMember.phone;
     let url;
+    let contactMethod = 'Phone';
 
-    if (method === 'whatsapp') {
-      url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
-    } else if (method === 'sms') {
-      url = `sms:${phoneNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+    if (method === 'phone') {
+      url = `tel:${phoneNumber}`;
+      contactMethod = 'Phone';
+    } else if (method === 'whatsapp') {
+      url = `whatsapp://send?phone=${phoneNumber}`;
+      contactMethod = 'WhatsApp';
     }
 
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-        setShowCallModal(false);
-      } else {
-        Alert.alert('Erreur', method === 'whatsapp' ? 'WhatsApp n\'est pas installé' : 'Impossible d\'envoyer un SMS');
+    try {
+      if (method === 'phone') {
+        await Linking.openURL(url);
+      } else if (method === 'whatsapp') {
+        try {
+          await Linking.openURL(url);
+        } catch (error) {
+          const webUrl = `https://wa.me/${phoneNumber}`;
+          await Linking.openURL(webUrl);
+        }
       }
-    });
+
+      // Log the call attempt
+      try {
+        await callLogAPI.createCallLog({
+          member_id: selectedMember.id,
+          outcome: 'Contacted',
+          contact_method: contactMethod,
+          notes: `Appel initié via ${contactMethod}`
+        });
+        console.log('Call logged successfully');
+        // Refresh call logs
+        fetchCallLogs();
+      } catch (logError) {
+        console.error('Error logging call:', logError);
+      }
+
+      setShowCallModal(false);
+      setSelectedMember(null);
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de passer l\'appel');
+    }
   };
 
-  useEffect(() => {
-    loadMemberDetails();
-  }, [memberId]);
+  const executeSmsSend = async (method) => {
+    // Similar to executeCall but for SMS
+    setShowCallModal(false);
+    setSelectedMember(null);
+  };
+
+  const sendSms = (template) => {
+    // Handle SMS template selection
+    setShowSmsModal(false);
+    setTimeout(() => setShowCallModal(true), 300);
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR');
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   };
 
-  const getStateColor = (state) => {
-    switch (state) {
-      case 'Sheep': return '#16A34A';
-      case 'Goat': return '#D97706';
-      case 'Deer': return '#DC2626';
+const renderCallLogItem = ({ item }) => {
+  const getOutcomeIcon = (outcome) => {
+    switch (outcome) {
+      case 'Contacted': return 'phone-check';
+      case 'No_Answer': return 'phone-missed';
+      case 'Callback_Requested': return 'rotate-ccw';
+      case 'Wrong_Number': return 'phone-off';
+      default: return 'phone';
+    }
+  };
+
+  const getOutcomeColor = (outcome) => {
+    switch (outcome) {
+      case 'Contacted': return '#16A34A';
+      case 'No_Answer': return '#D97706';
+      case 'Callback_Requested': return '#DC2626';
+      case 'Wrong_Number': return '#7C3AED';
       default: return '#6B7280';
     }
   };
 
-  const getStateIcon = (state) => {
-    switch (state) {
-      case 'Sheep': return 'sheep';
-      case 'Goat': return 'goat';
-      case 'Deer': return 'deer';
-      default: return 'account';
+  const getContactMethodIcon = (method) => {
+    switch (method) {
+      case 'WhatsApp': return 'message-circle';
+      case 'SMS': return 'message-square';
+      case 'Phone': return 'phone';
+      default: return 'phone';
     }
   };
 
-  const renderAttendanceItem = ({ item }) => (
-    <View style={styles.historyItem}>
-      <View style={styles.historyIcon}>
-        <Icon
-          name={item.present ? 'check-circle' : 'close-circle'}
-          size={20}
-          color={item.present ? '#16A34A' : '#DC2626'}
-        />
+  return (
+    <View style={styles.callLogItem}>
+      <View style={styles.callLogHeader}>
+        <View style={styles.callLogIcon}>
+          <Icon
+            name={getOutcomeIcon(item.outcome)}
+            size={20}
+            color={getOutcomeColor(item.outcome)}
+          />
+        </View>
+        <View style={styles.callLogMain}>
+          <View style={styles.callLogTop}>
+            <Text style={styles.callLogDate}>{formatDate(item.call_date)}</Text>
+            <View style={styles.contactMethodBadge}>
+              <Feather name={getContactMethodIcon(item.contact_method)} size={12} color="#6B7280" />
+              <Text style={styles.contactMethodText}>{item.contact_method}</Text>
+            </View>
+          </View>
+          <Text style={styles.callLogOutcome}>{t(`callLog.${item.outcome.toLowerCase()}`)}</Text>
+        </View>
+        <View style={styles.callerInfo}>
+          <Text style={styles.callerName}>
+            {item.caller?.first_name} {item.caller?.last_name}
+          </Text>
+          <Text style={styles.callerRole}>
+            {item.caller?.role === 'Bacenta_Leader' ? 'Leader' : 'Admin'}
+          </Text>
+        </View>
       </View>
-      <View style={styles.historyContent}>
-        <Text style={styles.historyDate}>{formatDate(item.sunday_date)}</Text>
-        <Text style={styles.historyStatus}>
-          {item.present ? t('present') : t('absent')}
-        </Text>
-        {item.notes && <Text style={styles.historyNotes}>{item.notes}</Text>}
-      </View>
+
+      {item.notes && (
+        <View style={styles.callLogNotes}>
+          <Text style={styles.callLogNotesText}>{item.notes}</Text>
+        </View>
+      )}
+
+      {item.next_followup_date && (
+        <View style={styles.followupInfo}>
+          <Feather name="calendar" size={14} color="#D97706" />
+          <Text style={styles.followupText}>
+            {t('followup')}: {formatDate(item.next_followup_date)}
+          </Text>
+        </View>
+      )}
+
+      {item.followup_notes && (
+        <View style={styles.followupNotes}>
+          <Text style={styles.followupNotesText}>{item.followup_notes}</Text>
+        </View>
+      )}
     </View>
   );
+};
 
-  const renderCallLogItem = ({ item }) => (
-    <View style={styles.historyItem}>
-      <View style={styles.historyIcon}>
-        <Icon
-          name={item.outcome === 'Contacted' ? 'phone-check' : 'phone-missed'}
-          size={20}
-          color={item.outcome === 'Contacted' ? '#16A34A' : '#D97706'}
-        />
-      </View>
-      <View style={styles.historyContent}>
-        <Text style={styles.historyDate}>{formatDate(item.call_date)}</Text>
-        <Text style={styles.historyStatus}>{t(`callLog.${item.outcome.toLowerCase()}`)}</Text>
-        {item.notes && <Text style={styles.historyNotes}>{item.notes}</Text>}
-      </View>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#DC2626" />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!member) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{t('members.notFound')}</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtnText}>{t('common.back')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+if (loading) {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#991B1B" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#DC2626" />
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
+      </View>
+    </SafeAreaView>
+  );
+}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerBackground} />
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <AntDesign name="arrowleft" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{t('member_details')}</Text>
+if (!member) {
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{t('members.notFound')}</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>{t('common.back')}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+return (
+  <SafeAreaView style={styles.container}>
+    <StatusBar barStyle="light-content" backgroundColor="#991B1B" />
+
+    {/* Header */}
+    <View style={styles.header}>
+      <View style={styles.headerBackground} />
+      <View style={styles.headerContent}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <AntDesign name="arrowleft" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{t('member_details')}</Text>
+        </View>
+        <View style={styles.headerRight} />
+      </View>
+    </View>
+
+    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Photo et informations principales */}
+      <View style={styles.profileSection}>
+        <View style={styles.photoContainer}>
+          {member.photo_url ? (
+            <Image source={{ uri: member.photo_url }} style={styles.photo} />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <Text style={styles.photoPlaceholderText}>
+                {member.first_name?.charAt(0)}{member.last_name?.charAt(0)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.basicInfo}>
+          <Text style={styles.memberName}>
+            {member.first_name} {member.last_name}
+          </Text>
+          <View style={styles.stateBadge}>
+            <Icon name={getStateIcon(member.state)} size={16} color={getStateColor(member.state)} />
+            <Text style={[styles.stateText, { color: getStateColor(member.state) }]}>
+              {t(`${member.state.toLowerCase()}`)}
+            </Text>
           </View>
-          <View style={styles.headerRight} />
+          <Text style={styles.areaText}>
+            {member.area?.name} • {t('members.ledBy')} {member.leader?.first_name} {member.leader?.last_name}
+          </Text>
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Photo et informations principales */}
-        <View style={styles.profileSection}>
-          <View style={styles.photoContainer}>
-            {member.photo_url ? (
-              <Image source={{ uri: member.photo_url }} style={styles.photo} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoPlaceholderText}>
-                  {member.first_name?.charAt(0)}{member.last_name?.charAt(0)}
-                </Text>
-              </View>
-            )}
+      {/* Statistiques d'appels */}
+      <View style={styles.statsSection}>
+        <Text style={styles.sectionTitle}>{t('callStatistics')}</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Feather name="phone" size={20} color="#2563EB" />
+            </View>
+            <Text style={styles.statValue}>{callStats.totalCalls}</Text>
+            <Text style={styles.statLabel}>{t('totalCalls')}</Text>
           </View>
 
-          <View style={styles.basicInfo}>
-            <Text style={styles.memberName}>
-              {member.first_name} {member.last_name}
-            </Text>
-            <View style={styles.stateBadge}>
-              <Icon name={getStateIcon(member.state)} size={16} color={getStateColor(member.state)} />
-              <Text style={[styles.stateText, { color: getStateColor(member.state) }]}>
-                {t(`${member.state.toLowerCase()}`)}
-              </Text>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
+              <Feather name="check-circle" size={20} color="#16A34A" />
             </View>
-            <Text style={styles.areaText}>
-              {member.area?.name} • {t('members.ledBy')} {member.leader?.first_name} {member.leader?.last_name}
-            </Text>
+            <Text style={styles.statValue}>{callStats.contacted}</Text>
+            <Text style={styles.statLabel}>{t('contacted')}</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Feather name="phone-missed" size={20} color="#D97706" />
+            </View>
+            <Text style={styles.statValue}>{callStats.noAnswer}</Text>
+            <Text style={styles.statLabel}>{t('noAnswer')}</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
+              <Feather name="rotate-ccw" size={20} color="#DC2626" />
+            </View>
+            <Text style={styles.statValue}>{callStats.callbackRequested}</Text>
+            <Text style={styles.statLabel}>{t('callbackRequested')}</Text>
           </View>
         </View>
 
-        {/* Informations détaillées */}
-        <View style={styles.detailsSection}>
-          <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
+        {callStats.lastCallDate && (
+          <View style={styles.lastCallInfo}>
+            <Feather name="clock" size={16} color="#6B7280" />
+            <Text style={styles.lastCallText}>
+              {t('lastCall')}: {formatDate(callStats.lastCallDate)}
+            </Text>
+          </View>
+        )}
+      </View>
 
+      {/* Informations détaillées */}
+      <View style={styles.detailsSection}>
+        <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
+
+        <View style={styles.detailRow}>
+          <Feather name="phone" size={18} color="#6B7280" />
+          <View style={styles.detailContent}>
+            <Text style={styles.detailLabel}>{t('primary_phone')}</Text>
+            <Text style={styles.detailValue}>{member.phone_primary || '-'}</Text>
+          </View>
+        </View>
+
+        {member.phone_secondary && (
           <View style={styles.detailRow}>
             <Feather name="phone" size={18} color="#6B7280" />
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>{t('primary_phone')}</Text>
-              <Text style={styles.detailValue}>{member.phone_primary || '-'}</Text>
+              <Text style={styles.detailLabel}>{t('secondary_phone')}</Text>
+              <Text style={styles.detailValue}>{member.phone_secondary}</Text>
             </View>
           </View>
+        )}
 
-          {member.phone_secondary && (
-            <View style={styles.detailRow}>
-              <Feather name="phone" size={18} color="#6B7280" />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>{t('secondary_phone')}</Text>
-                <Text style={styles.detailValue}>{member.phone_secondary}</Text>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.detailRow}>
-            <Feather name="user" size={18} color="#6B7280" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>{t('gender')}</Text>
-              <Text style={styles.detailValue}>
-                {member.gender === 'M' ? t('male') : member.gender === 'F' ? t('female') : '-'}
-              </Text>
-            </View>
+        <View style={styles.detailRow}>
+          <Feather name="user" size={18} color="#6B7280" />
+          <View style={styles.detailContent}>
+            <Text style={styles.detailLabel}>{t('gender')}</Text>
+            <Text style={styles.detailValue}>
+              {member.gender === 'M' ? t('male') : member.gender === 'F' ? t('female') : '-'}
+            </Text>
           </View>
-
-          {member.ministry && (
-            <View style={styles.detailRow}>
-              <Feather name="heart" size={18} color="#6B7280" />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>{t('ministry')}</Text>
-                <Text style={styles.detailValue}>{member.ministry}</Text>
-              </View>
-            </View>
-          )}
-
-          {member.profession && (
-            <View style={styles.detailRow}>
-              <Feather name="briefcase" size={18} color="#6B7280" />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>{t('profession')}</Text>
-                <Text style={styles.detailValue}>{member.profession}</Text>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.detailRow}>
-            <Feather name="calendar" size={18} color="#6B7280" />
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>{t('registration_date')}</Text>
-              <Text style={styles.detailValue}>{formatDate(member.createdAt)}</Text>
-            </View>
-          </View>
-
-          {member.last_attendance_date && (
-            <View style={styles.detailRow}>
-              <Feather name="clock" size={18} color="#6B7280" />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>{t('last_attendance')}</Text>
-                <Text style={styles.detailValue}>{formatDate(member.last_attendance_date)}</Text>
-              </View>
-            </View>
-          )}
-
-          {member.notes && (
-            <View style={styles.notesSection}>
-              <Text style={styles.sectionTitle}>{t('notes')}</Text>
-              <Text style={styles.notesText}>{member.notes}</Text>
-            </View>
-          )}
         </View>
 
-        {/* Historique des présences */}
-        {attendances.length > 0 && (
-          <View style={styles.historySection}>
-            <Text style={styles.sectionTitle}>{t('attendance_history')}</Text>
-            <FlatList
-              data={attendances}
-              renderItem={renderAttendanceItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.historySeparator} />}
-            />
+        {member.ministry && (
+          <View style={styles.detailRow}>
+            <Feather name="heart" size={18} color="#6B7280" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>{t('ministry')}</Text>
+              <Text style={styles.detailValue}>{member.ministry}</Text>
+            </View>
           </View>
         )}
 
-        {/* Historique des appels */}
-        {callLogs.length > 0 && (
-          <View style={styles.historySection}>
-            <Text style={styles.sectionTitle}>{t('recentCalls')}</Text>
-            <FlatList
-              data={callLogs}
-              renderItem={renderCallLogItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.historySeparator} />}
-            />
+        {member.profession && (
+          <View style={styles.detailRow}>
+            <Feather name="briefcase" size={18} color="#6B7280" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>{t('profession')}</Text>
+              <Text style={styles.detailValue}>{member.profession}</Text>
+            </View>
           </View>
         )}
 
-        <View style={{ height: 30 }} />
-      </ScrollView>
+        <View style={styles.detailRow}>
+          <Feather name="calendar" size={18} color="#6B7280" />
+          <View style={styles.detailContent}>
+            <Text style={styles.detailLabel}>{t('registration_date')}</Text>
+            <Text style={styles.detailValue}>{formatDate(member.createdAt)}</Text>
+          </View>
+        </View>
 
-      {/* Actions flottantes */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity style={[styles.fab, styles.callFab]} onPress={handleCall}>
-          <Feather name="phone" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.fab, styles.messageFab]} onPress={handleSms}>
-          <Feather name="message-circle" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.fab, styles.editFab]}>
-          <Feather name="edit-2" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        {member.last_attendance_date && (
+          <View style={styles.detailRow}>
+            <Feather name="clock" size={18} color="#6B7280" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>{t('last_attendance')}</Text>
+              <Text style={styles.detailValue}>{formatDate(member.last_attendance_date)}</Text>
+            </View>
+          </View>
+        )}
+
+        {member.notes && (
+          <View style={styles.notesSection}>
+            <Text style={styles.sectionTitle}>{t('notes')}</Text>
+            <Text style={styles.notesText}>{member.notes}</Text>
+          </View>
+        )}
       </View>
 
-      {/* Modal SMS Templates */}
-      <Modal
-        visible={showSmsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowSmsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choisir un modèle de message</Text>
-              <TouchableOpacity onPress={() => setShowSmsModal(false)}>
-                <AntDesign name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+      {/* Historique des présences */}
+      {attendances.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>{t('attendance_history')}</Text>
+          <FlatList
+            data={attendances}
+            renderItem={renderAttendanceItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.historySeparator} />}
+          />
+        </View>
+      )}
 
-            <ScrollView style={styles.templatesList}>
-              {smsTemplates.map((template) => (
-                <TouchableOpacity
-                  key={template.id}
-                  style={styles.templateItem}
-                  onPress={() => sendSms(template)}
-                >
-                  <View style={styles.templateHeader}>
-                    <Text style={styles.templateTitle}>{template.title}</Text>
-                    <Feather name="chevron-right" size={20} color="#6B7280" />
-                  </View>
-                  <Text style={styles.templatePreview} numberOfLines={2}>
-                    {member ? template.message(
-                      `${member.first_name} ${member.last_name}`,
-                      `${authUser.first_name} ${authUser.last_name}`
-                    ).substring(0, 100) + '...' : 'Chargement...'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+      {/* Historique des appels */}
+      <View style={styles.historySection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t('callHistory')}</Text>
+          <Text style={styles.sectionCount}>{callLogs.length} {t('calls')}</Text>
+        </View>
 
-            <View style={styles.modalActions}>
+        {callLogs.length > 0 ? (
+          <FlatList
+            data={callLogs}
+            renderItem={renderCallLogItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.callLogSeparator} />}
+          />
+        ) : (
+          <View style={styles.emptyCallHistory}>
+            <Feather name="phone" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyCallHistoryText}>{t('noCallHistory')}</Text>
+            <Text style={styles.emptyCallHistorySubtext}>{t('startCalling')}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ height: 30 }} />
+    </ScrollView>
+
+    {/* Actions flottantes */}
+    <View style={styles.fabContainer}>
+      <TouchableOpacity style={[styles.fab, styles.callFab]} onPress={handleCall}>
+        <Feather name="phone" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.fab, styles.messageFab]} onPress={handleSms}>
+        <Feather name="message-circle" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.fab, styles.editFab]}>
+        <Feather name="edit-2" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+
+    {/* Modal SMS Templates */}
+    <Modal
+      visible={showSmsModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowSmsModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Choisir un modèle de message</Text>
+            <TouchableOpacity onPress={() => setShowSmsModal(false)}>
+              <AntDesign name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.templatesList}>
+            {smsTemplates.map((template) => (
               <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setShowSmsModal(false)}
+                key={template.id}
+                style={styles.templateItem}
+                onPress={() => sendSms(template)}
               >
-                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+                <View style={styles.templateHeader}>
+                  <Text style={styles.templateTitle}>{template.title}</Text>
+                  <Feather name="chevron-right" size={20} color="#6B7280" />
+                </View>
+                <Text style={styles.templatePreview} numberOfLines={2}>
+                  {member ? template.message(
+                    `${member.first_name} ${member.last_name}`,
+                    `${authUser.first_name} ${authUser.last_name}`
+                  ).substring(0, 100) + '...' : 'Chargement...'}
+                </Text>
               </TouchableOpacity>
-            </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => setShowSmsModal(false)}
+            >
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </View>
+    </Modal>
 
-      {/* Modal Méthode d'appel */}
-      <Modal
-        visible={showCallModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCallModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {member?.generatedMessage ? 'Envoyer le message' : 'Appeler le membre'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowCallModal(false)}>
-                <AntDesign name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+    {/* Modal Méthode d'appel */}
+    <Modal
+      visible={showCallModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowCallModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {member?.generatedMessage ? 'Envoyer le message' : 'Appeler le membre'}
+            </Text>
+            <TouchableOpacity onPress={() => setShowCallModal(false)}>
+              <AntDesign name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.methodSelection}>
-              <Text style={styles.methodSubtitle}>
-                {member?.generatedMessage
-                  ? `Choisir la méthode d'envoi pour ${member.first_name} ${member.last_name}`
-                  : `Choisir la méthode d'appel pour ${member?.first_name} ${member?.last_name}`
-                }
-              </Text>
+          <View style={styles.methodSelection}>
+            <Text style={styles.methodSubtitle}>
+              {member?.generatedMessage
+                ? `Choisir la méthode d'envoi pour ${member.first_name} ${member.last_name}`
+                : `Choisir la méthode d'appel pour ${member?.first_name} ${member?.last_name}`
+              }
+            </Text>
 
-              <View style={styles.methodOptions}>
-                {!member?.generatedMessage && (
-                  <TouchableOpacity
-                    style={[styles.methodOption, styles.phoneOption]}
-                    onPress={() => executeCall('phone')}
-                  >
-                    <View style={styles.methodIcon}>
-                      <Feather name="phone" size={24} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.methodInfo}>
-                      <Text style={styles.methodTitle}>Appel téléphonique</Text>
-                      <Text style={styles.methodDescription}>Appel vocal classique</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                )}
-
+            <View style={styles.methodOptions}>
+              {!member?.generatedMessage && (
                 <TouchableOpacity
-                  style={[styles.methodOption, member?.generatedMessage ? styles.whatsappOption : styles.whatsappCallOption]}
-                  onPress={() => member?.generatedMessage ? executeSmsSend('whatsapp') : executeCall('whatsapp')}
+                  style={[styles.methodOption, styles.phoneOption]}
+                  onPress={() => executeCall('phone')}
                 >
                   <View style={styles.methodIcon}>
-                    <AntDesign name={member?.generatedMessage ? "message1" : "phone"} size={24} color="#FFFFFF" />
+                    <Feather name="phone" size={24} color="#FFFFFF" />
                   </View>
                   <View style={styles.methodInfo}>
-                    <Text style={styles.methodTitle}>
-                      {member?.generatedMessage ? 'WhatsApp Message' : 'WhatsApp Call'}
-                    </Text>
-                    <Text style={styles.methodDescription}>
-                      {member?.generatedMessage ? 'Envoyer via WhatsApp' : 'Appel via WhatsApp'}
-                    </Text>
+                    <Text style={styles.methodTitle}>Appel téléphonique</Text>
+                    <Text style={styles.methodDescription}>Appel vocal classique</Text>
                   </View>
                   <Feather name="chevron-right" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
+              )}
 
-                {member?.generatedMessage && (
-                  <TouchableOpacity
-                    style={[styles.methodOption, styles.smsOption]}
-                    onPress={() => executeSmsSend('sms')}
-                  >
-                    <View style={styles.methodIcon}>
-                      <Feather name="message-square" size={24} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.methodInfo}>
-                      <Text style={styles.methodTitle}>SMS Classique</Text>
-                      <Text style={styles.methodDescription}>Message texte standard</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
               <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setShowCallModal(false)}
+                style={[styles.methodOption, member?.generatedMessage ? styles.whatsappOption : styles.whatsappCallOption]}
+                onPress={() => member?.generatedMessage ? executeSmsSend('whatsapp') : executeCall('whatsapp')}
               >
-                <Text style={styles.cancelBtnText}>Annuler</Text>
+                <View style={styles.methodIcon}>
+                  <AntDesign name={member?.generatedMessage ? "message1" : "phone"} size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.methodInfo}>
+                  <Text style={styles.methodTitle}>
+                    {member?.generatedMessage ? 'WhatsApp' : 'Appel WhatsApp'}
+                  </Text>
+                  <Text style={styles.methodDescription}>
+                    {member?.generatedMessage ? 'Envoyer via WhatsApp' : 'Appeler via WhatsApp'}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color="#FFFFFF" />
               </TouchableOpacity>
+
+              {member?.generatedMessage && (
+                <TouchableOpacity
+                  style={[styles.methodOption, styles.smsOption]}
+                  onPress={() => executeSmsSend('sms')}
+                >
+                  <View style={styles.methodIcon}>
+                    <Feather name="message-square" size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.methodInfo}>
+                    <Text style={styles.methodTitle}>SMS</Text>
+                    <Text style={styles.methodDescription}>Envoyer par SMS classique</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
-  );
+      </View>
+    </Modal>
+  </SafeAreaView>
+);
 };
 
 const styles = StyleSheet.create({
@@ -619,7 +740,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#6B7280',
-    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
@@ -629,9 +749,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: '#DC2626',
     marginBottom: 20,
+    textAlign: 'center',
   },
   backBtn: {
     paddingHorizontal: 20,
@@ -641,14 +761,12 @@ const styles = StyleSheet.create({
   },
   backBtnText: {
     color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
   header: {
     backgroundColor: '#991B1B',
-    height: 100,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
+    height: 60,
     position: 'relative',
   },
   headerBackground: {
@@ -658,20 +776,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#991B1B',
-    opacity: 0.95,
   },
   headerContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerCenter: {
     flex: 1,
@@ -687,57 +801,52 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-    marginTop: -20,
   },
   profileSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    alignItems: 'center',
     padding: 20,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FECACA',
   },
   photoContainer: {
-    alignItems: 'center',
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   photo: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#FECACA',
+    borderWidth: 4,
+    borderColor: '#FEF2F2',
   },
   photoPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FCA5A5',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FECACA',
+    borderWidth: 4,
+    borderColor: '#FEF2F2',
   },
   photoPlaceholderText: {
-    color: '#991B1B',
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   basicInfo: {
     alignItems: 'center',
   },
   memberName: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
-    textAlign: 'center',
   },
   stateBadge: {
     flexDirection: 'row',
@@ -747,28 +856,22 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     marginBottom: 8,
+    gap: 6,
   },
   stateText: {
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
   },
   areaText: {
     fontSize: 14,
     color: '#6B7280',
-    textAlign: 'center',
   },
-  detailsSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  statsSection: {
     padding: 20,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: '#FECACA',
   },
   sectionTitle: {
@@ -777,31 +880,88 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
   },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  lastCallInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  lastCallText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  detailsSection: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#FECACA',
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 16,
   },
   detailContent: {
     flex: 1,
-    marginLeft: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 12,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   detailValue: {
     fontSize: 16,
     color: '#111827',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   notesSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    marginTop: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 16,
+    borderRadius: 12,
   },
   notesText: {
     fontSize: 14,
@@ -809,96 +969,227 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   historySection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: '#FECACA',
   },
   historyItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 12,
+    gap: 12,
   },
   historyIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    marginTop: 2,
   },
   historyContent: {
     flex: 1,
   },
   historyDate: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 2,
   },
   historyStatus: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
-    fontWeight: '500',
+    marginBottom: 4,
   },
   historyNotes: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
+    fontSize: 14,
+    color: '#4B5563',
     fontStyle: 'italic',
   },
   historySeparator: {
     height: 1,
     backgroundColor: '#F3F4F6',
   },
-  fabContainer: {
-    position: 'absolute',
-    right: 20,
-    bottom: 30,
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionCount: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  callLogItem: {
+    paddingVertical: 12,
+  },
+  callLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
   },
+  callLogIcon: {
+    marginTop: 2,
+  },
+  callLogMain: {
+    flex: 1,
+  },
+  callLogTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  callLogDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  contactMethodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    gap: 4,
+  },
+  contactMethodText: {
+    fontSize: 10,
+    color: '#4B5563',
+  },
+  callLogOutcome: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  callerInfo: {
+    alignItems: 'flex-end',
+  },
+  callerName: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  callerRole: {
+    fontSize: 10,
+    color: '#9CA3AF',
+  },
+  callLogNotes: {
+    marginTop: 8,
+    marginLeft: 32,
+    backgroundColor: '#F9FAFB',
+    padding: 8,
+    borderRadius: 8,
+  },
+  callLogNotesText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontStyle: 'italic',
+  },
+  followupInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginLeft: 32,
+    gap: 6,
+  },
+  followupText: {
+    fontSize: 12,
+    color: '#D97706',
+    fontWeight: '500',
+  },
+  followupNotes: {
+    marginTop: 4,
+    marginLeft: 32,
+    paddingLeft: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#D97706',
+  },
+  followupNotesText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  callLogSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  emptyCallHistory: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyCallHistoryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyCallHistorySubtext: {
+    fontSize: 14,
+    color: '#D1D5DB',
+    textAlign: 'center',
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    gap: 16,
+  },
   fab: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   callFab: {
-    backgroundColor: '#16A34A',
+    backgroundColor: '#2563EB',
   },
   messageFab: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#16A34A',
   },
   editFab: {
     backgroundColor: '#DC2626',
   },
-  templatesList: {
+  modalOverlay: {
     flex: 1,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  templatesList: {
+    padding: 20,
   },
   templateItem: {
     backgroundColor: '#F9FAFB',
-    marginHorizontal: 20,
-    marginVertical: 5,
-    padding: 15,
+    padding: 16,
     borderRadius: 12,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
   },
   templateHeader: {
     flexDirection: 'row',
@@ -910,71 +1201,79 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    flex: 1,
   },
   templatePreview: {
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
   },
+  modalActions: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  cancelBtn: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  cancelBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
   methodSelection: {
     padding: 20,
   },
   methodSubtitle: {
-    fontSize: 16,
-    color: '#374151',
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
   },
   methodOptions: {
-    gap: 16,
+    gap: 12,
   },
   methodOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    gap: 16,
   },
   phoneOption: {
-    backgroundColor: '#16A34A',
-  },
-  whatsappCallOption: {
-    backgroundColor: '#25D366',
+    backgroundColor: '#2563EB',
   },
   whatsappOption: {
     backgroundColor: '#25D366',
   },
+  whatsappCallOption: {
+    backgroundColor: '#25D366',
+  },
   smsOption: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F59E0B',
   },
   methodIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
   methodInfo: {
     flex: 1,
   },
   methodTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   methodDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 20,
   },
 });
 

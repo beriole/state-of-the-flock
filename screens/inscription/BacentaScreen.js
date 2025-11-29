@@ -21,7 +21,7 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
-import api from '../../utils/api';
+import { bacentaAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
@@ -95,8 +95,8 @@ const BacentaScreen = ({ navigation }) => {
   const fetchMeetings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('/bacenta/meetings');
-      setMeetings(response.data);
+      const response = await bacentaAPI.getMeetings();
+      setMeetings(response.data.meetings || []);
     } catch (error) {
       console.error('Error fetching meetings:', error);
       Toast.show({
@@ -111,7 +111,7 @@ const BacentaScreen = ({ navigation }) => {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const response = await api.get('/bacenta/members');
+      const response = await bacentaAPI.getMembers();
       setMembers(response.data);
     } catch (error) {
       console.error('Error fetching members:', error);
@@ -149,20 +149,20 @@ const BacentaScreen = ({ navigation }) => {
       setLoading(true);
       let response;
       if (editingMeeting) {
-        response = await api.put(`/bacenta/meetings/${editingMeeting.id}`, newMeeting);
+        response = await bacentaAPI.updateMeeting(editingMeeting.id, newMeeting);
         setMeetings(meetings.map(m => m.id === editingMeeting.id ? response.data : m));
         setEditingMeeting(null);
         Toast.show({
           type: 'success',
-          text1: t('common.success'),
+          text1: t('success'),
           text2: 'Réunion modifiée avec succès',
         });
       } else {
-        response = await api.post('/bacenta/meetings', newMeeting);
+        response = await bacentaAPI.createMeeting(newMeeting);
         setMeetings([...meetings, response.data]);
         Toast.show({
           type: 'success',
-          text1: t('common.success'),
+          text1: t('success'),
           text2: 'Réunion créée avec succès',
         });
       }
@@ -183,7 +183,7 @@ const BacentaScreen = ({ navigation }) => {
       console.error('Error saving meeting:', error);
       Toast.show({
         type: 'error',
-        text1: t('common.error'),
+        text1: t('error'),
         text2: editingMeeting ? 'Erreur lors de la modification de la réunion' : 'Erreur lors de la création de la réunion',
       });
     } finally {
@@ -195,20 +195,20 @@ const BacentaScreen = ({ navigation }) => {
   const deleteMeeting = async (meetingId) => {
     try {
       setLoading(true);
-      await api.delete(`/bacenta/meetings/${meetingId}`);
+      await bacentaAPI.deleteMeeting(meetingId);
       setMeetings(meetings.filter(m => m.id !== meetingId));
       setShowDetailModal(false);
       setEditingMeeting(null);
       Toast.show({
         type: 'success',
-        text1: t('common.success'),
+        text1: t('success'),
         text2: 'Réunion supprimée avec succès',
       });
     } catch (error) {
       console.error('Error deleting meeting:', error);
       Toast.show({
         type: 'error',
-        text1: t('common.error'),
+        text1: t('error'),
         text2: 'Erreur lors de la suppression de la réunion',
       });
     } finally {
@@ -223,7 +223,7 @@ const BacentaScreen = ({ navigation }) => {
         status: attendance[memberId],
       }));
 
-      const response = await api.post(`/bacenta/${selectedMeeting.id}/attendance`, {
+      const response = await bacentaAPI.markAttendance(selectedMeeting.id, {
         attendance: attendanceData,
       });
 
@@ -237,14 +237,14 @@ const BacentaScreen = ({ navigation }) => {
       setShowAttendanceModal(false);
       Toast.show({
         type: 'success',
-        text1: t('common.success'),
+        text1: t('success'),
         text2: 'Présence enregistrée',
       });
     } catch (error) {
       console.error('Error saving attendance:', error);
       Toast.show({
         type: 'error',
-        text1: t('common.error'),
+        text1: t('error'),
         text2: 'Erreur lors de l\'enregistrement de la présence',
       });
     }
@@ -258,7 +258,7 @@ const BacentaScreen = ({ navigation }) => {
   const saveOfferings = async () => {
     try {
       const offeringsData = offerings.filter(o => o.amount > 0);
-      const response = await api.post(`/bacenta/${selectedMeeting.id}/offerings`, { offerings: offeringsData });
+      const response = await bacentaAPI.addOfferings(selectedMeeting.id, { offerings: offeringsData });
 
       const updatedMeeting = {
         ...selectedMeeting,
@@ -273,14 +273,14 @@ const BacentaScreen = ({ navigation }) => {
       setShowOfferingModal(false);
       Toast.show({
         type: 'success',
-        text1: t('common.success'),
+        text1: t('success'),
         text2: 'Offrandes enregistrées',
       });
     } catch (error) {
       console.error('Error saving offerings:', error);
       Toast.show({
         type: 'error',
-        text1: t('common.error'),
+        text1: t('error'),
         text2: 'Erreur lors de l\'enregistrement des offrandes',
       });
     }
@@ -342,7 +342,7 @@ const BacentaScreen = ({ navigation }) => {
     };
 
     launchImageLibrary(options, async (response) => {
-      if (response.didCancel) {return;}
+      if (response.didCancel) { return; }
       if (response.errorMessage) {
         Alert.alert('Erreur', 'Erreur lors de la sélection de la photo: ' + response.errorMessage);
         return;
@@ -881,8 +881,8 @@ const BacentaScreen = ({ navigation }) => {
                 <Text style={styles.detailLabel}>{t('bacenta.meetingType')}</Text>
                 <Text style={styles.detailValue}>
                   {selectedMeeting?.type === 'weekly' ? t('bacenta.weekly') :
-                   selectedMeeting?.type === 'midweek' ? t('bacenta.midweek') :
-                   t('bacenta.special')}
+                    selectedMeeting?.type === 'midweek' ? t('bacenta.midweek') :
+                      t('bacenta.special')}
                 </Text>
               </View>
 

@@ -2,7 +2,12 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL du backend
-const BASE_URL = 'http://10.5.50.123:5000/api'; // IP de votre PC pour l'émulateur
+// Pour émulateur Android : utilisez 10.0.2.2
+// Pour téléphone réel : utilisez l'IP réseau de votre PC (ipconfig)
+// Pour iOS Simulator : utilisez localhost
+// const BASE_URL = 'http://10.0.2.2:5000/api'; // Pour émulateur Android
+const BASE_URL = 'http://192.168.137.2:5000/api'; // Pour téléphone réel sur même réseau
+// const BASE_URL = 'http://localhost:5000/api'; // Pour iOS Simulator
 
 // Créer une instance axios
 const api = axios.create({
@@ -27,6 +32,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -47,6 +53,13 @@ api.interceptors.response.use(
   }
 );
 
+// Fonctions API pour l'authentification
+export const authAPI = {
+  login: (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
+  logout: () => api.post('/auth/logout'),
+};
+
 // Fonctions API pour les membres
 export const memberAPI = {
   getMembers: (params = {}) => api.get('/members', { params }),
@@ -62,6 +75,61 @@ export const attendanceAPI = {
   bulkAttendance: (data) => api.post('/attendance/bulk', data),
   getAttendanceStats: (params = {}) => api.get('/attendance/stats/summary', { params }),
   generateCallList: (params = {}) => api.get('/attendance/call-list', { params }),
+};
+
+// Fonctions API pour Bacenta
+export const bacentaAPI = {
+  getMeetings: (params = {}) => api.get('/bacenta/meetings', { params }),
+  createMeeting: (data) => api.post('/bacenta/meetings', data),
+  getMeetingById: (id) => api.get(`/bacenta/meetings/${id}`),
+  updateMeeting: (id, data) => api.put(`/bacenta/meetings/${id}`, data),
+  deleteMeeting: (id) => api.delete(`/bacenta/meetings/${id}`),
+  markAttendance: (meetingId, data) => api.post(`/bacenta/${meetingId}/attendance`, data),
+  addOfferings: (meetingId, data) => api.post(`/bacenta/${meetingId}/offerings`, data),
+  verifyMeeting: (id, data) => api.put(`/bacenta/meetings/${id}/verify`, data),
+  getStats: (params = {}) => api.get('/bacenta/stats', { params }),
+  getMembers: (params = {}) => api.get('/bacenta/members', { params }),
+  uploadPhoto: (id, formData) => api.put(`/bacenta/meetings/${id}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
+// Fonctions API pour les journaux d'appels
+export const callLogAPI = {
+  getCallLogs: (params = {}) => api.get('/call-logs', { params }),
+  createCallLog: (data) => api.post('/call-logs', data),
+  getCallLogById: (id) => api.get(`/call-logs/${id}`),
+  updateCallLog: (id, data) => api.put(`/call-logs/${id}`, data),
+  deleteCallLog: (id) => api.delete(`/call-logs/${id}`),
+};
+
+// Fonctions API pour les notifications
+export const notificationAPI = {
+  getNotifications: (params = {}) => api.get('/notifications', { params }),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+  deleteNotification: (id) => api.delete(`/notifications/${id}`),
+};
+
+// Fonctions API pour le tableau de bord
+export const dashboardAPI = {
+  getDashboard: () => api.get('/dashboard'),
+  getStats: (params = {}) => api.get('/dashboard/stats', { params }),
+  getRecentActivity: (params = {}) => api.get('/dashboard/activity', { params }),
+  getUserById: (id) => api.get(`/users/${id}`),
+  updateProfile: (data) => api.put('/users/profile', data),
+  updateUser: (id, data) => api.put(`/users/${id}`, data),
+  updateSettings: (data) => api.put('/users/settings', data),
+  changePassword: (data) => api.put('/users/change-password', data),
+};
+
+// Fonctions API pour les Gouverneurs
+export const governorAPI = {
+  getBacentaLeaders: (params = {}) => api.get('/users', { params: { ...params, role: 'Bacenta_Leader' } }),
+  createBacentaLeader: (data) => api.post('/users', { ...data, role: 'Bacenta_Leader' }),
+  updateBacentaLeader: (id, data) => api.put(`/users/${id}`, data),
+  deleteBacentaLeader: (id) => api.delete(`/users/${id}`),
+  getGlobalStats: () => api.get('/dashboard'), // Dashboard adapts to user role
 };
 
 export default api;

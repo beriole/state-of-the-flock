@@ -13,7 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTranslation } from 'react-i18next';
-import api from '../../utils/api';
+import { notificationAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
@@ -26,7 +26,7 @@ const NotificationScreen = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await api.get('/notifications');
+      const response = await notificationAPI.getNotifications();
       setNotifications(response.data.notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -52,7 +52,7 @@ const NotificationScreen = () => {
 
   const markAsRead = async (id) => {
     try {
-      await api.put(`/notifications/${id}/read`);
+      await notificationAPI.markAsRead(id);
       setNotifications(prev =>
         prev.map(notif =>
           notif.id === id ? { ...notif, read: true } : notif
@@ -65,7 +65,7 @@ const NotificationScreen = () => {
 
   const markAllAsRead = async () => {
     try {
-      await api.put('/notifications/read-all');
+      await notificationAPI.markAllAsRead();
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, read: true }))
       );
@@ -81,7 +81,7 @@ const NotificationScreen = () => {
 
   const deleteNotification = async (id) => {
     try {
-      await api.delete(`/notifications/${id}`);
+      await notificationAPI.deleteNotification(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
       Toast.show({
         type: 'success',

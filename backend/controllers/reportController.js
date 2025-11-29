@@ -138,8 +138,8 @@ const reportController = {
         where: whereClause,
         include: [
           { model: User, as: 'leader' },
-          { 
-            model: BacentaAttendance, 
+          {
+            model: BacentaAttendance,
             as: 'attendances',
             where: { present: true },
             required: false
@@ -179,6 +179,129 @@ const reportController = {
     }
   },
 
+  // Rapport de présence pour le Gouverneur (avec agrégation)
+  getGovernorAttendanceReport: async (req, res) => {
+    try {
+      const { start_date, end_date, group_by } = req.query; // group_by: 'region', 'leader', 'center_leader'
+
+      const whereClause = {};
+
+      // Filtre de date
+      if (start_date && end_date) {
+        whereClause.sunday_date = {
+          [Op.between]: [start_date, end_date]
+        };
+      }
+
+      // Configuration de l'agrégation
+      let groupAttribute;
+      let includeModel;
+      let includeAs;
+      let includeAttributes;
+
+      switch (group_by) {
+        case 'region':
+          groupAttribute = 'area_id';
+          includeModel = Area;
+          includeAs = 'area';
+          includeAttributes = ['id', 'name'];
+          break;
+        case 'leader':
+          groupAttribute = 'leader_id';
+          includeModel = User;
+          includeAs = 'leader';
+          includeAttributes = ['id', 'first_name', 'last_name'];
+          break;
+        case 'center_leader':
+          // Pour Center Leader, on suppose que c'est l'Overseer de l'Area
+          // C'est plus complexe car il faut joindre Member -> Area -> User (Overseer)
+          // Pour simplifier, on va grouper par Area et afficher l'Overseer de l'Area
+          groupAttribute = 'area_id';
+          includeModel = Area;
+          includeAs = 'area';
+          includeAttributes = ['id', 'name', 'overseer_id'];
+          break;
+        default:
+          return res.status(400).json({ error: 'Paramètre group_by invalide (region, leader, center_leader)' });
+      }
+
+      // Récupération des données brutes pour agrégation manuelle (plus flexible)
+      const attendances = await Attendance.findAll({
+        where: whereClause,
+        include: [{
+          model: Member,
+          as: 'member',
+          include: [
+            { model: Area, as: 'area', include: [{ model: User, as: 'overseer' }] },
+            { model: User, as: 'leader' }
+          ]
+        }]
+      });
+
+      // Agrégation manuelle
+      const aggregatedData = {};
+
+      attendances.forEach(record => {
+        const member = record.member;
+        if (!member) return;
+
+        let key;
+        let label;
+        let subLabel = '';
+
+        if (group_by === 'region') {
+          key = member.area?.id || 'unknown';
+          label = member.area?.name || 'Inconnu';
+        } else if (group_by === 'leader') {
+          key = member.leader?.id || 'unknown';
+          label = `${member.leader?.first_name || ''} ${member.leader?.last_name || ''}`.trim() || 'Inconnu';
+        } else if (group_by === 'center_leader') {
+          // Center Leader = Area Overseer
+          key = member.area?.overseer?.id || 'unknown';
+          label = `${member.area?.overseer?.first_name || ''} ${member.area?.overseer?.last_name || ''}`.trim() || 'Non assigné';
+          subLabel = member.area?.name || '';
+        }
+
+        if (!aggregatedData[key]) {
+          aggregatedData[key] = {
+            id: key,
+            label,
+            subLabel,
+            total_present: 0,
+            attendees: new Set() // Pour compter les personnes uniques
+          };
+        }
+
+        if (record.present) {
+          aggregatedData[key].total_present++;
+          aggregatedData[key].attendees.add(member.id);
+        }
+      });
+
+      // Formatage de la réponse
+      const report = Object.values(aggregatedData).map(item => ({
+        id: item.id,
+        label: item.label,
+        subLabel: item.subLabel,
+        total_present: item.total_present,
+        unique_attendees: item.attendees.size
+      }));
+
+      // Tri par nombre de présents décroissant
+      report.sort((a, b) => b.total_present - a.total_present);
+
+      res.json({
+        period: { start_date, end_date },
+        group_by,
+        data: report
+      });
+
+    } catch (error) {
+      console.error('Get governor attendance report error:', error);
+      res.status(500).json({ error: 'Erreur lors de la génération du rapport gouverneur' });
+    }
+  },
+
   // Rapport des appels de suivi
   getCallLogReport: async (req, res) => {
     try {
@@ -210,8 +333,8 @@ const reportController = {
       const callLogs = await CallLog.findAll({
         where: whereClause,
         include: [
-          { 
-            model: Member, 
+          {
+            model: Member,
             as: 'member',
             where: memberWhereClause,
             include: [

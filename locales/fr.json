@@ -239,10 +239,42 @@
     }
   },
   "tabs": {
-  "home": "Accueil",
-  "members": "Membres",
-  "bacenta": "Bacenta",
-  "calls": "Appels"
-}
-
+    "home": "Accueil",
+    "members": "Membres",
+    "bacenta": "Bacenta",
+    "calls": "Appels"
+  },
+  "roles": {
+    "governor": "Gouverneur",
+    "bacenta_leader": "Bacenta Leader"
+  },
+  "governor": {
+    "leaders": "Leaders",
+    "manageLeaders": "Gérer les Leaders",
+    "viewReports": "Voir les Rapports",
+    "fetchLeadersError": "Erreur lors du chargement des leaders",
+    "leaderUpdated": "Leader mis à jour avec succès",
+    "leaderCreated": "Leader créé avec succès",
+    "leaderDeleted": "Leader supprimé avec succès",
+    "deleteError": "Erreur lors de la suppression",
+    "confirmDeleteLeader": "Êtes-vous sûr de vouloir supprimer ce leader ?",
+    "noLeadersFound": "Aucun leader trouvé",
+    "editLeader": "Modifier le Leader",
+    "createLeader": "Créer un Leader",
+    "viewLeaderMembers": "Voir les Membres",
+    "viewLeaderMeetings": "Voir les Réunions",
+    "membersOf": "Membres de",
+    "meetingsOf": "Réunions de",
+    "fetchMembersError": "Erreur lors du chargement des membres",
+    "fetchMeetingsError": "Erreur lors du chargement des réunions",
+    "reports": "Rapports Avancés",
+    "fetchReportsError": "Erreur lors du chargement des rapports"
+  },
+  "callLog": {
+    "contacted": "Contacté",
+    "no_answer": "Pas de réponse",
+    "callback_requested": "Rappel demandé",
+    "wrong_number": "Mauvais numéro",
+    "other": "Autre"
+  }
 }

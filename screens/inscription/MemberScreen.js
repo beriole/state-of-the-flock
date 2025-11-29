@@ -21,9 +21,17 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import { useTranslation } from 'react-i18next';
-import api from '../../utils/api';
-import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
+import { memberAPI, callLogAPI } from '../../utils/api';
+import { NativeModules } from 'react-native';
+import Share from 'react-native-share';
+
+// Robustly find the native module
+const RNHTMLtoPDF = NativeModules.RNHTMLtoPDF || NativeModules.HtmlToPdf || NativeModules.RNHTMLToPdf;
+
+console.log('NativeModules keys:', Object.keys(NativeModules));
+console.log('Selected PDF Module:', RNHTMLtoPDF);
 
 const MembersScreen = () => {
   const { t } = useTranslation();
@@ -46,7 +54,7 @@ const MembersScreen = () => {
     phone_secondary: '',
     gender: 'M',
     area_id: authUser?.area_id || '',
-    leader_id: authUser?.userId || ''
+    leader_id: authUser?.id || ''
   });
 
   // Update area_id and leader_id when authUser changes
@@ -55,7 +63,7 @@ const MembersScreen = () => {
       setNewMember(prev => ({
         ...prev,
         area_id: authUser.area_id || prev.area_id,
-        leader_id: authUser.userId || prev.leader_id
+        leader_id: authUser.id || prev.leader_id
       }));
     }
   }, [authUser]);
@@ -67,7 +75,7 @@ const MembersScreen = () => {
     const searchLower = searchQuery.toLowerCase();
 
     return fullName.toLowerCase().includes(searchLower) ||
-           phone.includes(searchQuery);
+      phone.includes(searchQuery);
   });
 
   const stats = [
@@ -137,27 +145,69 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
   };
 
   // Execute call with selected method
-  const executeCall = (method) => {
+  const executeCall = async (method) => {
     if (!selectedMember) return;
 
     const phoneNumber = selectedMember.phone_primary || selectedMember.phone;
     let url;
+    let contactMethod = 'Phone';
 
     if (method === 'phone') {
       url = `tel:${phoneNumber}`;
+      contactMethod = 'Phone';
     } else if (method === 'whatsapp') {
+      // Essayer d'ouvrir WhatsApp directement
       url = `whatsapp://send?phone=${phoneNumber}`;
+      contactMethod = 'WhatsApp';
     }
 
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-        setShowCallModal(false);
-        setSelectedMember(null);
-      } else {
-        Alert.alert('Erreur', method === 'phone' ? 'Impossible de passer l\'appel' : 'WhatsApp n\'est pas installé');
+    try {
+      if (method === 'phone') {
+        await Linking.openURL(url);
+      } else if (method === 'whatsapp') {
+        try {
+          await Linking.openURL(url);
+        } catch (error) {
+          // Si WhatsApp n'est pas disponible, essayer l'URL web
+          const webUrl = `https://wa.me/${phoneNumber}`;
+          await Linking.openURL(webUrl);
+        }
       }
-    });
+
+      // Log the call attempt
+      try {
+        await callLogAPI.createCallLog({
+          member_id: selectedMember.id,
+          outcome: 'Contacted', // Default outcome for initiated calls
+          contact_method: contactMethod,
+          notes: `Appel initié via ${contactMethod}`
+        });
+        console.log('Call logged successfully');
+      } catch (logError) {
+        console.error('Error logging call:', logError);
+        // Don't show error to user as the call was successful
+      }
+
+      setShowCallModal(false);
+      setSelectedMember(null);
+    } catch (error) {
+      if (method === 'phone') {
+        Alert.alert('Erreur', 'Impossible de passer l\'appel');
+      } else if (method === 'whatsapp') {
+        // Si rien ne fonctionne, proposer d'installer WhatsApp
+        Alert.alert(
+          'WhatsApp non disponible',
+          'WhatsApp n\'est pas installé ou le numéro n\'est pas valide. Voulez-vous ouvrir le Play Store pour installer WhatsApp ?',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Installer WhatsApp',
+              onPress: () => Linking.openURL('market://details?id=com.whatsapp')
+            }
+          ]
+        );
+      }
+    }
   };
 
   // Handle SMS
@@ -193,35 +243,225 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
   };
 
   // Execute SMS send with selected method
-  const executeSmsSend = (method) => {
+  const executeSmsSend = async (method) => {
     if (!selectedMember || !selectedMember.generatedMessage) return;
 
     const phoneNumber = selectedMember.phone_primary || selectedMember.phone;
     const message = selectedMember.generatedMessage;
     let url;
+    let contactMethod = 'SMS';
 
     if (method === 'whatsapp') {
+      // Essayer d'ouvrir WhatsApp directement
       url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+      contactMethod = 'WhatsApp';
     } else if (method === 'sms') {
       url = `sms:${phoneNumber}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+      contactMethod = 'SMS';
     }
 
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-        setShowCallModal(false);
-        setSelectedMember(null);
-      } else {
-        Alert.alert('Erreur', method === 'whatsapp' ? 'WhatsApp n\'est pas installé' : 'Impossible d\'envoyer un SMS');
+    try {
+      if (method === 'whatsapp') {
+        try {
+          await Linking.openURL(url);
+        } catch (error) {
+          // Si WhatsApp n'est pas disponible, essayer l'URL web
+          const webUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+          await Linking.openURL(webUrl);
+        }
+      } else if (method === 'sms') {
+        await Linking.openURL(url);
       }
-    });
+
+      // Log the message send attempt
+      try {
+        await callLogAPI.createCallLog({
+          member_id: selectedMember.id,
+          outcome: 'Contacted', // Default outcome for sent messages
+          contact_method: contactMethod,
+          notes: `Message envoyé via ${contactMethod}: ${selectedMember.selectedTemplate?.title || 'Message personnalisé'}`
+        });
+        console.log('Message send logged successfully');
+      } catch (logError) {
+        console.error('Error logging message send:', logError);
+        // Don't show error to user as the message send was successful
+      }
+
+      setShowCallModal(false);
+      setSelectedMember(null);
+    } catch (error) {
+      if (method === 'whatsapp') {
+        // Si rien ne fonctionne, proposer d'installer WhatsApp
+        Alert.alert(
+          'WhatsApp non disponible',
+          'WhatsApp n\'est pas installé ou le numéro n\'est pas valide. Voulez-vous ouvrir le Play Store pour installer WhatsApp ?',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Installer WhatsApp',
+              onPress: () => Linking.openURL('market://details?id=com.whatsapp')
+            }
+          ]
+        );
+      } else if (method === 'sms') {
+        Alert.alert('Erreur', 'Impossible d\'envoyer un SMS');
+      }
+    }
+  };
+
+  // Helper function to show file location
+  const showFileLocation = (filePath) => {
+    const isDocumentsDir = filePath.includes('Documents');
+    const folderName = isDocumentsDir ? 'Documents' : 'Download';
+
+    const locationMessage = `Le PDF a été généré avec succès !\n\n📁 Emplacement du fichier :\n${filePath}\n\n📱 Pour accéder au fichier :\n1. Ouvrez un gestionnaire de fichiers (comme "Fichiers" ou "File Manager")\n2. Allez dans "Android" > "data" > "com.stage1" > "files" > "${folderName}"\n3. Trouvez le fichier PDF et ouvrez-le\n\n💡 Astuce : Si vous ne voyez pas le dossier Android, activez "Afficher les fichiers cachés" dans les paramètres du gestionnaire de fichiers.`;
+
+    Alert.alert(
+      '✅ PDF généré avec succès',
+      locationMessage,
+      [{ text: 'Compris' }]
+    );
+  };
+
+  // Generate PDF for members
+  const generateMembersPDF = async () => {
+    try {
+      setLoading(true);
+
+      // Validate data
+      if (!members || members.length === 0) {
+        Alert.alert('Erreur', 'Aucun membre à exporter');
+        return;
+      }
+
+      // Create HTML content
+      let htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #991B1B; padding-bottom: 20px; }
+              h1 { color: #991B1B; margin: 0; font-size: 24px; text-transform: uppercase; }
+              .meta { color: #666; font-size: 12px; margin-top: 5px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+              th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+              th { background-color: #f9fafb; color: #374151; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+              tr:nth-child(even) { background-color: #f9fafb; }
+              .status-active { color: #059669; font-weight: bold; background-color: #ecfdf5; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
+              .status-inactive { color: #dc2626; font-weight: bold; background-color: #fef2f2; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
+              .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Liste des Membres</h1>
+              <div class="meta">
+                Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+                <br/>
+                Total membres: ${members.length}
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Téléphone</th>
+                  <th>Genre</th>
+                  <th>Statut</th>
+                  <th>Groupe</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${members.map(member => `
+                  <tr>
+                    <td><strong>${member.name || (member.first_name + ' ' + member.last_name)}</strong></td>
+                    <td>${member.phone_primary || member.phone || '-'}</td>
+                    <td>${member.gender === 'M' ? 'Homme' : 'Femme'}</td>
+                    <td><span class="${member.status === 'active' ? 'status-active' : 'status-inactive'}">${member.status === 'active' ? 'Actif' : 'Inactif'}</span></td>
+                    <td>${member.area?.name || member.group || '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              <p>Document généré par l'application Bacenta Leader</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Create PDF with error handling - use Download directory
+      const fileName = `Membres_Bacenta_${new Date().getTime()}`; // Remove .pdf extension as library adds it
+
+      const options = {
+        html: htmlContent,
+        fileName: fileName,
+        directory: 'Documents' // Try Documents directory which might be more accessible
+      };
+
+      console.log('Generating PDF with options:', options);
+      console.log('RNHTMLtoPDF available:', !!RNHTMLtoPDF);
+      console.log('RNHTMLtoPDF.convert available:', typeof RNHTMLtoPDF.convert);
+
+      try {
+        const file = await RNHTMLtoPDF.convert(options);
+        console.log('PDF generated:', file);
+
+        // Validate file object
+        if (!file || !file.filePath) {
+          console.error('PDF generation failed: invalid file object', file);
+          throw new Error('PDF generation failed: no file path returned');
+        }
+
+        // Use the generated file path
+        let accessibleFilePath = file.filePath;
+        console.log('PDF file path:', accessibleFilePath);
+
+        // Since file sharing from private directories doesn't work on Android,
+        // we'll show the file location with clear instructions for manual access
+        console.log('PDF generated successfully, showing file location');
+        showFileLocation(accessibleFilePath);
+
+      } catch (pdfError) {
+        console.error('PDF conversion error:', pdfError);
+
+        // Fallback: Show HTML content in an alert for debugging
+        Alert.alert(
+          'Erreur PDF',
+          `La génération PDF a échoué. Voulez-vous voir le contenu HTML généré pour déboguer ?`,
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Voir HTML',
+              onPress: () => {
+                // Show first 500 characters of HTML for debugging
+                const htmlPreview = htmlContent.substring(0, 500) + '...';
+                Alert.alert('Contenu HTML', htmlPreview);
+              }
+            }
+          ]
+        );
+        throw pdfError; // Re-throw to be caught by outer catch
+      }
+
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      Alert.alert(
+        'Erreur de génération PDF',
+        `Impossible de générer ou partager le PDF: ${error.message || 'Erreur inconnue'}`
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load members from API
   const loadMembers = async () => {
     try {
       setRefreshing(true);
-      const response = await api.get('/members', { params: { limit: 50, page: 1 } });
+      const response = await memberAPI.getMembers({ limit: 50, page: 1 });
       const apiMembers = response.data.members.map(member => ({
         id: member.id,
         name: `${member.first_name} ${member.last_name}`,
@@ -285,7 +525,7 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
         is_active: true
       };
 
-      const response = await api.post('/members', memberData);
+      const response = await memberAPI.createMember(memberData);
 
       // Convertir la réponse API au format local
       const newMemberData = {
@@ -312,7 +552,7 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
         phone_secondary: '',
         gender: 'M',
         area_id: authUser?.area_id || '',
-        leader_id: authUser?.userId || ''
+        leader_id: authUser?.id || ''
       });
       setShowAddModal(false);
 
@@ -410,9 +650,17 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
             <Text style={styles.headerTitle}>{t('members.management')}</Text>
             <Text style={styles.headerSubtitle}>{t('members.bacentaLeader')}</Text>
           </View>
-          <TouchableOpacity style={styles.notificationBtn}>
-            <Feather name="bell" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={[styles.notificationBtn, { marginRight: 10 }]}
+              onPress={generateMembersPDF}
+            >
+              <Feather name="download" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.notificationBtn}>
+              <Feather name="bell" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

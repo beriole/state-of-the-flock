@@ -19,7 +19,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTranslation } from 'react-i18next';
-import api from '../../utils/api';
+import { callLogAPI, attendanceAPI, memberAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
@@ -60,69 +60,83 @@ const CallsScreen = () => {
   const loadCallsCallback = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('/call-logs');
-      const allCallLogs = response.data.callLogs;
+      console.log('Loading calls based on attendance...');
 
-      // Regrouper les call logs par membre pour créer une vraie liste d'appels avec historique
-      const callsByMember = {};
+      // Charger les membres
+      const membersResponse = await memberAPI.getMembers({
+        limit: 1000,
+        is_active: true
+      });
+      const members = membersResponse.data.members || [];
+      console.log('Members count:', members.length);
 
-      allCallLogs.forEach(callLog => {
-        const memberId = callLog.member.id;
-        if (!callsByMember[memberId]) {
-          callsByMember[memberId] = {
-            id: `call-${memberId}`, // ID unique pour l'appel (groupe)
-            member: {
-              id: callLog.member.id,
-              name: `${callLog.member.first_name} ${callLog.member.last_name}`,
-              phone: callLog.member.phone_primary,
-              zone: callLog.member.area?.name || 'Zone inconnue',
-              leader: callLog.member.leader?.first_name || 'Leader inconnu',
-              ministry: callLog.member.ministry || 'Non spécifié',
-              status: callLog.member.state,
-              lastPresence: callLog.member.last_attendance_date,
-              email: 'N/A',
-              address: 'N/A',
-            },
-            callStatus: 'pending', // Statut général de l'appel (peut être calculé différemment)
-            priority: 'medium', // Priorité par défaut
-            reason: 'follow_up',
-            scheduledDate: null,
-            notes: '',
-            followup_notes: '',
-            assignedTo: callLog.caller?.first_name || 'Non assigné',
-            callResult: 'pending',
-            callDate: null,
-            callHistory: [], // Contiendra tous les appels pour ce membre
-          };
-        }
+      // Calculer les dates pour les deux dernières semaines (dimanches)
+      const getDateKey = (date) => date.toISOString().split('T')[0];
 
-        // Ajouter cet appel à l'historique du membre
-        callsByMember[memberId].callHistory.push({
-          id: callLog.id,
-          date: callLog.call_date,
-          type: callLog.contact_method === 'WhatsApp' ? 'whatsapp' : 'call',
-          status: callLog.is_completed ? 'completed' : 'pending',
-          notes: callLog.notes,
-          outcome: callLog.outcome,
-          followup_notes: callLog.followup_notes,
-        });
+      const today = new Date();
+      const currentDay = today.getDay(); // 0 = dimanche
+      const daysToLastSunday = currentDay === 0 ? 0 : currentDay;
+      const lastSunday = new Date(today);
+      lastSunday.setDate(today.getDate() - daysToLastSunday);
 
-        // Mettre à jour les informations générales avec le dernier appel
-        if (!callsByMember[memberId].callDate || callLog.call_date > callsByMember[memberId].callDate) {
-          callsByMember[memberId].callDate = callLog.call_date;
-          callsByMember[memberId].notes = callLog.notes;
-          callsByMember[memberId].followup_notes = callLog.followup_notes;
-          callsByMember[memberId].callResult = callLog.outcome;
-          callsByMember[memberId].scheduledDate = callLog.next_followup_date;
-        }
+      const previousSunday = new Date(lastSunday);
+      previousSunday.setDate(lastSunday.getDate() - 7);
+
+      const w0DateKey = getDateKey(lastSunday); // Cette semaine (W0)
+      const w1DateKey = getDateKey(previousSunday); // Semaine précédente (W-1)
+
+      console.log('W-1 date:', w1DateKey, 'W0 date:', w0DateKey);
+
+      // Charger les présences pour les deux semaines
+      const [w1Response, w0Response] = await Promise.all([
+        attendanceAPI.getAttendance({ sunday_date: w1DateKey, limit: 1000 }),
+        attendanceAPI.getAttendance({ sunday_date: w0DateKey, limit: 1000 })
+      ]);
+
+      const w1Attendance = w1Response.data.attendance || [];
+      const w0Attendance = w0Response.data.attendance || [];
+
+      console.log('W-1 attendance:', w1Attendance.length, 'W0 attendance:', w0Attendance.length);
+
+      // Créer des maps pour un accès rapide
+      const w1Map = new Map(w1Attendance.map(record => [record.member_id, record.present]));
+      const w0Map = new Map(w0Attendance.map(record => [record.member_id, record.present]));
+
+      // Filtrer les membres : présents en W-1 et absents en W0
+      const callMembers = members.filter(member => {
+        const presentW1 = w1Map.get(member.id) === true;
+        const presentW0 = w0Map.get(member.id) === true;
+        return presentW1 && !presentW0;
       });
 
-      // Convertir en array et trier par date du dernier appel (plus récent en premier)
-      const formattedCalls = Object.values(callsByMember).sort((a, b) => {
-        const lastCallA = a.callHistory.length > 0 ? a.callHistory[a.callHistory.length - 1].date : '1970-01-01';
-        const lastCallB = b.callHistory.length > 0 ? b.callHistory[b.callHistory.length - 1].date : '1970-01-01';
-        return new Date(lastCallB) - new Date(lastCallA);
-      });
+      console.log('Call members count:', callMembers.length);
+
+      // Créer la liste d'appels
+      const formattedCalls = callMembers.map(member => ({
+        id: `call-${member.id}`,
+        member: {
+          id: member.id,
+          name: `${member.first_name} ${member.last_name}`,
+          phone: member.phone_primary,
+          zone: member.area?.name || 'Zone inconnue',
+          leader: member.leader?.first_name || 'Leader inconnu',
+          ministry: member.ministry || 'Non spécifié',
+          status: member.state,
+          lastPresence: member.last_attendance_date,
+          email: 'N/A',
+          address: 'N/A',
+        },
+        callStatus: 'pending',
+        priority: 'medium',
+        reason: 'absent_this_week',
+        scheduledDate: null,
+        notes: '',
+        followup_notes: '',
+        assignedTo: 'Auto-généré',
+        callResult: 'pending',
+        callDate: null,
+        callHistory: [], // Vide pour les nouveaux appels générés
+      }));
 
       setCalls(formattedCalls);
       setFilteredCalls(formattedCalls);
@@ -130,7 +144,7 @@ const CallsScreen = () => {
       console.error('Error loading calls:', error);
       Toast.show({
         type: 'error',
-        text1: t('common.error'),
+        text1: 'Erreur',
         text2: 'Erreur lors du chargement des appels',
       });
     } finally {
@@ -225,7 +239,7 @@ const CallsScreen = () => {
         followup_notes: selectedCall?.followup_notes || null,
       };
 
-      await api.post('/call-logs', callLogData);
+      await callLogAPI.createCallLog(callLogData);
 
       Toast.show({
         type: 'success',
@@ -247,20 +261,20 @@ const CallsScreen = () => {
           setCalls(prev => prev.map(call =>
             selectedCalls.includes(call.id)
               ? {
-                  ...call,
-                  callStatus: 'completed',
-                  callHistory: [
-                    ...call.callHistory,
-                    {
-                      id: `bulk-${Date.now()}`,
-                      date: new Date().toISOString().split('T')[0],
-                      type: 'bulk_action',
-                      status: 'completed',
-                      notes: 'Marqué comme terminé en lot',
-                      outcome: 'Completed',
-                    },
-                  ],
-                }
+                ...call,
+                callStatus: 'completed',
+                callHistory: [
+                  ...call.callHistory,
+                  {
+                    id: `bulk-${Date.now()}`,
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'bulk_action',
+                    status: 'completed',
+                    notes: 'Marqué comme terminé en lot',
+                    outcome: 'Completed',
+                  },
+                ],
+              }
               : call
           ));
           Alert.alert('Succès', `${selectedCalls.length} appels marqués comme terminés`);
@@ -328,73 +342,80 @@ const CallsScreen = () => {
     setShowCallDetails(true);
   };
 
-  const CallStats = () => (
-    <View style={styles.statsContainer}>
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        style={styles.statCard}
-      >
-        <View style={styles.statContent}>
-          <View style={styles.statIconContainer}>
-            <Icon name="alert-circle" size={24} color={colors.card} />
-          </View>
-          <View>
-            <Text style={styles.statLabel}>Appels Urgents</Text>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statSubtext}>À traiter aujourd'hui</Text>
-          </View>
-        </View>
-      </LinearGradient>
+  const CallStats = () => {
+    const totalCalls = calls.length;
+    const pendingCalls = calls.filter(c => c.callStatus === 'pending').length;
+    const completedCalls = calls.filter(c => c.callStatus === 'completed').length;
+    const successRate = totalCalls > 0 ? Math.round((completedCalls / totalCalls) * 100) : 0;
 
-      <LinearGradient
-        colors={['#F59E0B', '#D97706']}
-        style={styles.statCard}
-      >
-        <View style={styles.statContent}>
-          <View style={styles.statIconContainer}>
-            <Icon name="clock-outline" size={24} color={colors.card} />
+    return (
+      <View style={styles.statsContainer}>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={styles.statCard}
+        >
+          <View style={styles.statContent}>
+            <View style={styles.statIconContainer}>
+              <Icon name="alert-circle" size={24} color={colors.card} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>Appels à traiter</Text>
+              <Text style={styles.statValue}>{totalCalls}</Text>
+              <Text style={styles.statSubtext}>Générés automatiquement</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.statLabel}>En Attente</Text>
-            <Text style={styles.statValue}>24</Text>
-            <Text style={styles.statSubtext}>Cette semaine</Text>
-          </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      <LinearGradient
-        colors={['#10B981', '#059669']}
-        style={styles.statCard}
-      >
-        <View style={styles.statContent}>
-          <View style={styles.statIconContainer}>
-            <Icon name="check-circle" size={24} color={colors.card} />
+        <LinearGradient
+          colors={['#F59E0B', '#D97706']}
+          style={styles.statCard}
+        >
+          <View style={styles.statContent}>
+            <View style={styles.statIconContainer}>
+              <Icon name="clock-outline" size={24} color={colors.card} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>En Attente</Text>
+              <Text style={styles.statValue}>{pendingCalls}</Text>
+              <Text style={styles.statSubtext}>À contacter</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.statLabel}>Terminés</Text>
-            <Text style={styles.statValue}>36</Text>
-            <Text style={styles.statSubtext}>Taux de réussite 85%</Text>
-          </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      <LinearGradient
-        colors={['#8B5CF6', '#7C3AED']}
-        style={styles.statCard}
-      >
-        <View style={styles.statContent}>
-          <View style={styles.statIconContainer}>
-            <Icon name="account-group" size={24} color={colors.card} />
+        <LinearGradient
+          colors={['#10B981', '#059669']}
+          style={styles.statCard}
+        >
+          <View style={styles.statContent}>
+            <View style={styles.statIconContainer}>
+              <Icon name="check-circle" size={24} color={colors.card} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>Terminés</Text>
+              <Text style={styles.statValue}>{completedCalls}</Text>
+              <Text style={styles.statSubtext}>Taux de réussite {successRate}%</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.statLabel}>Taux Réponse</Text>
-            <Text style={styles.statValue}>68%</Text>
-            <Text style={styles.statSubtext}>+5% vs mois dernier</Text>
+        </LinearGradient>
+
+        <LinearGradient
+          colors={['#8B5CF6', '#7C3AED']}
+          style={styles.statCard}
+        >
+          <View style={styles.statContent}>
+            <View style={styles.statIconContainer}>
+              <Icon name="account-group" size={24} color={colors.card} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>Membres ciblés</Text>
+              <Text style={styles.statValue}>{totalCalls}</Text>
+              <Text style={styles.statSubtext}>Présents W-1, absents W0</Text>
+            </View>
           </View>
-        </View>
-      </LinearGradient>
-    </View>
-  );
+        </LinearGradient>
+      </View>
+    );
+  };
 
   const CallItem = ({ item }) => (
     <Animated.View style={[
@@ -452,7 +473,7 @@ const CallsScreen = () => {
             <Icon name={getStatusIcon(item.callStatus)} size={14} color={getStatusColor(item.callStatus)} />
             <Text style={[styles.statusText, { color: getStatusColor(item.callStatus) }]}>
               {item.callStatus === 'pending' ? 'En attente' :
-               item.callStatus === 'scheduled' ? 'Planifié' : 'Terminé'}
+                item.callStatus === 'scheduled' ? 'Planifié' : 'Terminé'}
             </Text>
           </View>
 
@@ -554,7 +575,7 @@ const CallsScreen = () => {
                         />
                         <Text style={[styles.infoValue, { color: getStatusColor(selectedCall.callStatus) }]}>
                           {selectedCall.callStatus === 'pending' ? 'En attente' :
-                           selectedCall.callStatus === 'scheduled' ? 'Planifié' : 'Terminé'}
+                            selectedCall.callStatus === 'scheduled' ? 'Planifié' : 'Terminé'}
                         </Text>
                       </View>
                     </View>
@@ -569,7 +590,7 @@ const CallsScreen = () => {
                         />
                         <Text style={[styles.infoValue, { color: getPriorityColor(selectedCall.priority) }]}>
                           {selectedCall.priority === 'high' ? 'Urgent' :
-                           selectedCall.priority === 'medium' ? 'Moyen' : 'Faible'}
+                            selectedCall.priority === 'medium' ? 'Moyen' : 'Faible'}
                         </Text>
                       </View>
                     </View>
@@ -643,8 +664,8 @@ const CallsScreen = () => {
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         style={styles.header}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerOverlay}>
           <View style={styles.headerTop}>
@@ -705,7 +726,7 @@ const CallsScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerActionButton}>
               <Icon name="export" size={16} color={colors.card} />
-              <Text style={styles.headerActionText}>Export</Text>
+              <Text style={styles.headerActionText}>Exporter</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerActionButton}>
               <Icon name="filter-variant" size={16} color={colors.card} />

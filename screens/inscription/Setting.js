@@ -6,7 +6,7 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import api from '../../utils/api';
+import { userAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
@@ -37,7 +37,7 @@ export default function Setting() {
       }
 
       // Fetch latest from API
-      const response = await api.get(`/users/${user.id}`);
+      const response = await userAPI.getUserById(user.id);
       if (response.data && response.data.settings) {
         setSettings(prev => ({ ...prev, ...response.data.settings }));
         // Update context if needed
@@ -61,7 +61,7 @@ export default function Setting() {
     setSettings(newSettings);
 
     try {
-      await api.put('/users/settings', { settings: { [key]: value } });
+      await userAPI.updateSettings({ settings: { [key]: value } });
 
       // Update context
       updateUser({ ...user, settings: { ...user.settings, [key]: value } });

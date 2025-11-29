@@ -114,6 +114,7 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation project(':react-native-vector-icons')
     implementation project(':react-native-maps')
+    implementation project(':react-native-html-to-pdf')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

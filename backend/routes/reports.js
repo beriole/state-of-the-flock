@@ -17,6 +17,9 @@ router.get('/bacenta', reportController.getBacentaReport);
 // GET /api/reports/call-logs
 router.get('/call-logs', reportController.getCallLogReport);
 
+// GET /api/reports/governor/attendance
+router.get('/governor/attendance', reportController.getGovernorAttendanceReport);
+
 // GET /api/reports/export
 router.get('/export', reportController.exportData);
 

@@ -13,18 +13,26 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  TextInput
+  TextInput,
+  Linking
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import { useTranslation } from 'react-i18next';
 import { memberAPI, attendanceAPI } from '../../utils/api';
+import { NativeModules } from 'react-native';
+import Share from 'react-native-share';
+
+// Robustly find the native module
+const RNHTMLtoPDF = NativeModules.RNHTMLtoPDF || NativeModules.HtmlToPdf || NativeModules.RNHTMLToPdf;
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const AttendanceScreen = () => {
   const { t, i18n } = useTranslation();
 
   // États
+  const [activeTab, setActiveTab] = useState('current');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDateModal, setShowDateModal] = useState(false);
   const [members, setMembers] = useState([]);
@@ -35,6 +43,16 @@ const AttendanceScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('Tous');
   const [error, setError] = useState(null);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Export States
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState('single'); // 'single' or 'range'
+  const [exportStartDate, setExportStartDate] = useState(new Date());
+  const [exportEndDate, setExportEndDate] = useState(new Date());
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Charger les données au démarrage
   useEffect(() => {
@@ -198,6 +216,54 @@ const AttendanceScreen = () => {
     }
   }, [selectedDate, getDateKey]);
 
+  // Charger l'historique des présences
+  const loadAttendanceHistory = useCallback(async () => {
+    try {
+      setHistoryLoading(true);
+      // Charger les présences des 30 derniers jours
+      const historyData = [];
+      const today = new Date();
+
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateKey = getDateKey(date);
+
+        try {
+          const response = await attendanceAPI.getAttendance({
+            sunday_date: dateKey,
+            limit: 1000
+          });
+
+          const records = response.data.attendance || [];
+          const presentCount = records.filter(r => r.present).length;
+          const totalCount = records.length;
+
+          if (totalCount > 0) {
+            historyData.push({
+              date: dateKey,
+              displayDate: formatDisplayDate(date),
+              present: presentCount,
+              absent: totalCount - presentCount,
+              total: totalCount,
+              percentage: Math.round((presentCount / totalCount) * 100)
+            });
+          }
+        } catch (error) {
+          // Ignorer les erreurs pour les dates sans données
+          console.log(`No data for ${dateKey}`);
+        }
+      }
+
+      setAttendanceHistory(historyData);
+    } catch (error) {
+      console.error('Erreur chargement historique:', error);
+      setAttendanceHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [getDateKey, formatDisplayDate]);
+
   // Obtenir le statut d'un membre
   const getMemberAttendance = useCallback((memberId) => {
     try {
@@ -249,6 +315,302 @@ const AttendanceScreen = () => {
       return [];
     }
   }, [members, searchQuery, selectedGroup]);
+
+  // Helper function to show file location
+  const showFileLocation = (filePath) => {
+    const isDocumentsDir = filePath.includes('Documents');
+    const folderName = isDocumentsDir ? 'Documents' : 'Download';
+
+    const locationMessage = `Le PDF a été généré avec succès !\n\n📁 Emplacement du fichier :\n${filePath}\n\n📱 Pour accéder au fichier :\n1. Ouvrez un gestionnaire de fichiers (comme "Fichiers" ou "File Manager")\n2. Allez dans "Android" > "data" > "com.stage1" > "files" > "${folderName}"\n3. Trouvez le fichier PDF et ouvrez-le\n\n💡 Astuce : Si vous ne voyez pas le dossier Android, activez "Afficher les fichiers cachés" dans les paramètres du gestionnaire de fichiers.`;
+
+    Alert.alert(
+      '✅ PDF généré avec succès',
+      locationMessage,
+      [{ text: 'Compris' }]
+    );
+  };
+
+  // Generate PDF for Attendance
+  const generateAttendancePDF = async () => {
+    try {
+      console.log('Starting attendance PDF generation...');
+      setLoading(true);
+      setShowExportModal(false);
+
+      // Validate data
+      if (!members || members.length === 0) {
+        console.log('No members found for PDF generation');
+        Alert.alert('Erreur', 'Aucun membre trouvé pour générer le rapport');
+        return;
+      }
+
+      console.log('Members found:', members.length);
+      console.log('Attendance records:', attendanceRecords.length);
+      console.log('Export type:', exportType);
+      console.log('Date range:', exportStartDate, 'to', exportEndDate);
+
+      let title = '';
+      let data = [];
+      let statsSummary = { present: 0, absent: 0, total: 0 };
+
+      if (exportType === 'single') {
+        const dateKey = getDateKey(exportStartDate);
+        title = `Rapport de présence - ${formatDisplayDate(exportStartDate)}`;
+
+        // Fetch specific date data if not current selected
+        let records = attendanceRecords;
+        if (getDateKey(exportStartDate) !== getDateKey(selectedDate)) {
+          const response = await attendanceAPI.getAttendance({
+            sunday_date: dateKey,
+            limit: 1000
+          });
+          records = response.data.attendance || [];
+        }
+
+        // Calculate stats
+        const presentCount = records.filter(r => r.present).length;
+        const totalCount = members.filter(m => m.is_active).length;
+        statsSummary = {
+          present: presentCount,
+          absent: totalCount - presentCount,
+          total: totalCount
+        };
+
+        // Prepare data for single date
+        data = members.filter(m => m.is_active).map(member => {
+          const record = records.find(r => r.member_id === member.id);
+          return {
+            name: `${member.first_name} ${member.last_name}`,
+            status: record ? (record.present ? 'Présent' : 'Absent') : 'Inconnu',
+            group: member.area?.name || '-'
+          };
+        });
+
+      } else {
+        // Range Export
+        title = `Rapport de présence - ${formatDisplayDate(exportStartDate)} au ${formatDisplayDate(exportEndDate)}`;
+
+        // For range, we might want a summary per date or a detailed matrix.
+        // For simplicity, let's do a summary per date in the range.
+        // We need to fetch history for the range.
+        // This part is tricky without a specific API for range.
+        // We will iterate days (limit to 31 days to avoid too many requests).
+
+        const start = new Date(exportStartDate);
+        const end = new Date(exportEndDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 31) {
+          Alert.alert('Erreur', 'La plage de dates ne peut pas dépasser 31 jours.');
+          setLoading(false);
+          return;
+        }
+
+        let currentDate = new Date(start);
+        while (currentDate <= end) {
+          const dateKey = getDateKey(currentDate);
+          try {
+            const response = await attendanceAPI.getAttendance({
+              sunday_date: dateKey,
+              limit: 1000
+            });
+            const records = response.data.attendance || [];
+            const presentCount = records.filter(r => r.present).length;
+            const totalCount = records.length > 0 ? records.length : 0; // Or total active members?
+
+            if (totalCount > 0) {
+              data.push({
+                date: formatDisplayDate(currentDate),
+                present: presentCount,
+                absent: totalCount - presentCount,
+                total: totalCount,
+                percentage: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+              });
+
+              statsSummary.present += presentCount;
+              statsSummary.total += totalCount;
+            }
+          } catch (e) {
+            console.log(`No data for ${dateKey}`);
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        statsSummary.absent = statsSummary.total - statsSummary.present;
+      }
+
+      // Validate that we have data to export
+      console.log('Data prepared for PDF:', data.length, 'records');
+      if (data.length === 0) {
+        console.log('No attendance data found for the selected period');
+        Alert.alert(
+          'Aucune donnée',
+          'Aucune donnée de présence trouvée pour la période sélectionnée. Essayez de changer la date ou vérifiez que des présences ont été enregistrées.'
+        );
+        return;
+      }
+
+      // Create HTML
+      let htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #991B1B; padding-bottom: 20px; }
+              h1 { color: #991B1B; margin: 0; font-size: 24px; text-transform: uppercase; }
+              .meta { color: #666; font-size: 12px; margin-top: 5px; }
+              
+              .summary-box { 
+                background-color: #f9fafb; 
+                border: 1px solid #e5e7eb; 
+                border-radius: 8px; 
+                padding: 20px; 
+                margin-bottom: 30px; 
+                display: flex; 
+                justify-content: space-around;
+              }
+              .summary-item { text-align: center; }
+              .summary-value { font-size: 24px; font-weight: bold; color: #111827; }
+              .summary-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-top: 5px; }
+              
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+              th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+              th { background-color: #f9fafb; color: #374151; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+              tr:nth-child(even) { background-color: #f9fafb; }
+              
+              .status-present { color: #059669; font-weight: bold; background-color: #ecfdf5; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
+              .status-absent { color: #dc2626; font-weight: bold; background-color: #fef2f2; padding: 2px 6px; borderRadius: 4px; display: inline-block; }
+              
+              .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>${title}</h1>
+              <div class="meta">
+                Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+              </div>
+            </div>
+            
+            <div class="summary-box">
+              <div class="summary-item">
+                <div class="summary-value" style="color: #059669">${statsSummary.present}</div>
+                <div class="summary-label">Présents</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value" style="color: #dc2626">${statsSummary.absent}</div>
+                <div class="summary-label">Absents</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">${statsSummary.total > 0 ? Math.round((statsSummary.present / statsSummary.total) * 100) : 0}%</div>
+                <div class="summary-label">Taux de présence</div>
+              </div>
+            </div>
+            
+            <table>
+              <thead>
+                <tr>
+                  ${exportType === 'single' ? `
+                    <th>Nom</th>
+                    <th>Groupe</th>
+                    <th>Statut</th>
+                  ` : `
+                    <th>Date</th>
+                    <th>Présents</th>
+                    <th>Absents</th>
+                    <th>Taux</th>
+                  `}
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(item => exportType === 'single' ? `
+                  <tr>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.group}</td>
+                    <td><span class="${item.status === 'Présent' ? 'status-present' : 'status-absent'}">${item.status}</span></td>
+                  </tr>
+                ` : `
+                  <tr>
+                    <td><strong>${item.date}</strong></td>
+                    <td><span style="color: #059669; font-weight: bold;">${item.present}</span></td>
+                    <td><span style="color: #dc2626; font-weight: bold;">${item.absent}</span></td>
+                    <td><strong>${item.percentage}%</strong></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <div class="footer">
+              <p>Document généré par l'application Bacenta Leader</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Create PDF with error handling - use Download directory
+      const fileName = `Presence_Bacenta_${new Date().getTime()}`; // Remove .pdf extension as library adds it
+
+      const options = {
+        html: htmlContent,
+        fileName: fileName,
+        directory: 'Documents' // Try Documents directory which might be more accessible
+      };
+
+      console.log('Generating attendance PDF with options:', options);
+      console.log('RNHTMLtoPDF available:', !!RNHTMLtoPDF);
+      console.log('RNHTMLtoPDF.convert available:', typeof RNHTMLtoPDF.convert);
+
+      try {
+        const file = await RNHTMLtoPDF.convert(options);
+        console.log('Attendance PDF generated:', file);
+
+        // Validate file object
+        if (!file || !file.filePath) {
+          console.error('PDF generation failed: invalid file object', file);
+          throw new Error('PDF generation failed: no file path returned');
+        }
+
+        // Use the generated file path
+        let accessibleFilePath = file.filePath;
+        console.log('PDF file path:', accessibleFilePath);
+
+        // Since file sharing from private directories doesn't work on Android,
+        // we'll show the file location with clear instructions for manual access
+        console.log('PDF generated successfully, showing file location');
+        showFileLocation(accessibleFilePath);
+
+      } catch (pdfError) {
+        console.error('PDF conversion error:', pdfError);
+
+        // Fallback: Show HTML content in an alert for debugging
+        Alert.alert(
+          'Erreur PDF',
+          `La génération PDF a échoué. Voulez-vous voir le contenu HTML généré pour déboguer ?`,
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Voir HTML',
+              onPress: () => {
+                // Show first 500 characters of HTML for debugging
+                const htmlPreview = htmlContent.substring(0, 500) + '...';
+                Alert.alert('Contenu HTML', htmlPreview);
+              }
+            }
+          ]
+        );
+        throw pdfError; // Re-throw to be caught by outer catch
+      }
+
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      Alert.alert(
+        'Erreur de génération PDF',
+        `Impossible de générer ou partager le PDF: ${error.message || 'Erreur inconnue'}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Statistiques calculées
   const stats = useMemo(() => {
@@ -387,6 +749,48 @@ const AttendanceScreen = () => {
     }
   }, [selectedDate, getDateKey, i18n.language, t]);
 
+  // Rendu d'un élément d'historique
+  const renderHistoryItem = useCallback(({ item }) => {
+    return (
+      <TouchableOpacity
+        style={styles.historyItem}
+        onPress={() => {
+          // Naviguer vers les détails de cette date
+          setSelectedDate(new Date(item.date));
+          setActiveTab('current');
+        }}
+      >
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyDate}>{item.displayDate}</Text>
+          <View style={styles.historyStats}>
+            <View style={[styles.historyStat, styles.presentStat]}>
+              <Text style={styles.historyStatValue}>{item.present}</Text>
+              <Text style={styles.historyStatLabel}>Présents</Text>
+            </View>
+            <View style={[styles.historyStat, styles.absentStat]}>
+              <Text style={styles.historyStatValue}>{item.absent}</Text>
+              <Text style={styles.historyStatLabel}>Absents</Text>
+            </View>
+            <View style={[styles.historyStat, styles.percentageStat]}>
+              <Text style={styles.historyStatValue}>{item.percentage}%</Text>
+              <Text style={styles.historyStatLabel}>Taux</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.historyProgress}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${item.percentage}%` }
+              ]}
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, []);
+
   // Écran de chargement
   if (loading) {
     return (
@@ -412,210 +816,452 @@ const AttendanceScreen = () => {
             <Text style={styles.headerTitle}>Gestion des présences</Text>
             <Text style={styles.headerSubtitle}>Bacenta Leader - Sector 2</Text>
           </View>
-          <TouchableOpacity style={styles.notificationBtn}>
-            <Feather name="bell" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={[styles.notificationBtn, { marginRight: 10 }]}
+              onPress={() => {
+                console.log('Export modal button pressed');
+                setShowExportModal(true);
+              }}
+            >
+              <Feather name="download" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.notificationBtn}>
+              <Feather name="bell" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#991B1B']}
-            tintColor="#991B1B"
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'current' && styles.tabActive]}
+          onPress={() => setActiveTab('current')}
+        >
+          <Feather
+            name="calendar"
+            size={16}
+            color={activeTab === 'current' ? '#FFFFFF' : '#6B7280'}
           />
-        }
-      >
-        {/* Message d'erreur */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={loadInitialData}
-            >
-              <Text style={styles.retryText}>Réessayer</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'current' && styles.tabTextActive,
+            ]}
+          >
+            Présences actuelles
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'history' && styles.tabActive]}
+          onPress={() => {
+            setActiveTab('history');
+            if (attendanceHistory.length === 0) {
+              loadAttendanceHistory();
+            }
+          }}
+        >
+          <Feather
+            name="clock"
+            size={16}
+            color={activeTab === 'history' ? '#FFFFFF' : '#6B7280'}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'history' && styles.tabTextActive,
+            ]}
+          >
+            Historique
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Statistiques */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#16A34A22' }]}>
-              <Icon name="check-circle" size={20} color="#16A34A" />
-            </View>
-            <Text style={styles.statValue}>{stats.present}</Text>
-            <Text style={styles.statLabel}>Présents</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#DC262622' }]}>
-              <Icon name="close-circle" size={20} color="#DC2626" />
-            </View>
-            <Text style={styles.statValue}>{stats.absent}</Text>
-            <Text style={styles.statLabel}>Absents</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#D9770622' }]}>
-              <Icon name="chart-pie" size={20} color="#D97706" />
-            </View>
-            <Text style={styles.statValue}>{stats.percentage}%</Text>
-            <Text style={styles.statLabel}>Taux</Text>
-          </View>
-        </View>
-
-        {/* Recherche et Filtres */}
-        <View style={styles.filtersSection}>
-          <View style={styles.searchContainer}>
-            <Feather name="search" size={20} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher un membre..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#9CA3AF"
+      {activeTab === 'current' ? (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#991B1B']}
+              tintColor="#991B1B"
             />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <AntDesign name="closecircle" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsScroll}>
-            {availableGroups.map((group, index) => (
+          }
+        >
+          {/* Message d'erreur */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity
-                key={group || index}
-                style={[styles.groupFilter, selectedGroup === group && styles.groupFilterSelected]}
-                onPress={() => setSelectedGroup(group)}
+                style={styles.retryButton}
+                onPress={loadInitialData}
               >
-                <Text style={[styles.groupFilterText, selectedGroup === group && styles.groupFilterTextSelected]}>
-                  {group === 'Tous' ? 'Tous' : group}
-                </Text>
+                <Text style={styles.retryText}>Réessayer</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Sélecteur de date */}
-        <View style={styles.dateSection}>
-          <View style={styles.dateHeader}>
-            <Text style={styles.sectionTitle}>Date de réunion</Text>
-            <TouchableOpacity
-              style={styles.calendarButton}
-              onPress={() => setShowDateModal(true)}
-            >
-              <Feather name="calendar" size={20} color="#991B1B" />
-            </TouchableOpacity>
-          </View>
-
-          {renderDateSelector()}
-
-          <View style={styles.dateNavigation}>
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => changeDate(-1)}
-            >
-              <Feather name="chevron-left" size={20} color="#991B1B" />
-              <Text style={styles.navText}>Hier</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.currentDate}>
-              {formatDisplayDate(selectedDate)}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => changeDate(1)}
-            >
-              <Text style={styles.navText}>Demain</Text>
-              <Feather name="chevron-right" size={20} color="#991B1B" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Actions rapides */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionBtn, saving && styles.disabledButton]}
-            onPress={() => !saving && markAllMembers('present')}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#16A34A" />
-            ) : (
-              <Feather name="check-circle" size={18} color="#16A34A" />
-            )}
-            <Text style={[styles.quickActionText, saving && styles.disabledText]}>
-              Tout marquer présent
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quickActionBtn, saving && styles.disabledButton]}
-            onPress={() => !saving && markAllMembers('absent')}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#DC2626" />
-            ) : (
-              <Feather name="x-circle" size={18} color="#DC2626" />
-            )}
-            <Text style={[styles.quickActionText, saving && styles.disabledText]}>
-              Tout marquer absent
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Liste de présence */}
-        <View style={styles.attendanceSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              Liste des membres ({filteredMembers.length})
-            </Text>
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, styles.presentDot]} />
-                <Text style={styles.legendText}>Présent</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, styles.absentDot]} />
-                <Text style={styles.legendText}>Absent</Text>
-              </View>
             </View>
-          </View>
-
-          {filteredMembers.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Feather name="users" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>
-                Aucun membre trouvé
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredMembers}
-              renderItem={renderAttendanceItem}
-              keyExtractor={(item) => item.id || Math.random().toString()}
-              scrollEnabled={false}
-              initialNumToRender={10}
-              maxToRenderPerBatch={5}
-              windowSize={5}
-              removeClippedSubviews={false} // Désactivé pour plus de stabilité
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
           )}
+
+          {/* Statistiques */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: '#16A34A22' }]}>
+                <Icon name="check-circle" size={20} color="#16A34A" />
+              </View>
+              <Text style={styles.statValue}>{stats.present}</Text>
+              <Text style={styles.statLabel}>Présents</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: '#DC262622' }]}>
+                <Icon name="close-circle" size={20} color="#DC2626" />
+              </View>
+              <Text style={styles.statValue}>{stats.absent}</Text>
+              <Text style={styles.statLabel}>Absents</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: '#D9770622' }]}>
+                <Icon name="chart-pie" size={20} color="#D97706" />
+              </View>
+              <Text style={styles.statValue}>{stats.percentage}%</Text>
+              <Text style={styles.statLabel}>Taux</Text>
+            </View>
+          </View>
+
+          {/* Recherche et Filtres */}
+          <View style={styles.filtersSection}>
+            <View style={styles.searchContainer}>
+              <Feather name="search" size={20} color="#9CA3AF" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher un membre..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#9CA3AF"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <AntDesign name="closecircle" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsScroll}>
+              {availableGroups.map((group, index) => (
+                <TouchableOpacity
+                  key={group || index}
+                  style={[styles.groupFilter, selectedGroup === group && styles.groupFilterSelected]}
+                  onPress={() => setSelectedGroup(group)}
+                >
+                  <Text style={[styles.groupFilterText, selectedGroup === group && styles.groupFilterTextSelected]}>
+                    {group === 'Tous' ? 'Tous' : group}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Sélecteur de date */}
+          <View style={styles.dateSection}>
+            <View style={styles.dateHeader}>
+              <Text style={styles.sectionTitle}>Date de réunion</Text>
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={() => setShowDateModal(true)}
+              >
+                <Feather name="calendar" size={20} color="#991B1B" />
+              </TouchableOpacity>
+            </View>
+
+            {renderDateSelector()}
+
+            <View style={styles.dateNavigation}>
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => changeDate(-1)}
+              >
+                <Feather name="chevron-left" size={20} color="#991B1B" />
+                <Text style={styles.navText}>Hier</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.currentDate}>
+                {formatDisplayDate(selectedDate)}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => changeDate(1)}
+              >
+                <Text style={styles.navText}>Demain</Text>
+                <Feather name="chevron-right" size={20} color="#991B1B" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Actions rapides */}
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, saving && styles.disabledButton]}
+              onPress={() => !saving && markAllMembers('present')}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#16A34A" />
+              ) : (
+                <Feather name="check-circle" size={18} color="#16A34A" />
+              )}
+              <Text style={[styles.quickActionText, saving && styles.disabledText]}>
+                Tout marquer présent
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickActionBtn, saving && styles.disabledButton]}
+              onPress={() => !saving && markAllMembers('absent')}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#DC2626" />
+              ) : (
+                <Feather name="x-circle" size={18} color="#DC2626" />
+              )}
+              <Text style={[styles.quickActionText, saving && styles.disabledText]}>
+                Tout marquer absent
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Liste de présence */}
+          <View style={styles.attendanceSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                Liste des membres ({filteredMembers.length})
+              </Text>
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.presentDot]} />
+                  <Text style={styles.legendText}>Présent</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.absentDot]} />
+                  <Text style={styles.legendText}>Absent</Text>
+                </View>
+              </View>
+            </View>
+
+            {filteredMembers.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Feather name="users" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateText}>
+                  Aucun membre trouvé
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredMembers}
+                renderItem={renderAttendanceItem}
+                keyExtractor={(item) => item.id || Math.random().toString()}
+                scrollEnabled={false}
+                initialNumToRender={10}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews={false} // Désactivé pour plus de stabilité
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+              />
+            )}
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={historyLoading}
+              onRefresh={loadAttendanceHistory}
+              colors={['#991B1B']}
+              tintColor="#991B1B"
+            />
+          }
+        >
+          {/* Historique des présences */}
+          <View style={styles.historySection}>
+            <Text style={styles.sectionTitle}>Historique des présences</Text>
+
+            {attendanceHistory.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Feather name="clock" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateText}>
+                  Aucun historique trouvé
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Les données d'historique apparaîtront ici
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={attendanceHistory}
+                renderItem={renderHistoryItem}
+                keyExtractor={(item) => item.date}
+                scrollEnabled={false}
+                ItemSeparatorComponent={() => <View style={styles.historySeparator} />}
+              />
+            )}
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
+
+      {/* Modal de sélection de date */}
+      <Modal
+        visible={showDateModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDateModal(false)}
+      >
+        {/* ... existing date modal content ... */}
+      </Modal>
+
+      {/* Modal Export PDF */}
+      <Modal
+        visible={showExportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExportModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Exporter le rapport</Text>
+              <TouchableOpacity onPress={() => setShowExportModal(false)}>
+                <AntDesign name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.form}>
+              <Text style={styles.label}>Type de rapport</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.groupOption,
+                    exportType === 'single' && styles.groupOptionSelected,
+                    { flex: 1, marginRight: 10 }
+                  ]}
+                  onPress={() => setExportType('single')}
+                >
+                  <Text style={[
+                    styles.groupOptionText,
+                    exportType === 'single' && styles.groupOptionTextSelected
+                  ]}>Date unique</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.groupOption,
+                    exportType === 'range' && styles.groupOptionSelected,
+                    { flex: 1 }
+                  ]}
+                  onPress={() => setExportType('range')}
+                >
+                  <Text style={[
+                    styles.groupOptionText,
+                    exportType === 'range' && styles.groupOptionTextSelected
+                  ]}>Période</Text>
+                </TouchableOpacity>
+              </View>
+
+              {exportType === 'single' ? (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Date</Text>
+                  <TouchableOpacity
+                    style={styles.textInput}
+                    onPress={() => setShowStartDatePicker(true)}
+                  >
+                    <Text>{formatDisplayDate(exportStartDate)}</Text>
+                  </TouchableOpacity>
+                  {showStartDatePicker && (
+                    <DateTimePicker
+                      value={exportStartDate}
+                      mode="date"
+                      display="default"
+                      onChange={(event, date) => {
+                        setShowStartDatePicker(false);
+                        if (date) setExportStartDate(date);
+                      }}
+                    />
+                  )}
+                </View>
+              ) : (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Date de début</Text>
+                    <TouchableOpacity
+                      style={styles.textInput}
+                      onPress={() => setShowStartDatePicker(true)}
+                    >
+                      <Text>{formatDisplayDate(exportStartDate)}</Text>
+                    </TouchableOpacity>
+                    {showStartDatePicker && (
+                      <DateTimePicker
+                        value={exportStartDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, date) => {
+                          setShowStartDatePicker(false);
+                          if (date) setExportStartDate(date);
+                        }}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Date de fin</Text>
+                    <TouchableOpacity
+                      style={styles.textInput}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Text>{formatDisplayDate(exportEndDate)}</Text>
+                    </TouchableOpacity>
+                    {showEndDatePicker && (
+                      <DateTimePicker
+                        value={exportEndDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, date) => {
+                          setShowEndDatePicker(false);
+                          if (date) setExportEndDate(date);
+                        }}
+                      />
+                    )}
+                  </View>
+                </>
+              )}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowExportModal(false)}
+              >
+                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => {
+                  console.log('Export button pressed in modal');
+                  generateAttendancePDF();
+                }}
+              >
+                <Text style={styles.saveBtnText}>Exporter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
+      </Modal>
       {/* Modal de sélection de date */}
       <Modal
         visible={showDateModal}
@@ -667,7 +1313,7 @@ const AttendanceScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
@@ -754,6 +1400,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
+    marginTop: 60,
   },
   statCard: {
     flex: 1,
@@ -1182,6 +1829,129 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     opacity: 0.6,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 42,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: '#991B1B',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  historySection: {
+    padding: 20,
+  },
+  historyItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  historyDate: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  historyStats: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  historyStat: {
+    alignItems: 'center',
+    minWidth: 50,
+  },
+  presentStat: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#16A34A',
+  },
+  absentStat: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DC2626',
+  },
+  percentageStat: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2563EB',
+  },
+  historyStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  historyStatLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  historyProgress: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#16A34A',
+    borderRadius: 3,
+  },
+  historySeparator: {
+    height: 8,
   },
 });
 

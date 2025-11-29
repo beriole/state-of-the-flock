@@ -18,13 +18,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
-import api from '../../utils/api';
+import { userAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
 const ProfileScreen = () => {
   const { t } = useTranslation();
-  const { user: authUser, updateUser } = useAuth();
+  const { user: authUser, updateUser, logout } = useAuth();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ const ProfileScreen = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await api.get(`/users/${authUser.id}`);
+      const response = await userAPI.getUserById(authUser.id);
       const userData = response.data;
 
       setUser({
@@ -97,7 +97,7 @@ const ProfileScreen = () => {
     setSettings(newSettings); // Optimistic update
 
     try {
-      await api.put('/users/settings', { settings: newSettings });
+      await userAPI.updateSettings({ settings: newSettings });
     } catch (error) {
       console.error('Error updating settings:', error);
       setSettings(settings); // Revert on error
@@ -112,7 +112,7 @@ const ProfileScreen = () => {
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
-      const response = await api.put(`/users/${authUser.id}`, editForm);
+      const response = await userAPI.updateUser(authUser.id, editForm);
       await updateUser(response.data); // Update context
       fetchUserData(); // Refresh local state
       setEditProfileVisible(false);
@@ -139,7 +139,7 @@ const ProfileScreen = () => {
       t('logoutConfirm'),
       [
         { text: t('cancel'), style: 'cancel' },
-        { text: t('logout'), style: 'destructive', onPress: () => console.log('Logout') } // Implement actual logout logic here
+        { text: t('logout'), style: 'destructive', onPress: () => logout() }
       ]
     );
   };
@@ -283,7 +283,7 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#991B1B" />
+      <StatusBar barStyle="light-content" backgroundColor="#DC2626" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF7F7',
   },
   header: {
-    backgroundColor: '#991B1B',
+    backgroundColor: '#DC2626',
     height: 140,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#991B1B',
+    backgroundColor: '#DC2626',
     opacity: 0.95,
   },
   headerContent: {

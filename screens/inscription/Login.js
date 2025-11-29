@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import { authAPI } from '../../utils/api';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Login = () => {
@@ -36,7 +36,7 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await authAPI.login({ email, password });
 
       // Utiliser le contexte d'authentification
       await login(response.data.user, response.data.token);
