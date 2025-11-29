@@ -48,13 +48,17 @@ const callLogController = {
         };
       }
 
-      // For Bishop/Governor filtering, we need to use a different approach
-      let queryOptions = {
+      const callLogs = await CallLog.findAndCountAll({
         where: whereClause,
         include: [
           {
             model: Member,
             as: 'member',
+            required: (req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id),
+            where: (req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id) ? {
+              ...(area_id && { area_id }),
+              ...(leader_id && { leader_id })
+            } : undefined,
             include: [
               { model: Area, as: 'area' },
               { model: User, as: 'leader' }
@@ -65,17 +69,7 @@ const callLogController = {
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [['call_date', 'DESC']]
-      };
-
-      // If Bishop/Governor is filtering by area or leader, use required includes
-      if ((req.user.role === 'Bishop' || req.user.role === 'Governor') && (area_id || leader_id)) {
-        queryOptions.include[0].required = true;
-        queryOptions.include[0].where = {};
-        if (area_id) queryOptions.include[0].where.area_id = area_id;
-        if (leader_id) queryOptions.include[0].where.leader_id = leader_id;
-      }
-
-      const callLogs = await CallLog.findAndCountAll(queryOptions);
+      });
 
       console.log('Found call logs:', callLogs.count);
       console.log('Where clause:', JSON.stringify(whereClause, null, 2));
