@@ -1,6 +1,4 @@
 // controllers/dashboardController.js
-const { Member, Attendance, CallLog, BacentaMeeting, User, Area, sequelize } = require('../models');
-const { Op } = require('sequelize');
 
 const dashboardController = {
   // Tableau de bord du leader
