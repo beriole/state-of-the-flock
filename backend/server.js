@@ -42,7 +42,7 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// Routes API
+// Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/members', memberRoutes);
