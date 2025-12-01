@@ -33,7 +33,7 @@ const dashboardController = {
         });
 
         const totalAttendanceRecords = weekAttendance.length;
-        const presentCount = weekAttendance.filter(a => a.present).length;
+        const presentCount = weekAttendance.filter(a => a.present === true).length;
         const attendancePercentage = totalAttendanceRecords > 0 ?
           Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
 
@@ -71,16 +71,21 @@ const dashboardController = {
           }
         });
 
-        // Présence récente (dernière semaine)
-        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        // Présence récente (dernière semaine) - corrigé pour utiliser sunday_date
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 7);
+
         const recentAttendance = await Attendance.findAll({
           where: {
-            created_at: { [sequelize.Op.gte]: lastWeek }
+            sunday_date: {
+              [sequelize.Op.gte]: lastWeek.toISOString().split('T')[0]
+            }
           },
           include: [{
             model: Member,
             as: 'member',
-            where: { leader_id: userId }
+            where: { leader_id: userId },
+            required: true
           }]
         });
 
@@ -126,7 +131,7 @@ const dashboardController = {
         });
 
         const totalAttendanceInMeetings = meetingsWithAttendance.reduce((total, meeting) => {
-          return total + meeting.attendances.filter(a => a.present).length;
+          return total + meeting.attendances.filter(a => a.present === true).length;
         }, 0);
 
         const averageAttendance = meetingsWithAttendance.length > 0 ?
