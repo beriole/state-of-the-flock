@@ -5,8 +5,17 @@ const dashboardController = {
   // Tableau de bord du leader
   getLeaderDashboard: async (req, res) => {
     try {
-      console.log('Dashboard request for user:', req.user);
+      console.log('Dashboard request received');
+      console.log('req.user:', req.user);
+      console.log('req.headers:', req.headers.authorization ? 'Token present' : 'No token');
+
+      if (!req.user) {
+        console.log('No user in request');
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
       const userRole = req.user.role;
+      console.log('User role:', userRole);
 
       // Version simplifiée sans requêtes DB pour déboguer
       if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
