@@ -18,7 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
-import { userAPI } from '../../utils/api';
+import { dashboardAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 
@@ -60,7 +60,7 @@ const ProfileScreen = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await userAPI.getUserById(authUser.id);
+      const response = await dashboardAPI.getUserById(authUser.id);
       const userData = response.data;
 
       setUser({
@@ -97,7 +97,7 @@ const ProfileScreen = () => {
     setSettings(newSettings); // Optimistic update
 
     try {
-      await userAPI.updateSettings({ settings: newSettings });
+      await dashboardAPI.updateSettings({ settings: newSettings });
     } catch (error) {
       console.error('Error updating settings:', error);
       setSettings(settings); // Revert on error
@@ -112,7 +112,7 @@ const ProfileScreen = () => {
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
-      const response = await userAPI.updateUser(authUser.id, editForm);
+      const response = await dashboardAPI.updateUser(authUser.id, editForm);
       await updateUser(response.data); // Update context
       fetchUserData(); // Refresh local state
       setEditProfileVisible(false);
@@ -147,8 +147,7 @@ const ProfileScreen = () => {
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     setLanguageModalVisible(false);
-    // Optionally save language preference to backend
-    toggleSetting('language', lang); // This might need adjustment if toggleSetting only handles booleans
+    // TODO: Save language preference to backend if needed
   };
 
   const menuSections = [
