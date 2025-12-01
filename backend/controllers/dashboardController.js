@@ -5,6 +5,7 @@ const dashboardController = {
   // Tableau de bord du leader
   getLeaderDashboard: async (req, res) => {
     try {
+      console.log('Dashboard request for user:', req.user);
       const userRole = req.user.role;
       const userId = req.user.userId;
 
