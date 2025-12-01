@@ -10,10 +10,16 @@ const dashboardController = {
 
       if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
         try {
-          console.log('Calculating Bishop dashboard stats...');
+          console.log('Testing basic DB connection...');
+          // Test basique de connexion DB
+          const testConnection = await sequelize.authenticate();
+          console.log('DB connection test passed');
+
+          // Test simple de comptage
+          const totalMembers = await Member.count();
+          console.log('Member count query successful:', totalMembers);
+
           // Statistiques générales pour les administrateurs
-          const totalMembers = await Member.count({ where: { is_active: true } });
-          console.log('Total members:', totalMembers);
           const totalLeaders = await User.count({
             where: {
               role: 'Bacenta_Leader',
@@ -21,6 +27,7 @@ const dashboardController = {
             }
           });
           console.log('Total leaders:', totalLeaders);
+
           const totalAreas = await Area.count();
           console.log('Total areas:', totalAreas);
 
