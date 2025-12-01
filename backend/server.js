@@ -42,6 +42,32 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// Route d'initialisation de la base de données (temporaire)
+app.get('/init-db', async (req, res) => {
+  try {
+    console.log('Initializing database...');
+
+    // Synchroniser les modèles avec la base de données
+    await sequelize.sync({ force: true });
+    console.log('Database tables created');
+
+    // Importer et exécuter le script de seed
+    const seedUsers = require('./seedUser');
+    console.log('Seed script loaded');
+
+    res.json({
+      message: 'Base de données initialisée avec succès',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    res.status(500).json({
+      error: 'Erreur lors de l\'initialisation de la base de données',
+      details: error.message
+    });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
