@@ -1,48 +1,174 @@
 // controllers/dashboardController.js
-const { Area, Member, Attendance, User, sequelize } = require('../models');
+const { Area, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, sequelize } = require('../models');
 
 const dashboardController = {
   // Tableau de bord du leader
   getLeaderDashboard: async (req, res) => {
     try {
       const userRole = req.user.role;
+      const userId = req.user.userId;
 
-      // Données simplifiées pour éviter les erreurs
       if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
-        res.json({
-          user_role: userRole,
-          last_updated: new Date(),
-          summary: {
-            total_members: 25,
-            total_leaders: 5,
-            total_areas: 2,
-            current_week_attendance: 85,
-            attendance_change: 5,
-            recent_call_logs: 12,
-            recent_bacenta_meetings: 8
+        // Statistiques générales pour les administrateurs
+        const totalMembers = await Member.count({ where: { is_active: true } });
+        const totalLeaders = await User.count({
+          where: {
+            role: 'Bacenta_Leader',
+            is_active: true
           }
         });
-      } else {
-        // Pour les leaders Bacenta
+        const totalAreas = await Area.count();
+
+        // Présence de cette semaine
+        const today = new Date();
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - today.getDay());
+
+        const weekAttendance = await Attendance.findAll({
+          where: {
+            sunday_date: {
+              [sequelize.Op.gte]: sunday.toISOString().split('T')[0]
+            }
+          }
+        });
+
+        const totalAttendanceRecords = weekAttendance.length;
+        const presentCount = weekAttendance.filter(a => a.present).length;
+        const attendancePercentage = totalAttendanceRecords > 0 ?
+          Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
+
         res.json({
           user_role: userRole,
           last_updated: new Date(),
           summary: {
-            total_members: 8,
-            last_attendance_percentage: 90,
-            pending_follow_ups: 3,
-            recent_bacenta_meetings: 2
+            total_members: totalMembers,
+            total_leaders: totalLeaders,
+            total_areas: totalAreas,
+            current_week_attendance: attendancePercentage,
+            attendance_change: 5, // TODO: Calculer le changement réel
+            recent_call_logs: await CallLog.count({
+              where: {
+                created_at: {
+                  [sequelize.Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                }
+              }
+            }),
+            recent_bacenta_meetings: await BacentaMeeting.count({
+              where: {
+                created_at: {
+                  [sequelize.Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                }
+              }
+            })
+          }
+        });
+      } else if (userRole === 'Bacenta_Leader') {
+        // Statistiques spécifiques au Bacenta Leader
+        const totalMembers = await Member.count({
+          where: {
+            leader_id: userId,
+            is_active: true
+          }
+        });
+
+        // Présence récente (dernière semaine)
+        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const recentAttendance = await Attendance.findAll({
+          where: {
+            created_at: { [sequelize.Op.gte]: lastWeek }
+          },
+          include: [{
+            model: Member,
+            as: 'member',
+            where: { leader_id: userId }
+          }]
+        });
+
+        const attendanceRecords = recentAttendance.length;
+        const presentCount = recentAttendance.filter(a => a.present).length;
+        const attendancePercentage = attendanceRecords > 0 ?
+          Math.round((presentCount / attendanceRecords) * 100) : 0;
+
+        // Statistiques des réunions Bacenta
+        const recentMeetings = await BacentaMeeting.count({
+          where: {
+            leader_id: userId,
+            created_at: { [sequelize.Op.gte]: lastWeek }
+          }
+        });
+
+        // Offrandes totales des réunions récentes
+        const meetingsWithOfferings = await BacentaMeeting.findAll({
+          where: {
+            leader_id: userId,
+            created_at: { [sequelize.Op.gte]: lastWeek }
+          },
+          include: [{
+            model: BacentaOffering,
+            as: 'offerings'
+          }]
+        });
+
+        const totalOffering = meetingsWithOfferings.reduce((total, meeting) => {
+          return total + meeting.offerings.reduce((sum, offering) => sum + (offering.amount || 0), 0);
+        }, 0);
+
+        // Présence moyenne aux réunions
+        const meetingsWithAttendance = await BacentaMeeting.findAll({
+          where: {
+            leader_id: userId,
+            created_at: { [sequelize.Op.gte]: lastWeek }
+          },
+          include: [{
+            model: BacentaAttendance,
+            as: 'attendances'
+          }]
+        });
+
+        const totalAttendanceInMeetings = meetingsWithAttendance.reduce((total, meeting) => {
+          return total + meeting.attendances.filter(a => a.present).length;
+        }, 0);
+
+        const averageAttendance = meetingsWithAttendance.length > 0 ?
+          Math.round(totalAttendanceInMeetings / meetingsWithAttendance.length) : 0;
+
+        res.json({
+          user_role: userRole,
+          last_updated: new Date(),
+          summary: {
+            total_members: totalMembers,
+            last_attendance_percentage: attendancePercentage,
+            pending_follow_ups: await CallLog.count({
+              where: {
+                caller_id: userId,
+                status: 'pending'
+              }
+            }),
+            recent_bacenta_meetings: recentMeetings
           },
           bacenta_stats: {
-            recent_meetings: 2,
-            total_offering: 150000,
-            average_attendance: 12
+            recent_meetings: recentMeetings,
+            total_offering: totalOffering,
+            average_attendance: averageAttendance
           },
           quick_actions: [
             { action: 'mark_attendance', label: 'Marquer présence', icon: 'check' },
             { action: 'view_call_list', label: 'Liste d\'appels', icon: 'phone' },
             { action: 'create_bacenta', label: 'Nouvelle réunion', icon: 'users' }
           ]
+        });
+      } else {
+        // Pour les autres rôles (Area Pastor, Data Clerk, etc.)
+        res.json({
+          user_role: userRole,
+          last_updated: new Date(),
+          summary: {
+            total_members: 0,
+            last_attendance_percentage: 0,
+            pending_follow_ups: 0,
+            recent_bacenta_meetings: 0
+          },
+          message: 'Tableau de bord en développement pour ce rôle'
         });
       }
 
