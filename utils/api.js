@@ -11,9 +11,13 @@ const BASE_URL = 'https://state-of-the-flock.onrender.com/api';
 // Créer une instance axios
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // Augmenté à 30 secondes
   headers: {
     'Content-Type': 'application/json',
+  },
+  // Configuration pour améliorer la compatibilité réseau
+  validateStatus: function (status) {
+    return status >= 200 && status < 300;
   },
 });
 
@@ -42,12 +46,26 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    console.log('API Error:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method
+    });
+
     if (error.response?.status === 401) {
       // Token expiré ou invalide
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
       // TODO: Rediriger vers login
     }
+
+    // Gestion spécifique des erreurs réseau
+    if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+      console.warn('Network Error - Vérifiez votre connexion internet');
+    }
+
     return Promise.reject(error);
   }
 );
