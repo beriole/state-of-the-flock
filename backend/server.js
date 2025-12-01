@@ -51,13 +51,32 @@ app.get('/init-db', async (req, res) => {
     await sequelize.sync({ force: true });
     console.log('Database tables created');
 
-    // Importer et exécuter le script de seed
-    const seedUsers = require('./seedUser');
-    console.log('Seed script loaded');
+    // Créer quelques utilisateurs de test directement
+    const bcrypt = require('bcrypt');
+    const { User } = require('./models');
+
+    const testUsers = [
+      { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
+      { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
+    ];
+
+    for (const u of testUsers) {
+      const password_hash = await bcrypt.hash(u.password, 10);
+      await User.create({
+        first_name: u.first_name,
+        last_name: u.last_name,
+        email: u.email,
+        role: u.role,
+        password_hash,
+        is_active: true
+      });
+      console.log(`✅ Test user created: ${u.email}`);
+    }
 
     res.json({
-      message: 'Base de données initialisée avec succès',
-      status: 'success'
+      message: 'Base de données initialisée avec succès et utilisateurs de test créés',
+      status: 'success',
+      test_users: testUsers.map(u => ({ email: u.email, role: u.role, password: u.password }))
     });
   } catch (error) {
     console.error('Database initialization error:', error);
