@@ -10,15 +10,19 @@ const dashboardController = {
 
       if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
         try {
+          console.log('Calculating Bishop dashboard stats...');
           // Statistiques générales pour les administrateurs
           const totalMembers = await Member.count({ where: { is_active: true } });
+          console.log('Total members:', totalMembers);
           const totalLeaders = await User.count({
             where: {
               role: 'Bacenta_Leader',
               is_active: true
             }
           });
+          console.log('Total leaders:', totalLeaders);
           const totalAreas = await Area.count();
+          console.log('Total areas:', totalAreas);
 
           // Présence de cette semaine
           const today = new Date();
