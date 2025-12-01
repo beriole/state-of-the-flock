@@ -5,6 +5,7 @@ const dashboardController = {
   // Tableau de bord du leader
   getLeaderDashboard: async (req, res) => {
     try {
+      console.log('Dashboard request for user:', req.user);
       const userRole = req.user.role;
 
       // Données simplifiées pour éviter les erreurs
@@ -189,7 +190,10 @@ getLeaderStats: async (req, res) => {
     console.error('Get leader stats error:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques du leader' });
   }
-}
+},
+
+getAreaStats,
+getLeaderStats
 
 };
 
