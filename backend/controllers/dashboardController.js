@@ -322,9 +322,6 @@ getLeaderStats: async (req, res) => {
   }
 },
 
-getAreaStats,
-getLeaderStats
-
 };
 
 module.exports = dashboardController;
