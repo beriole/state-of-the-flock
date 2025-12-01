@@ -147,7 +147,7 @@ const userController = {
     }
   },
 
-  // Supprimer un utilisateur
+  // Supprimer un utilisateur (désactiver au lieu de supprimer)
   deleteUser: async (req, res) => {
     try {
       const userId = req.params.id;
@@ -157,15 +157,24 @@ const userController = {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
+      // Vérifier si l'utilisateur a des membres associés
       const memberCount = await Member.count({ where: { leader_id: userId } });
+
       if (memberCount > 0) {
-        return res.status(400).json({
-          error: 'Impossible de supprimer cet utilisateur car il a des membres associés'
+        // Au lieu de supprimer, désactiver l'utilisateur
+        await user.update({ is_active: false });
+        return res.json({
+          message: 'Utilisateur désactivé avec succès (conservé car il a des membres associés)',
+          action: 'deactivated'
         });
       }
 
+      // Si pas de membres associés, supprimer complètement
       await user.destroy();
-      res.json({ message: 'Utilisateur supprimé avec succès' });
+      res.json({
+        message: 'Utilisateur supprimé avec succès',
+        action: 'deleted'
+      });
     } catch (error) {
       console.error('Delete user error:', error);
       res.status(500).json({ error: 'Erreur lors de la suppression de l\'utilisateur' });
