@@ -44,6 +44,47 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// Route temporaire pour créer un utilisateur de test
+app.get('/create-admin', async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const { User } = require('./models');
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await User.findOne({ where: { email: 'john.doe@example.com' } });
+    if (existingUser) {
+      return res.json({
+        message: 'Utilisateur admin existe déjà',
+        user: { email: existingUser.email, role: existingUser.role }
+      });
+    }
+
+    // Créer l'utilisateur admin
+    const password_hash = await bcrypt.hash('Password123', 10);
+    const user = await User.create({
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'john.doe@example.com',
+      role: 'Bishop',
+      password_hash,
+      is_active: true
+    });
+
+    res.json({
+      message: 'Utilisateur admin créé avec succès',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        password: 'Password123'
+      }
+    });
+  } catch (error) {
+    console.error('Error creating admin user:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
