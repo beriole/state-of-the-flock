@@ -31,6 +31,8 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'], credentials: true }));
+// Activer trust proxy pour Render (proxy inverse)
+app.set('trust proxy', 1);
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 app.use(compression());
 app.use(morgan('dev'));
@@ -41,6 +43,49 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
+
+// Route temporaire pour recréer les utilisateurs de test
+app.post('/setup-test-users', async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const { User } = require('./models');
+
+    // Vérifier si les utilisateurs existent déjà
+    const existingUser = await User.findOne({ where: { email: 'john.doe@example.com' } });
+    if (existingUser) {
+      return res.json({ message: 'Utilisateurs de test existent déjà', users: [{ email: 'john.doe@example.com', role: 'Bishop' }] });
+    }
+
+    const testUsers = [
+      { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
+      { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
+      { first_name: 'Alice', last_name: 'Brown', email: 'alice.brown@example.com', role: 'Area_Pastor', password: 'Password123' },
+      { first_name: 'Bob', last_name: 'Johnson', email: 'bob.johnson@example.com', role: 'Bacenta_Leader', password: 'Password123' },
+    ];
+
+    const createdUsers = [];
+    for (const u of testUsers) {
+      const password_hash = await bcrypt.hash(u.password, 10);
+      const user = await User.create({
+        first_name: u.first_name,
+        last_name: u.last_name,
+        email: u.email,
+        role: u.role,
+        password_hash,
+        is_active: true
+      });
+      createdUsers.push({ id: user.id, email: u.email, role: u.role });
+    }
+
+    res.json({
+      message: 'Utilisateurs de test créés avec succès',
+      users: createdUsers
+    });
+  } catch (error) {
+    console.error('Error creating test users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
