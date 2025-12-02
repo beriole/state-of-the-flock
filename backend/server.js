@@ -42,51 +42,6 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
-// Route d'initialisation de la base de données (temporaire)
-app.get('/init-db', async (req, res) => {
-  try {
-    console.log('Initializing database...');
-
-    // Synchroniser les modèles avec la base de données
-    await sequelize.sync({ force: true });
-    console.log('Database tables created');
-
-    // Créer quelques utilisateurs de test directement
-    const bcrypt = require('bcrypt');
-    const { User } = require('./models');
-
-    const testUsers = [
-      { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
-      { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
-    ];
-
-    for (const u of testUsers) {
-      const password_hash = await bcrypt.hash(u.password, 10);
-      await User.create({
-        first_name: u.first_name,
-        last_name: u.last_name,
-        email: u.email,
-        role: u.role,
-        password_hash,
-        is_active: true
-      });
-      console.log(`✅ Test user created: ${u.email}`);
-    }
-
-    res.json({
-      message: 'Base de données initialisée avec succès et utilisateurs de test créés',
-      status: 'success',
-      test_users: testUsers.map(u => ({ email: u.email, role: u.role, password: u.password }))
-    });
-  } catch (error) {
-    console.error('Database initialization error:', error);
-    res.status(500).json({
-      error: 'Erreur lors de l\'initialisation de la base de données',
-      details: error.message
-    });
-  }
-});
-
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
