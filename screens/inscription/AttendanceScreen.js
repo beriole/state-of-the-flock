@@ -789,7 +789,7 @@ const AttendanceScreen = () => {
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: RNFS.DownloadDirectoryPath // Use Downloads directory for better accessibility
+        directory: '/storage/emulated/0/Download' // Use main Downloads directory at phone root
       };
 
       console.log('Generating attendance PDF with options:', options);

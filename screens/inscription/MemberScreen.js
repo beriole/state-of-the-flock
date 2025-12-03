@@ -398,7 +398,7 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: RNFS.DownloadDirectoryPath // Use Downloads directory which is easily accessible
+        directory: '/storage/emulated/0/Download' // Use main Downloads directory at phone root
       };
 
       console.log('Generating PDF with options:', options);
