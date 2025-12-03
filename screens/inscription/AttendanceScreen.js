@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { memberAPI, attendanceAPI } from '../../utils/api';
 import { NativeModules } from 'react-native';
 import Share from 'react-native-share';
+import RNFS from 'react-native-fs';
 
 // Robustly find the native module
 const RNHTMLtoPDF = NativeModules.RNHTMLtoPDF || NativeModules.HtmlToPdf || NativeModules.RNHTMLToPdf;
@@ -311,10 +312,9 @@ const AttendanceScreen = () => {
 
   // Helper function to show file location
   const showFileLocation = (filePath) => {
-    const isDocumentsDir = filePath.includes('Documents');
-    const folderName = isDocumentsDir ? 'Documents' : 'Download';
+    const isDownloadDir = filePath.includes('Download') || filePath.includes('Téléchargements');
 
-    const locationMessage = `Le PDF a été généré avec succès !\n\n📁 Emplacement du fichier :\n${filePath}\n\n📱 Pour accéder au fichier :\n1. Ouvrez un gestionnaire de fichiers (comme "Fichiers" ou "File Manager")\n2. Allez dans "Android" > "data" > "com.stage1" > "files" > "${folderName}"\n3. Trouvez le fichier PDF et ouvrez-le\n\n💡 Astuce : Si vous ne voyez pas le dossier Android, activez "Afficher les fichiers cachés" dans les paramètres du gestionnaire de fichiers.`;
+    const locationMessage = `Le PDF a été généré avec succès !\n\n📁 Emplacement du fichier :\n${filePath}\n\n📱 Pour accéder au fichier :\n1. Ouvrez un gestionnaire de fichiers (comme "Fichiers" ou "File Manager")\n2. Allez dans le dossier "Téléchargements" ou "Downloads"\n3. Trouvez le fichier PDF et ouvrez-le\n\n✅ Le fichier est maintenant facilement accessible depuis votre dossier Téléchargements !`;
 
     Alert.alert(
       '✅ PDF généré avec succès',
@@ -789,7 +789,7 @@ const AttendanceScreen = () => {
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: 'Documents' // Consistent location
+        directory: RNFS.DownloadDirectoryPath // Use Downloads directory for better accessibility
       };
 
       console.log('Generating attendance PDF with options:', options);
