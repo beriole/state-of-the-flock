@@ -98,6 +98,7 @@ const dashboardController = {
         }
       } else if (userRole === 'Bacenta_Leader') {
         try {
+          console.log('Dashboard Bacenta Leader - UserId:', userId);
           // Statistiques spécifiques au Bacenta Leader
           const totalMembers = await Member.count({
             where: {
@@ -105,6 +106,7 @@ const dashboardController = {
               is_active: true
             }
           });
+          console.log('Total members for leader:', totalMembers);
 
           // Présence récente (dernière semaine) - version simplifiée
           const lastWeek = new Date();
