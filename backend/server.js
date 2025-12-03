@@ -49,6 +49,16 @@ app.get('/seed', async (req, res) => {
   try {
     const bcrypt = require('bcrypt');
     const { User } = require('./models');
+
+    // First, try to update existing user
+    const existingUser = await User.findOne({ where: { email: 'berioletsague@gmail.com' } });
+    if (existingUser) {
+      await existingUser.update({ role: 'Bishop' });
+      res.json({ message: 'User role updated to Bishop successfully' });
+      return;
+    }
+
+    // If user doesn't exist, create test users
     const usersData = [
       { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
       { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
