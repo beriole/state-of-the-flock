@@ -118,12 +118,7 @@ const dashboardController = {
             summary: {
               total_members: totalMembers || 0,
               last_attendance_percentage: attendancePercentage || 0,
-              pending_follow_ups: await CallLog.count({
-                where: {
-                  caller_id: userId,
-                  status: 'pending'
-                }
-              }) || 0,
+              pending_follow_ups: 0, // Temporaire - TODO: Implémenter plus tard
               recent_bacenta_meetings: recentMeetings || 0
             },
             bacenta_stats: {
