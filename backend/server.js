@@ -44,6 +44,32 @@ app.use('/uploads', express.static('uploads'));
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// Temporary seed route for testing
+app.get('/seed', async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const { User } = require('./models');
+    const usersData = [
+      { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
+      { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
+      { first_name: 'Beriole', last_name: 'Tsague', email: 'berioletsague@gmail.com', role: 'Bishop', password: 'Beriole' },
+    ];
+    for (const u of usersData) {
+      const password_hash = await bcrypt.hash(u.password, 10);
+      await User.create({
+        first_name: u.first_name,
+        last_name: u.last_name,
+        email: u.email,
+        role: u.role,
+        password_hash
+      });
+    }
+    res.json({ message: 'Test users seeded successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
