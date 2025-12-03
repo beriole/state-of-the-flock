@@ -62,7 +62,6 @@ app.get('/seed', async (req, res) => {
     const usersData = [
       { first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', role: 'Bishop', password: 'Password123' },
       { first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@example.com', role: 'Assisting_Overseer', password: 'Password123' },
-      { first_name: 'Beriole', last_name: 'Tsague', email: 'berioletsague@gmail.com', role: 'Bishop', password: 'Beriole' },
     ];
     for (const u of usersData) {
       const password_hash = await bcrypt.hash(u.password, 10);
