@@ -106,28 +106,38 @@ const dashboardController = {
             }
           });
 
-          // Présence récente (dernière semaine) - corrigé pour utiliser sunday_date
+          // Présence récente (dernière semaine) - version simplifiée
           const lastWeek = new Date();
           lastWeek.setDate(lastWeek.getDate() - 7);
 
-          const recentAttendance = await Attendance.findAll({
+          // D'abord récupérer les membres du leader
+          const leaderMembers = await Member.findAll({
             where: {
-              sunday_date: {
-                [sequelize.Op.gte]: lastWeek.toISOString().split('T')[0]
-              }
+              leader_id: userId,
+              is_active: true
             },
-            include: [{
-              model: Member,
-              as: 'member',
-              where: { leader_id: userId },
-              required: true
-            }]
+            attributes: ['id']
           });
 
-          const attendanceRecords = recentAttendance.length;
-          const presentCount = recentAttendance.filter(a => a.present === true).length;
-          const attendancePercentage = attendanceRecords > 0 ?
-            Math.round((presentCount / attendanceRecords) * 100) : 0;
+          const memberIds = leaderMembers.map(m => m.id);
+
+          let attendancePercentage = 0;
+          if (memberIds.length > 0) {
+            // Ensuite récupérer les présences de ces membres
+            const recentAttendance = await Attendance.findAll({
+              where: {
+                member_id: { [sequelize.Op.in]: memberIds },
+                sunday_date: {
+                  [sequelize.Op.gte]: lastWeek.toISOString().split('T')[0]
+                }
+              }
+            });
+
+            const attendanceRecords = recentAttendance.length;
+            const presentCount = recentAttendance.filter(a => a.present === true).length;
+            attendancePercentage = attendanceRecords > 0 ?
+              Math.round((presentCount / attendanceRecords) * 100) : 0;
+          }
 
           // Statistiques des réunions Bacenta
           const recentMeetings = await BacentaMeeting.count({
