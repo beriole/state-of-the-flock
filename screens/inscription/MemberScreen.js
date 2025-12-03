@@ -392,40 +392,37 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
         </html>
       `;
 
-      // Create PDF with error handling - use Downloads directory for better accessibility
-      const fileName = `Membres_Bacenta_${new Date().getTime()}`; // Remove .pdf extension as library adds it
+      // Create PDF with error handling
+      const fileName = `Membres_Bacenta_${new Date().getTime()}`;
 
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: '/storage/emulated/0/Download' // Use main Downloads directory at phone root
+        // Remove directory option to let it save to default temp location first
       };
 
       console.log('Generating PDF with options:', options);
-      console.log('RNHTMLtoPDF available:', !!RNHTMLtoPDF);
-      console.log('RNHTMLtoPDF.convert available:', typeof RNHTMLtoPDF.convert);
 
       try {
         const file = await RNHTMLtoPDF.convert(options);
-        console.log('PDF generated:', file);
+        console.log('PDF generated at temp location:', file.filePath);
 
-        // Validate file object
         if (!file || !file.filePath) {
-          console.error('PDF generation failed: invalid file object', file);
           throw new Error('PDF generation failed: no file path returned');
         }
 
-        // Use the generated file path
-        let accessibleFilePath = file.filePath;
-        console.log('PDF file path:', accessibleFilePath);
+        // Define target path in Downloads folder
+        const targetPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
 
-        // Since file sharing from private directories doesn't work on Android,
-        // we'll show the file location with clear instructions for manual access
-        console.log('PDF generated successfully, showing file location');
-        showFileLocation(accessibleFilePath);
+        // Move file to Downloads
+        await RNFS.moveFile(file.filePath, targetPath);
+        console.log('PDF moved to:', targetPath);
+
+        // Show success message with correct path
+        showFileLocation(targetPath);
 
       } catch (pdfError) {
-        console.error('PDF conversion error:', pdfError);
+        console.error('PDF conversion/move error:', pdfError);
 
         // Fallback: Show HTML content in an alert for debugging
         Alert.alert(
@@ -436,14 +433,13 @@ ${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du
             {
               text: 'Voir HTML',
               onPress: () => {
-                // Show first 500 characters of HTML for debugging
                 const htmlPreview = htmlContent.substring(0, 500) + '...';
                 Alert.alert('Contenu HTML', htmlPreview);
               }
             }
           ]
         );
-        throw pdfError; // Re-throw to be caught by outer catch
+        throw pdfError;
       }
 
     } catch (error) {

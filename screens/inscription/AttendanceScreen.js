@@ -784,34 +784,34 @@ const AttendanceScreen = () => {
       `;
 
       // Create PDF with consistent file naming and location
-      const fileName = `Presence_${dateKey}`; // Use date key for consistent naming
+      const fileName = `Presence_${dateKey}`;
 
       const options = {
         html: htmlContent,
         fileName: fileName,
-        directory: '/storage/emulated/0/Download' // Use main Downloads directory at phone root
+        // Remove directory option to let it save to default temp location first
       };
 
       console.log('Generating attendance PDF with options:', options);
-      console.log('RNHTMLtoPDF available:', !!RNHTMLtoPDF);
 
       try {
         const file = await RNHTMLtoPDF.convert(options);
-        console.log('Attendance PDF generated:', file);
+        console.log('Attendance PDF generated at temp location:', file.filePath);
 
         // Validate file object
         if (!file || !file.filePath) {
-          console.error('PDF generation failed: invalid file object', file);
           throw new Error('PDF generation failed: no file path returned');
         }
 
-        // Use the generated file path
-        let accessibleFilePath = file.filePath;
-        console.log('PDF file path:', accessibleFilePath);
+        // Define target path in Downloads folder
+        const targetPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
+
+        // Move file to Downloads
+        await RNFS.moveFile(file.filePath, targetPath);
+        console.log('Attendance PDF moved to:', targetPath);
 
         // Show file location with clear instructions
-        console.log('PDF generated successfully, showing file location');
-        showFileLocation(accessibleFilePath);
+        showFileLocation(targetPath);
 
       } catch (pdfError) {
         console.error('PDF conversion error:', pdfError);
