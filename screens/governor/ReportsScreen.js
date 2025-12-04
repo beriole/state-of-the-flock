@@ -116,14 +116,6 @@ const ReportsScreen = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color="#1F2937" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('governor.reports') || 'Rapports'}</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.filterContainer}>
                     {['1month', '3months', '6months'].map((p) => (

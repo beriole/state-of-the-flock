@@ -40,12 +40,14 @@ const MembersStack = () => {
   );
 };
 
+import ReportsTabNavigator from './screens/governor/ReportsTabNavigator';
+
 // Stack navigator for Governor's Home (Dashboard + Reports)
 const GovernorHomeStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="GovernorDashboardMain" component={GovernorDashboard} />
-      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Reports" component={ReportsTabNavigator} />
       <Stack.Screen name="BacentaLeaderManagement" component={BacentaLeaderManagement} />
     </Stack.Navigator>
   );

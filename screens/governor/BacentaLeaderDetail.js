@@ -27,7 +27,7 @@ const BacentaLeaderDetail = () => {
     const fetchLeaderStats = async () => {
         try {
             // Fetch dashboard stats specifically for this leader
-            const response = await dashboardAPI.getStats({ user_id: leaderId });
+            const response = await dashboardAPI.getLeaderStats(leaderId);
             setStats(response.data);
         } catch (error) {
             console.error('Error fetching leader stats:', error);

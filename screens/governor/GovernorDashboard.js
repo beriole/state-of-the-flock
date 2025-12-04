@@ -156,7 +156,7 @@ const GovernorDashboard = () => {
 
                         <TouchableOpacity
                             style={styles.actionButton}
-                            onPress={() => navigation.navigate('ReportsScreen')}
+                            onPress={() => navigation.navigate('Reports')}
                         >
                             <View style={[styles.actionIcon, { backgroundColor: '#16A34A' }]}>
                                 <Icon name="chart-bar" size={24} color="#FFFFFF" />
@@ -191,143 +191,143 @@ const GovernorDashboard = () => {
 };
 
 const styles = StyleSheet.create({
-container: {
-flex: 1,
-backgroundColor: '#F9FAFB',
-},
-loadingContainer: {
-flex: 1,
-justifyContent: 'center',
-alignItems: 'center',
-},
-header: {
-backgroundColor: '#DC2626',
-height: 140,
-borderBottomLeftRadius: 24,
-borderBottomRightRadius: 24,
-overflow: 'hidden',
-position: 'relative',
-},
-headerBackground: {
-position: 'absolute',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-backgroundColor: '#DC2626',
-opacity: 0.95,
-},
-headerContent: {
-flex: 1,
-paddingHorizontal: 20,
-paddingTop: 50,
-paddingBottom: 20,
-flexDirection: 'row',
-alignItems: 'center',
-justifyContent: 'space-between',
-},
-headerLeft: {
-flex: 1,
-},
-welcomeText: {
-fontSize: 14,
-color: '#FFFFFF',
-},
-userName: {
-fontSize: 20,
-fontWeight: 'bold',
-color: '#FFFFFF',
-},
-userRole: {
-fontSize: 14,
-color: '#FFFFFF',
-fontWeight: '500',
-},
-profileButton: {
-padding: 8,
-},
-scrollContent: {
-flex: 1,
-paddingHorizontal: 16,
-marginTop: -20,
-},
-statsGrid: {
-flexDirection: 'row',
-flexWrap: 'wrap',
-justifyContent: 'space-between',
-marginBottom: 24,
-},
-statCard: {
-width: '48%',
-backgroundColor: '#FFFFFF',
-padding: 16,
-borderRadius: 12,
-marginBottom: 16,
-elevation: 2,
-shadowColor: '#000',
-shadowOffset: { width: 0, height: 1 },
-shadowOpacity: 0.1,
-shadowRadius: 2,
-},
-iconContainer: {
-width: 40,
-height: 40,
-borderRadius: 20,
-justifyContent: 'center',
-alignItems: 'center',
-marginBottom: 12,
-},
-statValue: {
-fontSize: 24,
-fontWeight: 'bold',
-color: '#1F2937',
-marginBottom: 4,
-},
-statTitle: {
-fontSize: 12,
-color: '#6B7280',
-},
-section: {
-marginBottom: 24,
-},
-sectionTitle: {
-fontSize: 18,
-fontWeight: 'bold',
-color: '#1F2937',
-marginBottom: 16,
-},
-actionsGrid: {
-flexDirection: 'row',
-flexWrap: 'wrap',
-gap: 16,
-},
-actionButton: {
-flex: 1,
-minWidth: '45%',
-backgroundColor: '#FFFFFF',
-padding: 16,
-borderRadius: 12,
-alignItems: 'center',
-elevation: 2,
-shadowColor: '#000',
-shadowOffset: { width: 0, height: 1 },
-shadowOpacity: 0.1,
-shadowRadius: 2,
-},
-actionIcon: {
-width: 48,
-height: 48,
-borderRadius: 24,
-justifyContent: 'center',
-alignItems: 'center',
-marginBottom: 12,
-},
-actionText: {
-fontSize: 14,
-fontWeight: '500',
-color: '#374151',
-textAlign: 'center',
-},
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    header: {
+        backgroundColor: '#DC2626',
+        height: 140,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    headerBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#DC2626',
+        opacity: 0.95,
+    },
+    headerContent: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 50,
+        paddingBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerLeft: {
+        flex: 1,
+    },
+    welcomeText: {
+        fontSize: 14,
+        color: '#FFFFFF',
+    },
+    userName: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    userRole: {
+        fontSize: 14,
+        color: '#FFFFFF',
+        fontWeight: '500',
+    },
+    profileButton: {
+        padding: 8,
+    },
+    scrollContent: {
+        flex: 1,
+        paddingHorizontal: 16,
+        marginTop: -20,
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+    },
+    statCard: {
+        width: '48%',
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    statTitle: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+        marginBottom: 16,
+    },
+    actionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+    },
+    actionButton: {
+        flex: 1,
+        minWidth: '45%',
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    actionIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    actionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#374151',
+        textAlign: 'center',
+    },
 });
 
 export default GovernorDashboard;
