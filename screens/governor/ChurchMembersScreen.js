@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Feather from 'react-native-vector-icons/Feather';
@@ -78,7 +79,7 @@ const ChurchMembersScreen = () => {
         is_active: true
       });
 
-      const membersData = response.data.members || [];
+      const membersData = response.data?.members || [];
       setMembers(membersData);
       setFilteredMembers(membersData);
 
@@ -102,6 +103,7 @@ const ChurchMembersScreen = () => {
   }, []);
 
   const calculateStats = (membersData) => {
+    if (!Array.isArray(membersData)) return;
     const stats = {
       total: membersData.length,
       byZone: {},
@@ -127,6 +129,7 @@ const ChurchMembersScreen = () => {
   };
 
   const extractFiltersData = (membersData) => {
+    if (!Array.isArray(membersData)) return;
     // Zones uniques
     const uniqueZones = [...new Set(membersData.map(m => m.area?.name).filter(Boolean))]
       .map(name => ({
@@ -152,9 +155,9 @@ const ChurchMembersScreen = () => {
     // Filtre par recherche
     if (searchQuery) {
       filtered = filtered.filter(member =>
-        member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.phone_primary?.includes(searchQuery)
+        (member.first_name && member.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.last_name && member.last_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.phone_primary && member.phone_primary.includes(searchQuery))
       );
     }
 

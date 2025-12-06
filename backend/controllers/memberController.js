@@ -27,6 +27,8 @@ const memberController = {
         whereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
+      } else if (req.user.role === 'Governor' && req.user.area_id) {
+        whereClause.area_id = req.user.area_id;
       }
 
       // Filtres supplémentaires
