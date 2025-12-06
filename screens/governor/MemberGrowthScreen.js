@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import { reportAPI } from '../../utils/api';
 import Toast from 'react-native-toast-message';
 import LinearGradient from 'react-native-linear-gradient';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const screenWidth = Dimensions.get('window').width;
@@ -44,10 +43,7 @@ const FilterPill = ({ label, value, period, setPeriod }) => (
 );
 
 const StatCard = ({ label, value, icon, color, delay }) => (
-    <Animated.View
-        entering={FadeInDown.delay(delay).springify()}
-        style={styles.statCardContainer}
-    >
+    <View style={styles.statCardContainer}>
         <View style={styles.statCard}>
             <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
                 <Icon name={icon} size={24} color={color} />
@@ -57,7 +53,7 @@ const StatCard = ({ label, value, icon, color, delay }) => (
                 <Text style={[styles.statValue, { color }]}>{value}</Text>
             </View>
         </View>
-    </Animated.View>
+    </View>
 );
 
 const MemberGrowthScreen = () => {
@@ -119,10 +115,10 @@ const MemberGrowthScreen = () => {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.headerSection}>
+                <View style={styles.headerSection}>
                     <Text style={styles.mainTitle}>Croissance de l'Église</Text>
                     <Text style={styles.subTitle}>Suivez l'évolution de vos membres</Text>
-                </Animated.View>
+                </View>
 
                 <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
@@ -140,7 +136,7 @@ const MemberGrowthScreen = () => {
                 ) : (
                     <>
                         {data && data.chart_data && (
-                            <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.chartCard}>
+                            <View style={styles.chartCard}>
                                 <View style={styles.chartHeader}>
                                     <View>
                                         <Text style={styles.chartTitle}>Évolution Totale</Text>
@@ -169,7 +165,7 @@ const MemberGrowthScreen = () => {
                                     withHorizontalLabels={true}
                                     yAxisInterval={1}
                                 />
-                            </Animated.View>
+                            </View>
                         )}
 
                         <View style={styles.statsGrid}>

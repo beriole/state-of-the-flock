@@ -25,7 +25,7 @@ const ReportsTabNavigator = () => {
         }}
       >
         <Tab.Screen
-          name="Reports"
+          name="AttendanceReports"
           component={ReportsScreen}
           options={{
             tabBarLabel: t('reports.attendance') || 'Présence',
