@@ -155,33 +155,22 @@ const reportController = {
         leader: meeting.leader,
         location: meeting.location,
         total_members_present: meeting.total_members_present,
-      }, {});
+      }));
 
-      // Statistiques par appelant
-      const callerStats = callLogs.reduce((acc, log) => {
-        const callerName = `${log.caller.first_name} ${log.caller.last_name}`;
-        acc[callerName] = (acc[callerName] || 0) + 1;
-        return acc;
-      }, {});
+      // Statistiques
+      const totalMeetings = meetings.length;
+      const totalAttendance = meetings.reduce((sum, meeting) => sum + (meeting.total_members_present || 0), 0);
+      const averageAttendance = totalMeetings > 0 ? Math.round(totalAttendance / totalMeetings) : 0;
+      const totalOffering = meetings.reduce((sum, meeting) => sum + (meeting.total_offering || 0), 0);
 
       res.json({
         period: { start_date, end_date },
         summary: {
-          total_calls: callLogs.length,
-          outcome_stats: outcomeStats,
-          caller_stats: callerStats,
-          average_calls_per_day: callLogs.length > 0 ? Math.round(callLogs.length / ((new Date(end_date) - new Date(start_date)) / (1000 * 60 * 60 * 24))) : 0
+          total_meetings: totalMeetings,
+          average_attendance: averageAttendance,
+          total_offering: totalOffering
         },
-        call_logs: callLogs.map(log => ({
-          id: log.id,
-          call_date: log.call_date,
-          member: log.member,
-          caller: log.caller,
-          outcome: log.outcome,
-          contact_method: log.contact_method,
-          call_duration: log.call_duration,
-          next_followup_date: log.next_followup_date
-        }))
+        meetings: report
       });
     } catch (error) {
       console.error('Get call log report error:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -7,7 +7,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Dimensions,
-    Platform
 } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { useTranslation } from 'react-i18next';
@@ -19,18 +18,60 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const screenWidth = Dimensions.get('window').width;
 
+const FilterPill = ({ label, value, period, setPeriod }) => (
+    <TouchableOpacity
+        onPress={() => setPeriod(value)}
+        style={[
+            styles.filterPill,
+            period === value && styles.filterPillActive
+        ]}
+    >
+        {period === value && (
+            <LinearGradient
+                colors={['#DC2626', '#B91C1C']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+        )}
+        <Text style={[
+            styles.filterText,
+            period === value && styles.filterTextActive
+        ]}>
+            {label}
+        </Text>
+    </TouchableOpacity>
+);
+
+const StatCard = ({ label, value, icon, color, delay }) => (
+    <Animated.View
+        entering={FadeInDown.delay(delay).springify()}
+        style={styles.statCardContainer}
+    >
+        <View style={styles.statCard}>
+            <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+                <Icon name={icon} size={24} color={color} />
+            </View>
+            <View>
+                <Text style={styles.statLabel}>{label}</Text>
+                <Text style={[styles.statValue, { color }]}>{value}</Text>
+            </View>
+        </View>
+    </Animated.View>
+);
+
 const MemberGrowthScreen = () => {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [period, setPeriod] = useState('3months'); // 1month, 3months, 6months, 1year
-    const [groupBy, setGroupBy] = useState('global'); // global, region
+    const groupBy = 'global' // global, region
 
     useEffect(() => {
         fetchGrowthReport();
-    }, [period, groupBy]);
+    }, [fetchGrowthReport]);
 
-    const fetchGrowthReport = async () => {
+    const fetchGrowthReport = useCallback(async () => {
         setLoading(true);
         try {
             const response = await reportAPI.getMemberGrowthReport({ period, group_by: groupBy });
@@ -45,73 +86,32 @@ const MemberGrowthScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [period, t]);
 
     const chartConfig = {
-        backgroundGradientFrom: "#ffffff",
-        backgroundGradientTo: "#ffffff",
-        fillShadowGradientFrom: "#DC2626",
-        fillShadowGradientTo: "#ffffff",
+        backgroundGradientFrom: '#ffffff',
+        backgroundGradientTo: '#ffffff',
+        fillShadowGradientFrom: '#DC2626',
+        fillShadowGradientTo: '#ffffff',
         fillShadowGradientOpacity: 0.3,
         decimalPlaces: 0,
         color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})`,
         labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
         style: {
-            borderRadius: 24
+            borderRadius: 24,
         },
         propsForDots: {
-            r: "5",
-            strokeWidth: "2",
-            stroke: "#DC2626"
+            r: '5',
+            strokeWidth: '2',
+            stroke: '#DC2626',
         },
         propsForBackgroundLines: {
-            strokeDasharray: "", // solid lines
-            stroke: "#E5E7EB",
-            strokeWidth: 1
-        }
+            strokeDasharray: '', // solid lines
+            stroke: '#E5E7EB',
+            strokeWidth: 1,
+        },
     };
 
-    const FilterPill = ({ label, value }) => (
-        <TouchableOpacity
-            onPress={() => setPeriod(value)}
-            style={[
-                styles.filterPill,
-                period === value && styles.filterPillActive
-            ]}
-        >
-            {period === value && (
-                <LinearGradient
-                    colors={['#DC2626', '#B91C1C']}
-                    style={StyleSheet.absoluteFill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                />
-            )}
-            <Text style={[
-                styles.filterText,
-                period === value && styles.filterTextActive
-            ]}>
-                {label}
-            </Text>
-        </TouchableOpacity>
-    );
-
-    const StatCard = ({ label, value, icon, color, delay }) => (
-        <Animated.View
-            entering={FadeInDown.delay(delay).springify()}
-            style={styles.statCardContainer}
-        >
-            <View style={styles.statCard}>
-                <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
-                    <Icon name={icon} size={24} color={color} />
-                </View>
-                <View>
-                    <Text style={styles.statLabel}>{label}</Text>
-                    <Text style={[styles.statValue, { color }]}>{value}</Text>
-                </View>
-            </View>
-        </Animated.View>
-    );
 
     return (
         <View style={styles.container}>
@@ -126,10 +126,10 @@ const MemberGrowthScreen = () => {
 
                 <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                        <FilterPill label="1 Mois" value="1month" />
-                        <FilterPill label="3 Mois" value="3months" />
-                        <FilterPill label="6 Mois" value="6months" />
-                        <FilterPill label="1 An" value="1year" />
+                        <FilterPill label="1 Mois" value="1month" period={period} setPeriod={setPeriod} />
+                        <FilterPill label="3 Mois" value="3months" period={period} setPeriod={setPeriod} />
+                        <FilterPill label="6 Mois" value="6months" period={period} setPeriod={setPeriod} />
+                        <FilterPill label="1 An" value="1year" period={period} setPeriod={setPeriod} />
                     </ScrollView>
                 </View>
 
@@ -197,7 +197,7 @@ const MemberGrowthScreen = () => {
                         </View>
                     </>
                 )}
-                <View style={{ height: 40 }} />
+                <View style={styles.bottomSpacer} />
             </ScrollView>
         </View>
     );
@@ -348,7 +348,10 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 20,
         fontWeight: '800',
-    }
+    },
+    bottomSpacer: {
+        height: 40,
+    },
 });
 
 export default MemberGrowthScreen;
