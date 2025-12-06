@@ -79,7 +79,7 @@ const ChurchMembersScreen = () => {
         is_active: true
       });
 
-      const membersData = response.data?.members || [];
+      const membersData = (response.data?.members || []).filter(item => item && typeof item === 'object' && item.id);
       setMembers(membersData);
       setFilteredMembers(membersData);
 
@@ -112,6 +112,7 @@ const ChurchMembersScreen = () => {
     };
 
     membersData.forEach(member => {
+      if (!member || typeof member !== 'object') return;
       // Par zone
       const zoneName = member.area?.name || 'Non assigné';
       stats.byZone[zoneName] = (stats.byZone[zoneName] || 0) + 1;
@@ -150,6 +151,10 @@ const ChurchMembersScreen = () => {
   };
 
   const applyFilters = useCallback(() => {
+    if (!Array.isArray(members)) {
+      setFilteredMembers([]);
+      return;
+    }
     let filtered = [...members];
 
     // Filtre par recherche
@@ -220,67 +225,63 @@ const ChurchMembersScreen = () => {
     }
   };
 
-  const renderMemberItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.memberCard}
-      onPress={() => {
-        setSelectedMember(item);
-        setShowActionsModal(true);
-      }}
-    >
-      <View style={styles.memberHeader}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {item.first_name[0]}{item.last_name[0]}
-          </Text>
-        </View>
-        <View style={styles.memberInfo}>
-          <Text style={styles.memberName}>
-            {item.first_name} {item.last_name}
-          </Text>
-          <Text style={styles.memberPhone}>
-            {item.phone_primary || 'Pas de téléphone'}
-          </Text>
-          <View style={styles.memberMeta}>
-            <Text style={styles.memberZone}>
-              {item.area?.name || 'Zone non assignée'}
-            </Text>
-            <Text style={styles.memberLeader}>
-              {item.leader ? `${item.leader.first_name} ${item.leader.last_name}` : 'Leader non assigné'}
+  const renderMemberItem = ({ item }) => {
+    if (!item || !item.id) return null;
+    return (
+      <TouchableOpacity
+        style={styles.memberCard}
+        onPress={() => {
+          setSelectedMember(item);
+          setShowActionsModal(true);
+        }}
+      >
+        <View style={styles.memberHeader}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {(item.first_name || '?')[0]}{(item.last_name || '?')[0]}
             </Text>
           </View>
-        </View>
-        <View style={styles.memberStatus}>
-          <View style={[styles.stateBadge, { backgroundColor: getStateColor(item.state) }]}>
-            <Text style={styles.stateText}>{item.state || 'Sheep'}</Text>
+          <View style={styles.memberInfo}>
+            <Text style={styles.memberName}>
+              {item.first_name || 'N/A'} {item.last_name || 'N/A'}
+            </Text>
+            <Text style={styles.memberPhone}>
+              {item.phone_primary || 'Pas de téléphone'}
+            </Text>
+            <View style={styles.memberMeta}>
+              <Text style={styles.memberZone}>
+                {item.area?.name || 'Zone non assignée'}
+              </Text>
+              <Text style={styles.memberLeader}>
+                {item.leader ? `${item.leader.first_name || 'N/A'} ${item.leader.last_name || 'N/A'}` : 'Leader non assigné'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.memberStatus}>
+            <View style={[styles.stateBadge, { backgroundColor: getStateColor(item.state) }]}>
+              <Text style={styles.stateText}>{item.state || 'Sheep'}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.memberActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.callButton]}
-          onPress={() => handleCall(item.phone_primary)}
-        >
-          <Icon name="phone" size={16} color={colors.card} />
-        </TouchableOpacity>
+        <View style={styles.memberActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.callButton]}
+            onPress={() => handleCall(item.phone_primary)}
+          >
+            <Icon name="phone" size={16} color={colors.card} />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.whatsappButton]}
-          onPress={() => handleWhatsApp(item.phone_primary, `${item.first_name} ${item.last_name}`)}
-        >
-          <Icon name="whatsapp" size={16} color={colors.card} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.detailButton]}
-          onPress={() => navigation.navigate('MemberDetail', { memberId: item.id })}
-        >
-          <Icon name="eye" size={16} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+          <TouchableOpacity
+            style={[styles.actionButton, styles.whatsappButton]}
+            onPress={() => handleWhatsApp(item.phone_primary, `${item.first_name || 'N/A'} ${item.last_name || 'N/A'}`)}
+          >
+            <Icon name="whatsapp" size={16} color={colors.card} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderStatsCard = ({ title, value, icon, color }) => (
     <View style={[styles.statsCard, { borderLeftColor: color }]}>
@@ -349,7 +350,7 @@ const ChurchMembersScreen = () => {
           {renderStatsCard({
             title: 'Sheep',
             value: stats.byState.Sheep || 0,
-            icon: 'sheep',
+            icon: 'baby-face',
             color: colors.info
           })}
           {renderStatsCard({
@@ -427,7 +428,7 @@ const ChurchMembersScreen = () => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Icon name="account-group-off" size={64} color={colors.border} />
+              <Icon name="account-group" size={64} color={colors.border} />
               <Text style={styles.emptyTitle}>Aucun membre trouvé</Text>
               <Text style={styles.emptyText}>
                 {searchQuery || selectedZone || selectedLeader
@@ -534,7 +535,7 @@ const ChurchMembersScreen = () => {
             {selectedMember && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Actions pour {selectedMember.first_name}</Text>
+                  <Text style={styles.modalTitle}>Actions pour {selectedMember.first_name || 'N/A'}</Text>
                   <TouchableOpacity onPress={() => setShowActionsModal(false)}>
                     <Icon name="close" size={24} color={colors.text} />
                   </TouchableOpacity>
@@ -543,7 +544,7 @@ const ChurchMembersScreen = () => {
                 <View style={styles.modalBody}>
                   <View style={styles.memberDetail}>
                     <Text style={styles.detailName}>
-                      {selectedMember.first_name} {selectedMember.last_name}
+                      {selectedMember.first_name || 'N/A'} {selectedMember.last_name || 'N/A'}
                     </Text>
                     <Text style={styles.detailPhone}>
                       {selectedMember.phone_primary || 'Pas de téléphone'}
@@ -552,7 +553,7 @@ const ChurchMembersScreen = () => {
                       Zone: {selectedMember.area?.name || 'Non assignée'}
                     </Text>
                     <Text style={styles.detailLeader}>
-                      Leader: {selectedMember.leader ? `${selectedMember.leader.first_name} ${selectedMember.leader.last_name}` : 'Non assigné'}
+                      Leader: {selectedMember.leader ? `${selectedMember.leader.first_name || 'N/A'} ${selectedMember.leader.last_name || 'N/A'}` : 'Non assigné'}
                     </Text>
                   </View>
 
@@ -571,23 +572,12 @@ const ChurchMembersScreen = () => {
                     <TouchableOpacity
                       style={[styles.modalAction, styles.whatsappAction]}
                       onPress={() => {
-                        handleWhatsApp(selectedMember.phone_primary, `${selectedMember.first_name} ${selectedMember.last_name}`);
+                        handleWhatsApp(selectedMember.phone_primary, `${selectedMember.first_name || 'N/A'} ${selectedMember.last_name || 'N/A'}`);
                         setShowActionsModal(false);
                       }}
                     >
                       <Icon name="whatsapp" size={20} color={colors.card} />
                       <Text style={styles.modalActionText}>WhatsApp</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.modalAction, styles.detailAction]}
-                      onPress={() => {
-                        setShowActionsModal(false);
-                        navigation.navigate('MemberDetail', { memberId: selectedMember.id });
-                      }}
-                    >
-                      <Icon name="eye" size={20} color={colors.card} />
-                      <Text style={styles.modalActionText}>Détails</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -659,7 +649,6 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     paddingHorizontal: 16,
-    gap: 12,
   },
   statsCard: {
     backgroundColor: '#FFFFFF',
@@ -670,6 +659,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     minWidth: 100,
+    marginRight: 12,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
