@@ -1,5 +1,6 @@
 // controllers/dashboardController.js
 const { Area, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 const dashboardController = {
   // Tableau de bord du leader - VERSION AVEC CALCULS RÉELS
@@ -39,7 +40,7 @@ const dashboardController = {
           const weekAttendance = await Attendance.findAll({
             where: {
               sunday_date: {
-                [sequelize.Op.gte]: sunday.toISOString().split('T')[0]
+                [Op.gte]: sunday.toISOString().split('T')[0]
               }
             }
           });
@@ -52,7 +53,7 @@ const dashboardController = {
           const recentCallLogs = await CallLog.count({
             where: {
               created_at: {
-                [sequelize.Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
               }
             }
           });
@@ -60,7 +61,7 @@ const dashboardController = {
           const recentBacentaMeetings = await BacentaMeeting.count({
             where: {
               created_at: {
-                [sequelize.Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
               }
             }
           });

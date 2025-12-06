@@ -1,5 +1,5 @@
 // controllers/reportController.js
-const { Member, Attendance, CallLog, BacentaMeeting, User, Area } = require('../models');
+const { Member, Attendance, CallLog, BacentaMeeting, BacentaAttendance, User, Area } = require('../models');
 const { Op } = require('sequelize');
 
 const reportController = {
@@ -35,14 +35,14 @@ const reportController = {
         where: memberWhereClause,
         attributes: [
           'leader_id',
-          [Member.sequelize.fn('COUNT', Member.sequelize.col('id')), 'total_members']
+          [Member.sequelize.fn('COUNT', Member.sequelize.col('Member.id')), 'total_members']
         ],
         include: [{
           model: User,
           as: 'leader',
           attributes: ['id', 'first_name', 'last_name']
         }],
-        group: ['leader_id'],
+        group: ['Member.leader_id'],
         raw: true
       });
 
