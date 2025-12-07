@@ -377,9 +377,118 @@ const reportController = {
   // Rapport de présence pour les gouverneurs
   getGovernorAttendanceReport: async (req, res) => {
     try {
-      // Pour l'instant, retourner les mêmes données que getAttendanceReport
-      // TODO: Implémenter une logique spécifique pour les gouverneurs
-      return await reportController.getAttendanceReport(req, res);
+      const { start_date, end_date, group_by = 'region', view = 'summary' } = req.query;
+
+      const whereClause = {};
+      const memberWhereClause = {};
+
+      // Filtrage basé sur le rôle du gouverneur
+      if (req.user.role === 'Governor' && req.user.area_id) {
+        memberWhereClause.area_id = req.user.area_id;
+      }
+
+      // Filtre de date
+      if (start_date && end_date) {
+        whereClause.sunday_date = {
+          [Op.between]: [start_date, end_date]
+        };
+      }
+
+      if (view === 'summary') {
+        // Vue résumé : grouper par région/leader/centre
+        let groupField, includeModel, attributes;
+
+        switch (group_by) {
+          case 'region':
+            groupField = 'area_id';
+            includeModel = { model: Area, as: 'area', attributes: ['id', 'name'] };
+            attributes = ['area_id'];
+            break;
+          case 'leader':
+            groupField = 'leader_id';
+            includeModel = { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] };
+            attributes = ['leader_id'];
+            break;
+          case 'center_leader':
+            // Pour centre, on peut grouper par leader aussi pour l'instant
+            groupField = 'leader_id';
+            includeModel = { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] };
+            attributes = ['leader_id'];
+            break;
+          default:
+            groupField = 'area_id';
+            includeModel = { model: Area, as: 'area', attributes: ['id', 'name'] };
+            attributes = ['area_id'];
+        }
+
+        const attendanceStats = await Attendance.findAll({
+          where: whereClause,
+          attributes: [
+            ...attributes,
+            [Attendance.sequelize.fn('COUNT', Attendance.sequelize.col('Attendance.id')), 'total_present'],
+            [Attendance.sequelize.fn('COUNT', Attendance.sequelize.fn('DISTINCT', Attendance.sequelize.col('member_id'))), 'unique_attendees']
+          ],
+          include: [
+            includeModel,
+            {
+              model: Member,
+              as: 'member',
+              where: memberWhereClause,
+              attributes: []
+            }
+          ],
+          group: attributes,
+          raw: true
+        });
+
+        const data = attendanceStats.map(stat => {
+          let label, subLabel;
+          if (group_by === 'region') {
+            label = stat['area.name'] || 'Région inconnue';
+            subLabel = null;
+          } else {
+            label = `${stat['leader.first_name']} ${stat['leader.last_name']}`;
+            subLabel = null;
+          }
+
+          return {
+            label,
+            subLabel,
+            total_present: parseInt(stat.total_present) || 0,
+            unique_attendees: parseInt(stat.unique_attendees) || 0
+          };
+        });
+
+        res.json({ data });
+      } else {
+        // Vue détails : liste des présences individuelles
+        const attendances = await Attendance.findAll({
+          where: whereClause,
+          include: [
+            {
+              model: Member,
+              as: 'member',
+              where: memberWhereClause,
+              include: [
+                { model: Area, as: 'area', attributes: ['name'] },
+                { model: User, as: 'leader', attributes: ['first_name', 'last_name'] }
+              ]
+            }
+          ],
+          order: [['sunday_date', 'DESC'], ['member_id', 'ASC']]
+        });
+
+        const data = attendances.map(attendance => ({
+          id: attendance.id,
+          date: attendance.sunday_date,
+          member_name: `${attendance.member.first_name} ${attendance.member.last_name}`,
+          area_name: attendance.member.area?.name || 'N/A',
+          leader_name: `${attendance.member.leader?.first_name || 'N/A'} ${attendance.member.leader?.last_name || 'N/A'}`,
+          status: attendance.present ? 'Présent' : 'Absent'
+        }));
+
+        res.json({ data });
+      }
     } catch (error) {
       console.error('Get governor attendance report error:', error);
       res.status(500).json({ error: 'Erreur lors de la génération du rapport de présence gouverneur' });
