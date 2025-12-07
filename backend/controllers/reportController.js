@@ -35,15 +35,14 @@ const reportController = {
         where: memberWhereClause,
         attributes: [
           'leader_id',
-          [Member.sequelize.fn('COUNT', Member.sequelize.col('Member.id')), 'total_members']
+          [Member.sequelize.fn('COUNT', Member.sequelize.col('id')), 'total_members']
         ],
         include: [{
           model: User,
           as: 'leader',
           attributes: ['id', 'first_name', 'last_name']
         }],
-        group: ['Member.leader_id'],
-        raw: true
+        group: ['leader_id', 'leader.id', 'leader.first_name', 'leader.last_name']
       });
 
       // Statistiques de présence

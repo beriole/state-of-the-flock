@@ -121,6 +121,16 @@ export const callLogAPI = {
   assignAreaToUser: (data) => api.post('/areas/assign', data),
 };
 
+// Fonctions API pour les zones
+export const areaAPI = {
+  getAreas: (params = {}) => api.get('/areas', { params }),
+  getAreaById: (id) => api.get(`/areas/${id}`),
+  createArea: (data) => api.post('/areas', data),
+  updateArea: (id, data) => api.put(`/areas/${id}`, data),
+  deleteArea: (id) => api.delete(`/areas/${id}`),
+  assignAreaToUser: (data) => api.post('/areas/assign', data),
+};
+
 // Fonctions API pour les Gouverneurs
 export const governorAPI = {
   getBacentaLeaders: (params = {}) => api.get('/users', { params: { ...params, role: 'Bacenta_Leader' } }),
