@@ -35,14 +35,15 @@ const reportController = {
         where: memberWhereClause,
         attributes: [
           'leader_id',
-          [Member.sequelize.fn('COUNT', Member.sequelize.col('id')), 'total_members']
+          [Member.sequelize.fn('COUNT', Member.sequelize.col('Member.id')), 'total_members']
         ],
         include: [{
           model: User,
           as: 'leader',
           attributes: ['id', 'first_name', 'last_name']
         }],
-        group: ['leader_id', 'leader.id', 'leader.first_name', 'leader.last_name']
+        group: ['Member.leader_id'],
+        raw: true
       });
 
       // Statistiques de présence
@@ -370,6 +371,18 @@ const reportController = {
     } catch (error) {
       console.error('Get member growth report error:', error);
       res.status(500).json({ error: 'Erreur lors de la génération du rapport de croissance' });
+    }
+  },
+
+  // Rapport de présence pour les gouverneurs
+  getGovernorAttendanceReport: async (req, res) => {
+    try {
+      // Pour l'instant, retourner les mêmes données que getAttendanceReport
+      // TODO: Implémenter une logique spécifique pour les gouverneurs
+      return await reportController.getAttendanceReport(req, res);
+    } catch (error) {
+      console.error('Get governor attendance report error:', error);
+      res.status(500).json({ error: 'Erreur lors de la génération du rapport de présence gouverneur' });
     }
   }
 };
