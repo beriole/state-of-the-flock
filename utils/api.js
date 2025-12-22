@@ -1,5 +1,4 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL du backend
 // Production URL (Render deployment)
@@ -23,9 +22,9 @@ const api = axios.create({
 
 // Intercepteur pour ajouter le token automatiquement
 api.interceptors.request.use(
-  async (config) => {
+  (config) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = localStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -56,8 +55,8 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       // Token expiré ou invalide
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       // TODO: Rediriger vers login
     }
 

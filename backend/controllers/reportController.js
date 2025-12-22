@@ -1,5 +1,5 @@
 // controllers/reportController.js
-const { Member, Attendance, CallLog, BacentaMeeting, BacentaAttendance, User, Area } = require('../models');
+const { Member, Attendance, CallLog, BacentaMeeting, User, Area, BacentaAttendance, BacentaOffering } = require('../models');
 const { Op } = require('sequelize');
 
 const reportController = {
@@ -63,18 +63,7 @@ const reportController = {
       });
 
       // Membres avec plus de 2 absences consécutives
-      // TODO: Fix this query - it's causing 500 errors
-      const consecutiveAbsences = [];
-      // const consecutiveAbsences = await Member.findAll({
-      //   where: memberWhereClause,
-      //   include: [{
-      //     model: Attendance,
-      //     as: 'attendances',
-      //     where: whereClause,
-      //     required: true
-      //   }],
-      //   having: Member.sequelize.literal('COUNT(CASE WHEN attendances.present = 0 THEN 1 END) >= 2')
-      // });
+      const consecutiveAbsences = []; // Temporairement vide pour éviter les erreurs 500 en attendant un fix SQL
 
       const totalRecords = parseInt(attendanceStats[0]?.total_records || 0);
       const totalPresent = parseInt(attendanceStats[0]?.total_present || 0);
@@ -150,29 +139,59 @@ const reportController = {
         order: [['meeting_date', 'DESC']]
       });
 
-      const report = meetings.map(meeting => ({
-        id: meeting.id,
-        meeting_date: meeting.meeting_date,
-        meeting_type: meeting.meeting_type,
-        leader: meeting.leader,
-        location: meeting.location,
-        total_members_present: meeting.total_members_present,
-      }));
+      res.json({
+        period: { start_date, end_date },
+        meetings: meetings.map(meeting => ({
+          id: meeting.id,
+          meeting_date: meeting.meeting_date,
+          meeting_type: meeting.meeting_type,
+          leader: meeting.leader,
+          location: meeting.location,
+          total_members_present: meeting.total_members_present,
+        }))
+      });
+    } catch (error) {
+      console.error('Get bacenta report error:', error);
+      res.status(500).json({ error: 'Erreur lors de la génération du rapport Bacenta' });
+    }
+  },
 
-      // Statistiques
-      const totalMeetings = meetings.length;
-      const totalAttendance = meetings.reduce((sum, meeting) => sum + (meeting.total_members_present || 0), 0);
-      const averageAttendance = totalMeetings > 0 ? Math.round(totalAttendance / totalMeetings) : 0;
-      const totalOffering = meetings.reduce((sum, meeting) => sum + (meeting.total_offering || 0), 0);
+  // Rapport d'appels
+  getCallLogReport: async (req, res) => {
+    try {
+      const { start_date, end_date, leader_id } = req.query;
+      const whereClause = {};
+
+      if (req.user.role === 'Bacenta_Leader') {
+        whereClause.caller_id = req.user.userId;
+      }
+      if (leader_id) whereClause.caller_id = leader_id;
+
+      if (start_date && end_date) {
+        whereClause.call_date = { [Op.between]: [start_date, end_date] };
+      }
+
+      const callLogs = await CallLog.findAll({
+        where: whereClause,
+        include: [
+          { model: User, as: 'caller' },
+          { model: Member, as: 'member' }
+        ],
+        order: [['call_date', 'DESC']]
+      });
+
+      const outcomeStats = callLogs.reduce((acc, log) => {
+        acc[log.outcome] = (acc[log.outcome] || 0) + 1;
+        return acc;
+      }, {});
 
       res.json({
         period: { start_date, end_date },
         summary: {
-          total_meetings: totalMeetings,
-          average_attendance: averageAttendance,
-          total_offering: totalOffering
+          total_calls: callLogs.length,
+          outcome_stats: outcomeStats
         },
-        meetings: report
+        call_logs: callLogs
       });
     } catch (error) {
       console.error('Get call log report error:', error);
@@ -224,7 +243,6 @@ const reportController = {
       }
 
       if (format === 'csv') {
-        // Implémentation basique de conversion CSV
         const json2csv = require('json2csv').parse;
         const csv = json2csv(data);
         res.header('Content-Type', 'text/csv');
@@ -247,34 +265,23 @@ const reportController = {
   // Rapport de croissance des membres
   getMemberGrowthReport: async (req, res) => {
     try {
-      const { period = '3months', group_by = 'global' } = req.query; // period: 1month, 3months, 6months, 1year
+      const { period = '3months' } = req.query;
 
-      // Calculer la date de début
       const endDate = new Date();
       const startDate = new Date();
       if (period === '1month') startDate.setMonth(endDate.getMonth() - 1);
       else if (period === '3months') startDate.setMonth(endDate.getMonth() - 3);
       else if (period === '6months') startDate.setMonth(endDate.getMonth() - 6);
       else if (period === '1year') startDate.setFullYear(endDate.getFullYear() - 1);
-      else startDate.setMonth(endDate.getMonth() - 3); // Default
-
-      // Récupérer tous les membres créés avant la date de fin
-      // Note: On a besoin de tous les membres pour calculer le cumulatif, pas juste ceux créés dans la période
-      // Mais pour le graphique, on veut voir l'évolution DANS la période.
-      // Donc on doit calculer le total initial au début de la période.
+      else startDate.setMonth(endDate.getMonth() - 3);
 
       const whereClause = {};
-
-      // Filtrage par rôle (similaire aux autres rapports)
       if (req.user.role === 'Bacenta_Leader') {
         whereClause.leader_id = req.user.userId;
-      } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
-        whereClause.area_id = req.user.area_id;
-      } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
+      } else if (req.user.area_id) {
         whereClause.area_id = req.user.area_id;
       }
 
-      // 1. Compter le total des membres AVANT la date de début
       const initialCount = await Member.count({
         where: {
           ...whereClause,
@@ -282,216 +289,153 @@ const reportController = {
         }
       });
 
-      // 2. Récupérer les membres créés PENDANT la période
       const newMembers = await Member.findAll({
         where: {
           ...whereClause,
           created_at: { [Op.between]: [startDate, endDate] }
         },
-        attributes: ['id', 'created_at', 'area_id', 'leader_id'],
-        include: [
-          { model: Area, as: 'area', attributes: ['id', 'name'] },
-          { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] }
-        ],
+        attributes: ['id', 'created_at'],
         order: [['created_at', 'ASC']]
       });
 
-      // 3. Organiser les données pour le graphique
-      // On va grouper par semaine ou mois selon la période
       const labels = [];
-      const datasets = [];
+      const dataPoints = [];
+      const formatDate = (date) => `${new Date(date).getDate()}/${new Date(date).getMonth() + 1}`;
 
-      // Fonction pour formater la date
-      const formatDate = (date) => {
-        const d = new Date(date);
-        return `${d.getDate()}/${d.getMonth() + 1}`;
-      };
+      let currentCount = initialCount;
+      labels.push(formatDate(startDate));
+      dataPoints.push(initialCount);
 
-      // Si group_by === 'global'
-      if (group_by === 'global') {
-        let currentCount = initialCount;
-        const dataPoints = [];
-
-        // Créer des points de données (simplifié : un point par membre ajouté)
-        // Pour une vraie prod, il faudrait grouper par jour/semaine
-
-        // Initial point
-        labels.push(formatDate(startDate));
-        dataPoints.push(initialCount);
-
-        newMembers.forEach(member => {
-          currentCount++;
-          labels.push(formatDate(member.created_at));
-          dataPoints.push(currentCount);
-        });
-
-        // Si trop de points, on échantillonne
-        // TODO: Améliorer l'échantillonnage
-
-        datasets.push({
-          data: dataPoints,
-          color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})`, // Red
-          strokeWidth: 2
-        });
-      }
-      else if (group_by === 'region') {
-        // Logique similaire mais groupée par region
-        // C'est plus complexe car il faut un initialCount par région
-        // Pour l'instant, on renvoie juste le global pour éviter la complexité excessive dans cette itération
-        // TODO: Implémenter le breakdown par région
-
-        // Fallback to global for now with a warning/note
-        let currentCount = initialCount;
-        const dataPoints = [];
-        labels.push(formatDate(startDate));
-        dataPoints.push(initialCount);
-        newMembers.forEach(member => {
-          currentCount++;
-          labels.push(formatDate(member.created_at));
-          dataPoints.push(currentCount);
-        });
-        datasets.push({
-          data: dataPoints,
-          color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})`,
-          strokeWidth: 2
-        });
-      }
+      newMembers.forEach(member => {
+        currentCount++;
+        labels.push(formatDate(member.created_at));
+        dataPoints.push(currentCount);
+      });
 
       res.json({
         period: { start_date: startDate, end_date: endDate },
-        initial_count: initialCount,
         total_new: newMembers.length,
-        final_count: initialCount + newMembers.length,
         chart_data: {
           labels,
-          datasets
+          datasets: [{
+            data: dataPoints,
+            color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})`,
+            strokeWidth: 2
+          }]
         }
       });
-
     } catch (error) {
       console.error('Get member growth report error:', error);
       res.status(500).json({ error: 'Erreur lors de la génération du rapport de croissance' });
     }
   },
 
-  // Rapport de présence pour les gouverneurs
+  // Rapport de présence spécifique pour le Gouverneur (vue agrégée)
   getGovernorAttendanceReport: async (req, res) => {
     try {
-      const { start_date, end_date, group_by = 'region', view = 'summary' } = req.query;
-
+      const { start_date, end_date, group_by = 'area' } = req.query;
       const whereClause = {};
-      const memberWhereClause = {};
-
-      // Filtrage basé sur le rôle du gouverneur
-      if (req.user.role === 'Governor' && req.user.area_id) {
-        memberWhereClause.area_id = req.user.area_id;
-      }
-
-      // Filtre de date
       if (start_date && end_date) {
-        whereClause.sunday_date = {
-          [Op.between]: [start_date, end_date]
-        };
+        whereClause.sunday_date = { [Op.between]: [start_date, end_date] };
       }
 
-      if (view === 'summary') {
-        // Vue résumé : grouper par région/leader/centre
-        let groupField, includeModel, attributes;
-
-        switch (group_by) {
-          case 'region':
-            groupField = 'area_id';
-            includeModel = { model: Area, as: 'area', attributes: ['id', 'name'] };
-            attributes = ['area_id'];
-            break;
-          case 'leader':
-            groupField = 'leader_id';
-            includeModel = { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] };
-            attributes = ['leader_id'];
-            break;
-          case 'center_leader':
-            // Pour centre, on peut grouper par leader aussi pour l'instant
-            groupField = 'leader_id';
-            includeModel = { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] };
-            attributes = ['leader_id'];
-            break;
-          default:
-            groupField = 'area_id';
-            includeModel = { model: Area, as: 'area', attributes: ['id', 'name'] };
-            attributes = ['area_id'];
-        }
-
-        const attendanceStats = await Attendance.findAll({
-          where: whereClause,
+      let report;
+      if (group_by === 'area') {
+        report = await Area.findAll({
           attributes: [
-            ...attributes,
-            [Attendance.sequelize.fn('COUNT', Attendance.sequelize.col('Attendance.id')), 'total_present'],
-            [Attendance.sequelize.fn('COUNT', Attendance.sequelize.fn('DISTINCT', Attendance.sequelize.col('member_id'))), 'unique_attendees']
+            'id', 'name',
+            [Area.sequelize.fn('COUNT', Area.sequelize.col('members.id')), 'total_members']
           ],
-          include: [
-            includeModel,
-            {
-              model: Member,
-              as: 'member',
-              where: memberWhereClause,
-              attributes: []
-            }
-          ],
-          group: attributes,
+          include: [{
+            model: Member,
+            as: 'members',
+            attributes: []
+          }],
+          group: ['Area.id'],
           raw: true
         });
 
-        const data = attendanceStats.map(stat => {
-          let label, subLabel;
-          if (group_by === 'region') {
-            label = stat['area.name'] || 'Région inconnue';
-            subLabel = null;
-          } else {
-            label = `${stat['leader.first_name']} ${stat['leader.last_name']}`;
-            subLabel = null;
-          }
-
-          return {
-            label,
-            subLabel,
-            total_present: parseInt(stat.total_present) || 0,
-            unique_attendees: parseInt(stat.unique_attendees) || 0
-          };
-        });
-
-        res.json({ data });
-      } else {
-        // Vue détails : liste des présences individuelles
         const attendances = await Attendance.findAll({
           where: whereClause,
+          include: [{
+            model: Member,
+            as: 'member',
+            attributes: ['area_id']
+          }],
+          raw: true
+        });
+
+        const attendanceByArea = attendances.reduce((acc, curr) => {
+          const areaId = curr['member.area_id'];
+          if (areaId && curr.present) {
+            acc[areaId] = (acc[areaId] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        report = report.map(item => ({
+          area_id: item.id,
+          area_name: item.name,
+          total_members: parseInt(item.total_members || 0),
+          attendance_count: attendanceByArea[item.id] || 0,
+          attendance_rate: item.total_members > 0 ? Math.round(((attendanceByArea[item.id] || 0) / item.total_members) * 100) : 0
+        }));
+      } else {
+        report = await User.findAll({
+          where: { role: 'Bacenta_Leader' },
+          attributes: [
+            'id', 'first_name', 'last_name',
+            [User.sequelize.fn('COUNT', User.sequelize.col('led_members.id')), 'total_members']
+          ],
           include: [
             {
               model: Member,
-              as: 'member',
-              where: memberWhereClause,
-              include: [
-                { model: Area, as: 'area', attributes: ['name'] },
-                { model: User, as: 'leader', attributes: ['first_name', 'last_name'] }
-              ]
+              as: 'led_members',
+              attributes: []
+            },
+            {
+              model: Area,
+              as: 'area',
+              attributes: ['name']
             }
           ],
-          order: [['sunday_date', 'DESC'], ['member_id', 'ASC']]
+          group: ['User.id', 'area.id'],
+          raw: true
         });
 
-        const data = attendances.map(attendance => ({
-          id: attendance.id,
-          date: attendance.sunday_date,
-          member_name: `${attendance.member.first_name} ${attendance.member.last_name}`,
-          area_name: attendance.member.area?.name || 'N/A',
-          leader_name: `${attendance.member.leader?.first_name || 'N/A'} ${attendance.member.leader?.last_name || 'N/A'}`,
-          status: attendance.present ? 'Présent' : 'Absent'
-        }));
+        const attendances = await Attendance.findAll({
+          where: whereClause,
+          include: [{
+            model: Member,
+            as: 'member',
+            attributes: ['leader_id']
+          }],
+          raw: true
+        });
 
-        res.json({ data });
+        const attendanceByLeader = attendances.reduce((acc, curr) => {
+          const leaderId = curr['member.leader_id'];
+          if (leaderId && curr.present) {
+            acc[leaderId] = (acc[leaderId] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        report = report.map(item => ({
+          leader_id: item.id,
+          leader_first_name: item.first_name,
+          leader_last_name: item.last_name,
+          area_name: item['area.name'],
+          total_members: parseInt(item.total_members || 0),
+          attendance_count: attendanceByLeader[item.id] || 0,
+          attendance_rate: item.total_members > 0 ? Math.round(((attendanceByLeader[item.id] || 0) / item.total_members) * 100) : 0
+        }));
       }
+
+      res.json({ report });
     } catch (error) {
       console.error('Get governor attendance report error:', error);
-      res.status(500).json({ error: 'Erreur lors de la génération du rapport de présence gouverneur' });
+      res.status(500).json({ error: 'Erreur lors de la génération du rapport gouverneur' });
     }
   }
 };

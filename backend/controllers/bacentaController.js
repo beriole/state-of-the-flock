@@ -6,15 +6,15 @@ const bacentaController = {
   // Lister les réunions Bacenta
   getBacentaMeetings: async (req, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        leader_id, 
+      const {
+        page = 1,
+        limit = 50,
+        leader_id,
         start_date,
         end_date,
-        is_verified 
+        is_verified
       } = req.query;
-      
+
       const offset = (page - 1) * limit;
       const whereClause = {};
 
@@ -62,11 +62,12 @@ const bacentaController = {
         location: meeting.location,
         host: meeting.host,
         type: meeting.meeting_type === 'Weekly_Sharing' ? 'weekly' :
-              meeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
+          meeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
         expectedParticipants: meeting.expected_participants,
         agenda: meeting.agenda,
         offerings: meeting.offering_amount,
         familyPhoto: meeting.family_photo,
+        photo_url: meeting.photo_url,
         status: meeting.is_verified ? 'completed' : 'planned',
         attendance: meeting.attendances?.map(att => ({
           member_id: att.member_id,
@@ -155,11 +156,12 @@ const bacentaController = {
         location: newMeeting.location,
         host: newMeeting.host,
         type: newMeeting.meeting_type === 'Weekly_Sharing' ? 'weekly' :
-              newMeeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
+          newMeeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
         expectedParticipants: newMeeting.expected_participants,
         agenda: newMeeting.agenda,
         offerings: newMeeting.offering_amount,
         familyPhoto: newMeeting.family_photo,
+        photo_url: newMeeting.photo_url,
         status: 'planned'
       };
 
@@ -181,8 +183,8 @@ const bacentaController = {
         include: [
           { model: User, as: 'leader' },
           { model: User, as: 'verifier' },
-          { 
-            model: BacentaAttendance, 
+          {
+            model: BacentaAttendance,
             as: 'attendances',
             include: [
               { model: Member, as: 'member' },
@@ -281,11 +283,12 @@ const bacentaController = {
         location: updatedMeeting.location,
         host: updatedMeeting.host,
         type: updatedMeeting.meeting_type === 'Weekly_Sharing' ? 'weekly' :
-              updatedMeeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
+          updatedMeeting.meeting_type === 'Prayer_Meeting' ? 'midweek' : 'special',
         expectedParticipants: updatedMeeting.expected_participants,
         agenda: updatedMeeting.agenda,
         offerings: updatedMeeting.offering_amount,
         familyPhoto: updatedMeeting.family_photo,
+        photo_url: updatedMeeting.photo_url,
         status: updatedMeeting.is_verified ? 'completed' : 'planned'
       };
 
@@ -471,7 +474,7 @@ const bacentaController = {
   getBacentaStats: async (req, res) => {
     try {
       const { start_date, end_date } = req.query;
-      
+
       const whereClause = {
         leader_id: req.user.userId
       };
@@ -494,7 +497,7 @@ const bacentaController = {
         total_meetings: meetings.length,
         total_offering: meetings.reduce((sum, meeting) => sum + parseFloat(meeting.offering_amount), 0),
         total_attendance: meetings.reduce((sum, meeting) => sum + meeting.total_members_present, 0),
-        average_attendance: meetings.length > 0 ? 
+        average_attendance: meetings.length > 0 ?
           Math.round(meetings.reduce((sum, meeting) => sum + meeting.total_members_present, 0) / meetings.length) : 0,
         verified_meetings: meetings.filter(meeting => meeting.is_verified).length,
         meetings_by_type: meetings.reduce((acc, meeting) => {

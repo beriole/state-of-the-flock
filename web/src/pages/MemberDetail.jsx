@@ -1,0 +1,264 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { memberAPI, callLogAPI } from '../utils/api';
+import {
+    ArrowLeft,
+    Phone,
+    MessageCircle,
+    Edit2,
+    Calendar,
+    User,
+    MapPin,
+    Clock,
+    CheckCircle,
+    XCircle,
+    PhoneMissed,
+    RotateCcw
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { ContactModal } from '../components/ContactModals';
+import styles from './MemberDetail.module.css';
+
+const MemberDetail = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [member, setMember] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [callLogs, setCallLogs] = useState([]);
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const { user } = useAuth();
+    const [stats, setStats] = useState({
+        totalCalls: 0,
+        contacted: 0,
+        noAnswer: 0
+    });
+
+    useEffect(() => {
+        fetchMemberDetails();
+        fetchCallLogs();
+    }, [id]);
+
+    const fetchMemberDetails = async () => {
+        try {
+            const response = await memberAPI.getMemberById(id);
+            setMember(response.data);
+        } catch (err) {
+            console.error('Error fetching member:', err);
+            setError('Impossible de charger les détails du membre.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchCallLogs = async () => {
+        try {
+            const response = await callLogAPI.getCallLogs({ member_id: id });
+            const logs = response.data.callLogs || [];
+            setCallLogs(logs);
+
+            // Calculate stats
+            setStats({
+                totalCalls: logs.length,
+                contacted: logs.filter(l => l.outcome === 'Contacted').length,
+                noAnswer: logs.filter(l => l.outcome === 'No_Answer').length
+            });
+        } catch (err) {
+            console.error('Error fetching call logs:', err);
+        }
+    };
+
+    const handleActionComplete = async (type, method, templateTitle) => {
+        try {
+            await callLogAPI.createCallLog({
+                member_id: id,
+                outcome: 'Contacted',
+                contact_method: method === 'whatsapp' ? 'WhatsApp' : (type === 'Call' ? 'Phone' : 'SMS'),
+                notes: `${type} via ${method}${templateTitle ? ` (Modèle: ${templateTitle})` : ''}`
+            });
+            fetchCallLogs(); // Refresh history
+        } catch (error) {
+            console.error('Error logging action:', error);
+        }
+    };
+
+    const handleCall = () => {
+        if (member?.phone_primary) {
+            setIsContactModalOpen(true);
+        }
+    };
+
+    const handleSMS = () => {
+        if (member?.phone_primary) {
+            setIsContactModalOpen(true);
+        }
+    };
+
+    if (loading) return <div className={styles.loading}>Chargement...</div>;
+    if (error) return <div className={styles.error}>{error}</div>;
+    if (!member) return <div className={styles.error}>Membre introuvable</div>;
+
+    return (
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <button className={styles.backButton} onClick={() => navigate('/members')}>
+                    <ArrowLeft size={24} />
+                </button>
+                <h1 className={styles.title}>Détails du Membre</h1>
+            </div>
+
+            <div className={styles.grid}>
+                {/* Left Column: Profile Card */}
+                <div className={styles.leftColumn}>
+                    <div className={styles.card}>
+                        <div className={styles.profileHeader}>
+                            <div className={styles.avatar}>
+                                {member.first_name?.charAt(0)}
+                            </div>
+                            <h2 className={styles.name}>
+                                {member.first_name} {member.last_name}
+                            </h2>
+                            <span className={styles.statusBadge}>
+                                {member.state || 'Membre'}
+                            </span>
+                        </div>
+
+                        <div className={styles.profileBody}>
+                            <div className={styles.infoGroup}>
+                                <Phone size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Téléphone Principal</span>
+                                    <div className={styles.infoValue}>{member.phone_primary || '-'}</div>
+                                </div>
+                            </div>
+
+                            {member.phone_secondary && (
+                                <div className={styles.infoGroup}>
+                                    <Phone size={20} className={styles.infoIcon} />
+                                    <div>
+                                        <span className={styles.infoLabel}>Téléphone Secondaire</span>
+                                        <div className={styles.infoValue}>{member.phone_secondary}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={styles.infoGroup}>
+                                <User size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Genre</span>
+                                    <div className={styles.infoValue}>
+                                        {member.gender === 'M' ? 'Homme' : 'Femme'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.infoGroup}>
+                                <MapPin size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Zone / Bacenta</span>
+                                    <div className={styles.infoValue}>
+                                        {member.area?.name || 'Non assigné'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={styles.actions}>
+                            <button className={`${styles.actionButton} ${styles.primaryAction}`} onClick={handleCall}>
+                                <Phone size={18} /> Appeler
+                            </button>
+                            <button className={`${styles.actionButton} ${styles.secondaryAction}`} onClick={handleSMS}>
+                                <MessageCircle size={18} /> SMS
+                            </button>
+                            <button
+                                className={`${styles.actionButton} ${styles.secondaryAction}`}
+                                style={{ gridColumn: '1 / -1' }}
+                                onClick={() => navigate(`/members/${member.id}/edit`)}
+                            >
+                                <Edit2 size={18} /> Modifier
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Stats & History */}
+                <div className={styles.rightColumn}>
+                    {/* Stats Cards */}
+                    <div className={styles.statsGrid}>
+                        <div className={styles.statCard}>
+                            <div className={`${styles.statIcon} ${styles.statIconTotal}`}>
+                                <Phone size={24} />
+                            </div>
+                            <div className={styles.statValue}>{stats.totalCalls}</div>
+                            <div className={styles.statLabel}>Appels Totaux</div>
+                        </div>
+                        <div className={styles.statCard}>
+                            <div className={`${styles.statIcon} ${styles.statIconContacted}`}>
+                                <CheckCircle size={24} />
+                            </div>
+                            <div className={styles.statValue}>{stats.contacted}</div>
+                            <div className={styles.statLabel}>Contactés</div>
+                        </div>
+                        <div className={styles.statCard}>
+                            <div className={`${styles.statIcon} ${styles.statIconNoAnswer}`}>
+                                <PhoneMissed size={24} />
+                            </div>
+                            <div className={styles.statValue}>{stats.noAnswer}</div>
+                            <div className={styles.statLabel}>Sans Réponse</div>
+                        </div>
+                    </div>
+
+                    {/* Call History */}
+                    <div className={styles.section}>
+                        <div className={styles.sectionTitle}>
+                            Historique des Appels
+                            <Clock size={20} color="#6b7280" />
+                        </div>
+
+                        {callLogs.length > 0 ? (
+                            <div className={styles.historyList}>
+                                {callLogs.map((log) => (
+                                    <div key={log.id} className={styles.historyItem}>
+                                        <div className={styles.historyIcon}>
+                                            {log.outcome === 'Contacted' ? (
+                                                <CheckCircle size={20} color="#059669" />
+                                            ) : log.outcome === 'No_Answer' ? (
+                                                <PhoneMissed size={20} color="#D97706" />
+                                            ) : (
+                                                <RotateCcw size={20} color="#DC2626" />
+                                            )}
+                                        </div>
+                                        <div className={styles.historyContent}>
+                                            <div className={styles.historyHeader}>
+                                                <span className={styles.historyDate}>
+                                                    {new Date(log.call_date).toLocaleDateString()} à {new Date(log.call_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <span className={styles.historyType}>{log.outcome}</span>
+                                            </div>
+                                            {log.notes && <p className={styles.historyNotes}>{log.notes}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className={styles.emptyState}>
+                                <Phone size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                                <p>Aucun historique d'appel pour ce membre.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <ContactModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+                member={member}
+                authUser={user}
+                onActionComplete={handleActionComplete}
+            />
+        </div>
+    );
+};
+
+export default MemberDetail;
