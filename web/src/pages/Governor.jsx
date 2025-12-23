@@ -317,56 +317,148 @@ const Governor = () => {
 
         const max = Math.max(...data);
         const min = Math.min(...data);
-        const range = max - min || 10;
-        const width = 800;
-        const height = 200;
-        const padding = 20;
+        const range = max - min || 1;
 
-        const points = data.map((val, i) => {
-            const x = (i / (data.length - 1)) * (width - padding * 2) + padding;
-            const y = height - ((val - min) / range) * (height - padding * 2) - padding;
-            return `${x},${y}`;
-        }).join(' ');
+        const width = 800;
+        const height = 300;
+        const paddingLeft = 50;
+        const paddingRight = 30;
+        const paddingTop = 40;
+        const paddingBottom = 60;
+        const chartWidth = width - paddingLeft - paddingRight;
+        const chartHeight = height - paddingTop - paddingBottom;
+
+        const getX = (i) => (i / (data.length - 1)) * chartWidth + paddingLeft;
+        const getY = (val) => height - ((val - min) / range) * chartHeight - paddingBottom;
+
+        // Générer le chemin pour la courbe lisse (Cubic Bézier)
+        let pathD = `M ${getX(0)},${getY(data[0])}`;
+        for (let i = 0; i < data.length - 1; i++) {
+            const x1 = getX(i);
+            const y1 = getY(data[i]);
+            const x2 = getX(i + 1);
+            const y2 = getY(data[i + 1]);
+            const cp1x = x1 + (x2 - x1) / 2;
+            const cp2x = x1 + (x2 - x1) / 2;
+            pathD += ` C ${cp1x},${y1} ${cp2x},${y2} ${x2},${y2}`;
+        }
+
+        const areaPathD = `${pathD} L ${getX(data.length - 1)},${height - paddingBottom} L ${paddingLeft},${height - paddingBottom} Z`;
+
+        // Grille Y (4 niveaux)
+        const gridY = [0, 0.33, 0.66, 1].map(p => min + range * p);
 
         return (
             <div className={styles.chartContainer}>
                 <div className={styles.chartHeader}>
-                    <h3 className={styles.chartTitle}>Évolution des Membres</h3>
+                    <h3 className={styles.chartTitle}>Évolution de la Croissance</h3>
                     <div className={styles.chartLegend}>
-                        <span className={styles.legendDot}></span> Total Cumulé
+                        <span className={styles.legendDot}></span> Nouveaux Membres Cumulés
                     </div>
                 </div>
-                <svg viewBox={`0 0 ${width} ${height}`} className={styles.svgChart}>
-                    <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="rgba(220, 38, 38, 0.2)" />
-                            <stop offset="100%" stopColor="rgba(220, 38, 38, 0)" />
-                        </linearGradient>
-                    </defs>
-                    <path
-                        d={`M ${padding},${height} L ${points} L ${width - padding},${height} Z`}
-                        fill="url(#chartGradient)"
-                    />
-                    <polyline
-                        fill="none"
-                        stroke="#DC2626"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={points}
-                    />
-                    {data.map((val, i) => {
-                        const x = (i / (data.length - 1)) * (width - padding * 2) + padding;
-                        const y = height - ((val - min) / range) * (height - padding * 2) - padding;
-                        return (
-                            <g key={i} className={styles.chartPoint}>
-                                <circle cx={x} cy={y} r="4" fill="#DC2626" />
-                                <text x={x} y={y - 10} textAnchor="middle" fontSize="10" fill="#94a3b8">{val}</text>
-                                <text x={x} y={height - 2} textAnchor="middle" fontSize="8" fill="#475569">{labels[i]}</text>
+
+                <div className={styles.chartWrapper}>
+                    <svg viewBox={`0 0 ${width} ${height}`} className={styles.svgChart}>
+                        <defs>
+                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="rgba(220, 38, 38, 0.4)" />
+                                <stop offset="100%" stopColor="rgba(220, 38, 38, 0)" />
+                            </linearGradient>
+                            <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                                <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+                                <feOffset dx="0" dy="4" result="offsetblur" />
+                                <feComponentTransfer>
+                                    <feFuncA type="linear" slope="0.5" />
+                                </feComponentTransfer>
+                                <feMerge>
+                                    <feMergeNode />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        {/* Grille Y */}
+                        {gridY.map((val, i) => (
+                            <g key={`y-${i}`}>
+                                <line
+                                    x1={paddingLeft} y1={getY(val)}
+                                    x2={width - paddingRight} y2={getY(val)}
+                                    stroke="rgba(255,255,255,0.05)"
+                                    strokeDasharray="4,4"
+                                />
+                                <text
+                                    x={paddingLeft - 10} y={getY(val) + 4}
+                                    textAnchor="end" fontSize="11" fill="#64748b"
+                                >
+                                    {Math.round(val)}
+                                </text>
                             </g>
-                        );
-                    })}
-                </svg>
+                        ))}
+
+                        {/* Remplissage arrière-plan */}
+                        <path d={areaPathD} fill="url(#chartGradient)" />
+
+                        {/* Ligne principale lissée */}
+                        <path
+                            d={pathD}
+                            fill="none"
+                            stroke="#DC2626"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            filter="url(#shadow)"
+                        />
+
+                        {/* Points et Labels Axe X */}
+                        {data.map((val, i) => {
+                            const x = getX(i);
+                            const y = getY(val);
+
+                            // Afficher les labels de date intelligemment pour éviter le chevauchement
+                            const step = Math.max(1, Math.floor(data.length / 8));
+                            const showXLabel = i % step === 0 || i === data.length - 1;
+
+                            return (
+                                <g key={i} className={styles.chartPointGroup}>
+                                    <circle
+                                        cx={x}
+                                        cy={y}
+                                        r="5"
+                                        fill="#fff"
+                                        stroke="#DC2626"
+                                        strokeWidth="3"
+                                        className={styles.pointDot}
+                                    />
+                                    {/* Tooltip text (visible on group hover via CSS if needed, but here simple text) */}
+                                    <text
+                                        x={x}
+                                        y={y - 15}
+                                        textAnchor="middle"
+                                        fontSize="12"
+                                        fontWeight="bold"
+                                        fill="#fff"
+                                        className={styles.pointValue}
+                                    >
+                                        {val}
+                                    </text>
+
+                                    {showXLabel && (
+                                        <text
+                                            x={x}
+                                            y={height - 20}
+                                            textAnchor="middle"
+                                            fontSize="11"
+                                            fill="#94a3b8"
+                                            className={styles.xAxisLabel}
+                                        >
+                                            {labels[i]}
+                                        </text>
+                                    )}
+                                </g>
+                            );
+                        })}
+                    </svg>
+                </div>
             </div>
         );
     };

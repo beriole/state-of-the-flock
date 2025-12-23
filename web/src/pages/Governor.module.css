@@ -146,10 +146,51 @@
 /* Chart Styles */
 .chartContainer {
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 1.5rem;
-    padding: 1.5rem;
-    height: 100%;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.chartWrapper {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+}
+
+.svgChart {
+    width: 100%;
+    height: auto;
+    min-width: 600px;
+    display: block;
+}
+
+.chartPointGroup {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.chartPointGroup:hover .pointDot {
+    r: 7;
+    fill: #DC2626;
+    stroke: #fff;
+}
+
+.chartPointGroup:hover .pointValue {
+    opacity: 1;
+    font-size: 14px;
+}
+
+.pointDot {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pointValue {
+    opacity: 0.8;
+    transition: all 0.3s;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .chartHeader {

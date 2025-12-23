@@ -307,7 +307,11 @@ const reportController = {
 
       const labels = [];
       const dataPoints = [];
-      const formatDate = (date) => `${new Date(date).getDate()}/${new Date(date).getMonth() + 1}`;
+      const formatDate = (date) => {
+        const d = new Date(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return isNaN(d.getTime()) ? 'N/A' : `${d.getDate()} ${months[d.getMonth()]}`;
+      };
 
       let currentCount = initialCount;
       labels.push(formatDate(startDate));
