@@ -25,7 +25,8 @@ import {
     X,
     ChevronRight,
     Download,
-    Calendar
+    Calendar,
+    ArrowLeft
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -52,6 +53,7 @@ const Governor = () => {
     });
     const [growthData, setGrowthData] = useState(null);
     const [attendanceReportData, setAttendanceReportData] = useState([]);
+    const [attendanceReportType, setAttendanceReportType] = useState('area'); // area, leader, member_detail
 
     // Leader Detail
     const [selectedLeader, setSelectedLeader] = useState(null);
@@ -63,8 +65,16 @@ const Governor = () => {
     const [reportFilters, setReportFilters] = useState({
         startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
-        groupBy: 'area' // area, leader
+        groupBy: 'area', // area, leader
+        areaId: '',
+        leaderId: ''
     });
+
+    const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
+    const [isViewingReport, setIsViewingReport] = useState(false);
+    const [callTrackingData, setCallTrackingData] = useState([]);
+    const [callTrackingView, setCallTrackingView] = useState('not_called');
+    const [callTrackingSummary, setCallTrackingSummary] = useState(null);
 
     // Modals
     const [showLeaderModal, setShowLeaderModal] = useState(false);
@@ -120,7 +130,20 @@ const Governor = () => {
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
             } else if (activeTab === 'reports') {
-                // Géré par useEffect local à renderReports
+                const [leadersRes, areasRes] = await Promise.all([
+                    governorAPI.getBacentaLeaders(),
+                    areaAPI.getAreas()
+                ]);
+                setLeaders(leadersRes.data.users || []);
+                setAreas(areasRes.data.areas || []);
+
+                if (selectedReportType === 'attendance') {
+                    fetchAttendanceData();
+                } else if (selectedReportType === 'growth') {
+                    fetchGrowthData();
+                } else if (selectedReportType === 'call_tracking') {
+                    fetchCallTrackingData();
+                }
             }
         } catch (error) {
             console.error('Error fetching governor data:', error);
@@ -128,6 +151,64 @@ const Governor = () => {
             setLoading(false);
         }
     };
+
+    const fetchAttendanceData = async () => {
+        try {
+            const params = {
+                ...reportFilters,
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate,
+                area_id: reportFilters.areaId,
+                leader_id: reportFilters.leaderId
+            };
+            const res = await reportAPI.getGovernorAttendanceReport(params);
+            setAttendanceReportData(res.data.report || []);
+            setAttendanceReportType(res.data.type);
+        } catch (error) {
+            console.error('Error fetching attendance report:', error);
+        }
+    };
+
+    const fetchGrowthData = async () => {
+        try {
+            const res = await reportAPI.getMemberGrowthReport({
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate
+            });
+            setGrowthData(res.data);
+        } catch (error) {
+            console.error('Error fetching growth report:', error);
+        }
+    };
+
+    const fetchCallTrackingData = async () => {
+        try {
+            const res = await reportAPI.getCallLogReport({
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate,
+                area_id: reportFilters.areaId,
+                leader_id: reportFilters.leaderId,
+                view_type: callTrackingView
+            });
+            setCallTrackingData(res.data.data || []);
+            if (res.data.summary) setCallTrackingSummary(res.data.summary);
+            else setCallTrackingSummary({ count: res.data.count });
+        } catch (error) {
+            console.error('Error fetching call tracking data:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'reports') {
+            if (selectedReportType === 'attendance') {
+                fetchAttendanceData();
+            } else if (selectedReportType === 'growth') {
+                fetchGrowthData();
+            } else if (selectedReportType === 'call_tracking') {
+                fetchCallTrackingData();
+            }
+        }
+    }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
 
     const handleSaveLeader = async (e) => {
         e.preventDefault();
@@ -207,8 +288,16 @@ const Governor = () => {
     const generateAttendancePDF = async () => {
         setLoading(true);
         try {
-            const res = await reportAPI.getGovernorAttendanceReport(reportFilters);
+            const params = {
+                ...reportFilters,
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate,
+                area_id: reportFilters.areaId,
+                leader_id: reportFilters.leaderId
+            };
+            const res = await reportAPI.getGovernorAttendanceReport(params);
             const data = res.data.report || [];
+            const type = res.data.type;
 
             const doc = new jsPDF();
 
@@ -224,24 +313,36 @@ const Governor = () => {
             doc.setFontSize(10);
             doc.text(`Période: ${reportFilters.startDate} au ${reportFilters.endDate}`, 105, 38, { align: 'center' });
 
-            const tableColumn = reportFilters.groupBy === 'area' ? ["Zone", "Total Membres", "Présents", "Taux %"] : ["Leader", "Zone", "Présents", "Taux %"];
-            const tableRows = data.map(item => {
-                if (reportFilters.groupBy === 'area') {
-                    return [
-                        item.area_name,
-                        item.total_members,
-                        item.attendance_count,
-                        `${item.attendance_rate}%`
-                    ];
-                } else {
-                    return [
-                        `${item.leader_first_name} ${item.leader_last_name}`,
-                        item.area_name,
-                        item.attendance_count,
-                        `${item.attendance_rate}%`
-                    ];
-                }
-            });
+            let tableColumn = [];
+            let tableRows = [];
+
+            if (type === 'member_detail') {
+                tableColumn = ["Membre", "Statut", "Présences", "Total Possible", "Taux %"];
+                tableRows = data.map(item => [
+                    item.member_name,
+                    item.status === 'active' ? 'Actif' : 'Inactif',
+                    item.attendance_count,
+                    item.total_possible,
+                    `${item.attendance_rate}%`
+                ]);
+            } else if (type === 'area_leaders' || type === 'leader') {
+                tableColumn = ["Leader", "Zone", "Total Membres", "Présents", "Taux %"];
+                tableRows = data.map(item => [
+                    item.leader_name || `${item.leader_first_name} ${item.leader_last_name}`,
+                    item.area_name || '',
+                    item.total_members,
+                    item.attendance_count,
+                    `${item.attendance_rate}%`
+                ]);
+            } else {
+                tableColumn = ["Zone", "Total Membres", "Présents", "Taux %"];
+                tableRows = data.map(item => [
+                    item.area_name,
+                    item.total_members,
+                    item.attendance_count,
+                    `${item.attendance_rate}%`
+                ]);
+            }
 
             doc.autoTable({
                 head: [tableColumn],
@@ -848,199 +949,337 @@ const Governor = () => {
         </div>
     );
 
-    // Dans Governor.jsx, dans la fonction renderReports
-    const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
-
-    useEffect(() => {
-        if (activeTab === 'reports') {
-            if (selectedReportType === 'attendance') {
-                fetchAttendanceData();
-            } else {
-                fetchGrowthData();
-            }
-        }
-    }, [reportFilters, selectedReportType, activeTab]);
-
-    const fetchAttendanceData = async () => {
-        try {
-            const res = await reportAPI.getGovernorAttendanceReport(reportFilters);
-            setAttendanceReportData(res.data.report || []);
-        } catch (error) {
-            console.error('Error fetching attendance report:', error);
-        }
-    };
-
-    const fetchGrowthData = async () => {
-        try {
-            const res = await reportAPI.getMemberGrowthReport({
-                start_date: reportFilters.startDate,
-                end_date: reportFilters.endDate
-            });
-            setGrowthData(res.data);
-        } catch (error) {
-            console.error('Error fetching growth report:', error);
-        }
-    };
-
-    return (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Rapports & Analyses</h2>
-                <div className={styles.headerActions} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                        <label className={styles.label} style={{ fontSize: '0.7rem' }}>Du</label>
-                        <input
-                            type="date"
-                            className={styles.input}
-                            style={{ padding: '0.4rem' }}
-                            value={reportFilters.startDate}
-                            onChange={e => setReportFilters({ ...reportFilters, startDate: e.target.value })}
-                        />
+    const renderReports = () => {
+        if (!isViewingReport) {
+            return (
+                <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Analyse & Rapports</h2>
                     </div>
-                    <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                        <label className={styles.label} style={{ fontSize: '0.7rem' }}>Au</label>
-                        <input
-                            type="date"
-                            className={styles.input}
-                            style={{ padding: '0.4rem' }}
-                            value={reportFilters.endDate}
-                            onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
-                        />
+                    <div className={styles.reportsGrid}>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('attendance');
+                                setIsViewingReport(true);
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
+                                <Calendar size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Rapport de Présence</h3>
+                            <p className={styles.reportDesc}>Analyse détaillée de la présence hebdomadaire par zone et par leader.</p>
+                            <div className={styles.reportBadge}>Prêt</div>
+                        </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('growth');
+                                setIsViewingReport(true);
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
+                                <TrendingUp size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Croissance des Membres</h3>
+                            <p className={styles.reportDesc}>Suivi de l'évolution du nombre de membres et des nouveaux convertis.</p>
+                            <div className={styles.reportBadge}>Premium</div>
+                        </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('call_tracking');
+                                setIsViewingReport(true);
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                                <Phone size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Suivi des Appels</h3>
+                            <p className={styles.reportDesc}>Statistiques sur les appels de suivi effectués par les leaders.</p>
+                            <div className={styles.reportBadge} style={{ background: '#10b981' }}>Nouveau</div>
+                        </div>
                     </div>
-                    {selectedReportType === 'attendance' && (
-                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>Grouper par</label>
-                            <select
-                                className={styles.select}
-                                style={{ padding: '0.4rem' }}
-                                value={reportFilters.groupBy}
-                                onChange={e => setReportFilters({ ...reportFilters, groupBy: e.target.value })}
-                            >
-                                <option value="area">Zone</option>
-                                <option value="leader">Leader</option>
-                            </select>
+                </div>
+            );
+        }
+
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader} style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => setIsViewingReport(false)}
+                            style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '50%', padding: '0.6rem' }}
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h2 className={styles.sectionTitle}>
+                                {selectedReportType === 'attendance' ? 'Rapport de Présence' :
+                                    selectedReportType === 'growth' ? 'Croissance des Membres' : 'Suivi des Appels'}
+                            </h2>
+                            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                {selectedReportType === 'attendance' ? 'Analyse filtrée par zone, leader et période' :
+                                    selectedReportType === 'growth' ? 'Analyse d\'évolution temporelle premium' :
+                                        'Membres contactés et non contactés par période'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className={styles.headerActions} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        {selectedReportType !== 'growth' && (
+                            <>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Zone</label>
+                                    <select
+                                        className={styles.select}
+                                        style={{ padding: '0.4rem' }}
+                                        value={reportFilters.areaId}
+                                        onChange={e => setReportFilters({ ...reportFilters, areaId: e.target.value, leaderId: '' })}
+                                    >
+                                        <option value="">Toutes les Zones</option>
+                                        {areas.map(area => (
+                                            <option key={area.id} value={area.id}>{area.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Leader</label>
+                                    <select
+                                        className={styles.select}
+                                        style={{ padding: '0.4rem' }}
+                                        value={reportFilters.leaderId}
+                                        onChange={e => setReportFilters({ ...reportFilters, leaderId: e.target.value })}
+                                    >
+                                        <option value="">Tous les Leaders</option>
+                                        {leaders
+                                            .filter(l => !reportFilters.areaId || l.area_id === parseInt(reportFilters.areaId))
+                                            .map(leader => (
+                                                <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
+                            </>
+                        )}
+                        {selectedReportType === 'call_tracking' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Vue</label>
+                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
+                                    <button
+                                        onClick={() => setCallTrackingView('not_called')}
+                                        style={{
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: callTrackingView === 'not_called' ? '#DC2626' : 'transparent',
+                                            color: 'white',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Non Appelés
+                                    </button>
+                                    <button
+                                        onClick={() => setCallTrackingView('called')}
+                                        style={{
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: callTrackingView === 'called' ? '#10B981' : 'transparent',
+                                            color: 'white',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Appelés
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
+                    {selectedReportType === 'call_tracking' ? (
+                        <>
+                            <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
+                                    {callTrackingView === 'not_called'
+                                        ? `Membres sans appel (${callTrackingSummary?.count || 0})`
+                                        : `Historique des appels (${callTrackingSummary?.total_calls || 0})`
+                                    }
+                                </h3>
+                            </div>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Membre</th>
+                                        <th className={styles.th}>Téléphone</th>
+                                        <th className={styles.th}>Zone</th>
+                                        <th className={styles.th}>Leader</th>
+                                        {callTrackingView === 'not_called' ? (
+                                            <th className={styles.th}>Dernière Présence</th>
+                                        ) : (
+                                            <>
+                                                <th className={styles.th}>Date Appel</th>
+                                                <th className={styles.th}>Résultat</th>
+                                                <th className={styles.th}>Appelé par</th>
+                                            </>
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {callTrackingData.length > 0 ? (
+                                        callTrackingData.map((item, idx) => (
+                                            <tr key={idx} className={styles.tr}>
+                                                <td className={styles.td}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            background: item.photo_url ? `url(${item.photo_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            color: 'white', fontSize: '0.8rem'
+                                                        }}>
+                                                            {!item.photo_url && (item.member?.first_name?.[0] || item.first_name?.[0])}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ color: 'white', fontWeight: '500' }}>
+                                                                {item.member ? `${item.member.first_name} ${item.member.last_name}` : `${item.first_name} ${item.last_name}`}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className={styles.td} style={{ color: '#94a3b8' }}>
+                                                    {item.member ? item.member.phone_primary : item.phone_primary}
+                                                </td>
+                                                <td className={styles.td}>
+                                                    <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                                                        {item.member?.area?.name || item.area?.name || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className={styles.td}>
+                                                    {item.member?.leader ? `${item.member.leader.first_name} ${item.member.leader.last_name}` :
+                                                        item.leader ? `${item.leader.first_name} ${item.leader.last_name}` : '-'}
+                                                </td>
+                                                {callTrackingView === 'not_called' ? (
+                                                    <td className={styles.td} style={{ color: '#ef4444' }}>
+                                                        {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
+                                                    </td>
+                                                ) : (
+                                                    <>
+                                                        <td className={styles.td}>
+                                                            {new Date(item.call_date).toLocaleDateString()}
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <span className={styles.badge} style={{
+                                                                background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                                color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
+                                                            }}>
+                                                                {item.outcome}
+                                                            </span>
+                                                        </td>
+                                                        <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                            {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                Aucune donnée trouvée pour cette période.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    ) : selectedReportType === 'attendance' ? (
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th className={styles.th}>
+                                        {attendanceReportType === 'area' ? 'Zone' :
+                                            attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
+                                    </th>
+                                    {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
+                                    {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut</th>}
+                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
+                                    {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
+                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendanceReportData.length > 0 ? (
+                                    attendanceReportData.map((item, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>
+                                                <strong>
+                                                    {attendanceReportType === 'area' ? item.area_name :
+                                                        attendanceReportType === 'member_detail' ? item.member_name :
+                                                            (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
+                                                </strong>
+                                            </td>
+                                            {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
+                                            {attendanceReportType === 'member_detail' && (
+                                                <td className={styles.td}>
+                                                    <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                        {item.status === 'active' ? 'Actif' : 'Inactif'}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            <td className={styles.td}>
+                                                {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
+                                            </td>
+                                            {attendanceReportType !== 'member_detail' && (
+                                                <td className={styles.td}>{item.attendance_count}</td>
+                                            )}
+                                            <td className={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                                                        <div
+                                                            className={styles.progressBar}
+                                                            style={{
+                                                                width: `${item.attendance_rate}%`,
+                                                                height: '100%',
+                                                                background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
+                                                                borderRadius: '4px'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                            <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
+                                            Aucune donnée disponible pour cette sélection.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div style={{ padding: '2rem' }}>
+                            {renderGrowthChart()}
+                            <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
-
-            <div className={styles.reportsGrid}>
-                <div
-                    className={`${styles.reportCard} ${selectedReportType === 'attendance' ? styles.reportCardActive : ''}`}
-                    onClick={() => setSelectedReportType('attendance')}
-                >
-                    <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
-                        <Calendar size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Rapport de Présence</h3>
-                    <p className={styles.reportDesc}>Analyse détaillée de la présence hebdomadaire par zone et par leader.</p>
-                    <button
-                        className={styles.primaryBtn}
-                        style={{ marginTop: 'auto', width: '100%' }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            generateAttendancePDF();
-                        }}
-                    >
-                        <Download size={18} /> Générer PDF
-                    </button>
-                </div>
-                <div
-                    className={`${styles.reportCard} ${selectedReportType === 'growth' ? styles.reportCardActive : ''}`}
-                    onClick={() => setSelectedReportType('growth')}
-                >
-                    <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
-                        <TrendingUp size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Croissance des Membres</h3>
-                    <p className={styles.reportDesc}>Suivi de l'évolution du nombre de membres et des nouveaux convertis.</p>
-                    <button
-                        className={styles.primaryBtn}
-                        style={{ marginTop: 'auto', width: '100%' }}
-                    >
-                        <FileBarChart size={18} /> Voir Graphique
-                    </button>
-                </div>
-                <div className={styles.reportCard}>
-                    <div className={styles.reportIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                        <Phone size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Suivi des Appels</h3>
-                    <p className={styles.reportDesc}>Statistiques sur les appels de suivi effectués par les leaders.</p>
-                    <button className={styles.primaryBtn} style={{ marginTop: 'auto', width: '100%' }} disabled>
-                        <Download size={18} /> Bientôt
-                    </button>
-                </div>
-            </div>
-
-            <div className={styles.tableContainer} style={{ marginTop: '2rem' }}>
-                <div className={styles.sectionHeader} style={{ padding: '1rem' }}>
-                    <h3 className={styles.sectionTitle} style={{ fontSize: '1.1rem' }}>
-                        {selectedReportType === 'attendance' ? 'Données de Présence' : 'Évolution de la Croissance'}
-                    </h3>
-                </div>
-
-                {selectedReportType === 'attendance' ? (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>{reportFilters.groupBy === 'area' ? 'Zone' : 'Leader'}</th>
-                                {reportFilters.groupBy === 'leader' && <th className={styles.th}>Zone</th>}
-                                <th className={styles.th}>Total Membres</th>
-                                <th className={styles.th}>Présents</th>
-                                <th className={styles.th}>Taux %</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {attendanceReportData.length > 0 ? (
-                                attendanceReportData.map((item, idx) => (
-                                    <tr key={idx} className={styles.tr}>
-                                        <td className={styles.td}>
-                                            {reportFilters.groupBy === 'area'
-                                                ? item.area_name
-                                                : `${item.leader_first_name} ${item.leader_last_name}`}
-                                        </td>
-                                        {reportFilters.groupBy === 'leader' && <td className={styles.td}>{item.area_name}</td>}
-                                        <td className={styles.td}>{item.total_members}</td>
-                                        <td className={styles.td}>{item.attendance_count}</td>
-                                        <td className={styles.td}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div className={styles.progressContainer} style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
-                                                    <div
-                                                        className={styles.progressBar}
-                                                        style={{
-                                                            width: `${item.attendance_rate}%`,
-                                                            height: '100%',
-                                                            background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
-                                                            borderRadius: '3px'
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span>{item.attendance_rate}%</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                        Aucune donnée disponible pour cette période.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                ) : (
-                    <div style={{ padding: '1rem' }}>
-                        {renderGrowthChart()}
-                        <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                            <p>Total nouveaux membres sur la période : <strong>{growthData?.total_new || 0}</strong></p>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className={styles.container}>

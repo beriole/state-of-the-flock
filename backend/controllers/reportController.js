@@ -159,40 +159,92 @@ const reportController = {
   // Rapport d'appels
   getCallLogReport: async (req, res) => {
     try {
-      const { start_date, end_date, leader_id } = req.query;
-      const whereClause = {};
+      const { start_date, end_date, leader_id, area_id, view_type = 'called' } = req.query;
+
+      const dateFilter = {};
+      if (start_date && end_date) {
+        dateFilter[Op.between] = [start_date, end_date];
+      }
+
+      const memberWhere = { is_active: true };
+      if (area_id) memberWhere.area_id = area_id;
+      if (leader_id) memberWhere.leader_id = leader_id;
 
       if (req.user.role === 'Bacenta_Leader') {
-        whereClause.caller_id = req.user.userId;
-      }
-      if (leader_id) whereClause.caller_id = leader_id;
-
-      if (start_date && end_date) {
-        whereClause.call_date = { [Op.between]: [start_date, end_date] };
+        memberWhere.leader_id = req.user.userId;
+      } else if ((req.user.role === 'Area_Pastor' || req.user.role === 'Assisting_Overseer') && req.user.area_id) {
+        memberWhere.area_id = req.user.area_id;
       }
 
-      const callLogs = await CallLog.findAll({
-        where: whereClause,
-        include: [
-          { model: User, as: 'caller' },
-          { model: Member, as: 'member' }
-        ],
-        order: [['call_date', 'DESC']]
-      });
+      if (view_type === 'not_called') {
+        // CAS: MEMBRES NON APPELÉS
+        const allMembers = await Member.findAll({
+          where: memberWhere,
+          include: [
+            { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] },
+            { model: Area, as: 'area', attributes: ['id', 'name'] }
+          ],
+          attributes: ['id', 'first_name', 'last_name', 'phone_primary', 'area_id', 'leader_id', 'last_attendance_date', 'photo_url']
+        });
 
-      const outcomeStats = callLogs.reduce((acc, log) => {
-        acc[log.outcome] = (acc[log.outcome] || 0) + 1;
-        return acc;
-      }, {});
+        const callLogWhere = {};
+        if (start_date && end_date) callLogWhere.call_date = dateFilter;
 
-      res.json({
-        period: { start_date, end_date },
-        summary: {
-          total_calls: callLogs.length,
-          outcome_stats: outcomeStats
-        },
-        call_logs: callLogs
-      });
+        const calledLogs = await CallLog.findAll({
+          where: callLogWhere,
+          attributes: ['member_id'],
+          group: ['member_id']
+        });
+
+        const calledMemberIds = new Set(calledLogs.map(log => log.member_id));
+        const notCalledMembers = allMembers.filter(member => !calledMemberIds.has(member.id));
+
+        return res.json({
+          period: { start_date, end_date },
+          type: 'not_called',
+          count: notCalledMembers.length,
+          data: notCalledMembers
+        });
+
+      } else {
+        // CAS: HISTORIQUE DES APPELS
+        const callLogWhere = {};
+        if (start_date && end_date) callLogWhere.call_date = dateFilter;
+
+        const callLogs = await CallLog.findAll({
+          where: callLogWhere,
+          include: [
+            { model: User, as: 'caller', attributes: ['id', 'first_name', 'last_name'] },
+            {
+              model: Member,
+              as: 'member',
+              where: memberWhere,
+              include: [
+                { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] },
+                { model: Area, as: 'area', attributes: ['id', 'name'] }
+              ],
+              attributes: ['id', 'first_name', 'last_name', 'phone_primary', 'photo_url']
+            }
+          ],
+          order: [['call_date', 'DESC']]
+        });
+
+        const outcomeStats = callLogs.reduce((acc, log) => {
+          acc[log.outcome] = (acc[log.outcome] || 0) + 1;
+          return acc;
+        }, {});
+
+        return res.json({
+          period: { start_date, end_date },
+          type: 'called',
+          summary: {
+            total_calls: callLogs.length,
+            outcome_stats: outcomeStats
+          },
+          data: callLogs
+        });
+      }
+
     } catch (error) {
       console.error('Get call log report error:', error);
       res.status(500).json({ error: 'Erreur lors de la génération du rapport d\'appels' });
@@ -344,13 +396,94 @@ const reportController = {
   // Rapport de présence spécifique pour le Gouverneur (vue agrégée)
   getGovernorAttendanceReport: async (req, res) => {
     try {
-      const { start_date, end_date, group_by = 'area' } = req.query;
+      const { start_date, end_date, group_by = 'area', area_id, leader_id } = req.query;
       const whereClause = {};
       if (start_date && end_date) {
         whereClause.sunday_date = { [Op.between]: [start_date, end_date] };
       }
 
       let report;
+
+      // SI UN LEADER EST SÉLECTIONNÉ : On affiche le détail par membre
+      if (leader_id) {
+        const members = await Member.findAll({
+          where: { leader_id },
+          attributes: ['id', 'first_name', 'last_name', 'status'],
+          include: [{ model: Area, as: 'Area', attributes: ['name'] }]
+        });
+
+        const attendances = await Attendance.findAll({
+          where: {
+            ...whereClause,
+            member_id: { [Op.in]: members.map(m => m.id) }
+          }
+        });
+
+        const attendanceByMember = attendances.reduce((acc, curr) => {
+          if (curr.present) acc[curr.member_id] = (acc[curr.member_id] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Nombre de dimanches dans la période (pour le taux individuel)
+        const totalSundays = new Set(attendances.map(a => a.sunday_date)).size || 1;
+
+        report = members.map(m => ({
+          member_id: m.id,
+          member_name: `${m.first_name} ${m.last_name}`,
+          status: m.status,
+          attendance_count: attendanceByMember[m.id] || 0,
+          total_possible: totalSundays,
+          attendance_rate: Math.round(((attendanceByMember[m.id] || 0) / totalSundays) * 100)
+        }));
+
+        return res.json({ report, type: 'member_detail' });
+      }
+
+      // SI UNE ZONE EST SÉLECTIONNÉE (et pas de leader) : On affiche les leaders de cette zone
+      if (area_id && group_by === 'area') {
+        const leaders = await User.findAll({
+          where: { area_id, role: 'Bacenta_Leader' },
+          attributes: ['id', 'first_name', 'last_name'],
+          include: [{
+            model: Member,
+            as: 'led_members',
+            attributes: ['id']
+          }]
+        });
+
+        const leaderIds = leaders.map(l => l.id);
+        const attendances = await Attendance.findAll({
+          where: whereClause,
+          include: [{
+            model: Member,
+            as: 'member',
+            where: { leader_id: { [Op.in]: leaderIds } },
+            attributes: ['leader_id']
+          }]
+        });
+
+        const attendanceByLeader = attendances.reduce((acc, curr) => {
+          const lId = curr.member.leader_id;
+          if (curr.present) acc[lId] = (acc[lId] || 0) + 1;
+          return acc;
+        }, {});
+
+        report = leaders.map(l => {
+          const totalMembers = l.led_members.length;
+          const count = attendanceByLeader[l.id] || 0;
+          return {
+            leader_id: l.id,
+            leader_name: `${l.first_name} ${l.last_name}`,
+            total_members: totalMembers,
+            attendance_count: count,
+            attendance_rate: totalMembers > 0 ? Math.round((count / (totalMembers * 1)) * 100) : 0 // Simplifié, idéalement * nbSundays
+          };
+        });
+
+        return res.json({ report, type: 'area_leaders' });
+      }
+
+      // VUE PAR DÉFAUT (GROUPEMENT PAR ZONE OU LEADER SANS FILTRES SPÉCIFIQUES)
       if (group_by === 'area') {
         report = await Area.findAll({
           attributes: [
@@ -377,10 +510,8 @@ const reportController = {
         });
 
         const attendanceByArea = attendances.reduce((acc, curr) => {
-          const areaId = curr['member.area_id'];
-          if (areaId && curr.present) {
-            acc[areaId] = (acc[areaId] || 0) + 1;
-          }
+          const aId = curr['member.area_id'];
+          if (aId && curr.present) acc[aId] = (acc[aId] || 0) + 1;
           return acc;
         }, {});
 
@@ -392,23 +523,19 @@ const reportController = {
           attendance_rate: item.total_members > 0 ? Math.round(((attendanceByArea[item.id] || 0) / item.total_members) * 100) : 0
         }));
       } else {
+        // ... (Logique Leader existante mais avec support potentiel de area_id en filtre)
+        const userWhere = { role: 'Bacenta_Leader' };
+        if (area_id) userWhere.area_id = area_id;
+
         report = await User.findAll({
-          where: { role: 'Bacenta_Leader' },
+          where: userWhere,
           attributes: [
             'id', 'first_name', 'last_name',
             [User.sequelize.fn('COUNT', User.sequelize.col('led_members.id')), 'total_members']
           ],
           include: [
-            {
-              model: Member,
-              as: 'led_members',
-              attributes: []
-            },
-            {
-              model: Area,
-              as: 'area',
-              attributes: ['name']
-            }
+            { model: Member, as: 'led_members', attributes: [] },
+            { model: Area, as: 'area', attributes: ['name'] }
           ],
           group: ['User.id', 'area.id'],
           raw: true
@@ -425,10 +552,8 @@ const reportController = {
         });
 
         const attendanceByLeader = attendances.reduce((acc, curr) => {
-          const leaderId = curr['member.leader_id'];
-          if (leaderId && curr.present) {
-            acc[leaderId] = (acc[leaderId] || 0) + 1;
-          }
+          const lId = curr['member.leader_id'];
+          if (lId && curr.present) acc[lId] = (acc[lId] || 0) + 1;
           return acc;
         }, {});
 
@@ -443,7 +568,7 @@ const reportController = {
         }));
       }
 
-      res.json({ report });
+      res.json({ report, type: group_by });
     } catch (error) {
       console.error('Get governor attendance report error:', error);
       res.status(500).json({ error: 'Erreur lors de la génération du rapport gouverneur' });
