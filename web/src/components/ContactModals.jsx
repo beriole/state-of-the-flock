@@ -32,7 +32,7 @@ export const SMS_TEMPLATES = [
 
 export const ContactModal = ({ isOpen, onClose, member, authUser, onActionComplete }) => {
     const [showTemplates, setShowTemplates] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [messageMethod, setMessageMethod] = useState(null); // 'sms' or 'whatsapp'
 
     if (!isOpen || !member) return null;
 
@@ -52,7 +52,8 @@ export const ContactModal = ({ isOpen, onClose, member, authUser, onActionComple
         onClose();
     };
 
-    const handleMessage = (method, template = null) => {
+    const handleMessage = (template = null) => {
+        const method = messageMethod;
         const message = template
             ? template.message(memberName, leaderName)
             : "";
@@ -66,6 +67,8 @@ export const ContactModal = ({ isOpen, onClose, member, authUser, onActionComple
         window.open(url, '_blank');
         onActionComplete('Message', method, template?.title);
         onClose();
+        setShowTemplates(false);
+        setMessageMethod(null);
     };
 
     return (
@@ -93,11 +96,14 @@ export const ContactModal = ({ isOpen, onClose, member, authUser, onActionComple
                         <div className={styles.section}>
                             <h4>Envoyer un message via</h4>
                             <div className={styles.btnGroup}>
-                                <button className={styles.actionBtn} onClick={() => setShowTemplates(true)}>
+                                <button className={styles.actionBtn} onClick={() => {
+                                    setMessageMethod('sms');
+                                    setShowTemplates(true);
+                                }}>
                                     <Smartphone size={20} /> SMS (Modèles)
                                 </button>
                                 <button className={`${styles.actionBtn} ${styles.whatsapp}`} onClick={() => {
-                                    setSelectedTemplate(null);
+                                    setMessageMethod('whatsapp');
                                     setShowTemplates(true);
                                 }}>
                                     <MessageCircle size={20} /> WhatsApp (Modèles)
@@ -107,20 +113,23 @@ export const ContactModal = ({ isOpen, onClose, member, authUser, onActionComple
                     </div>
                 ) : (
                     <div className={styles.templates}>
-                        <button className={styles.backBtn} onClick={() => setShowTemplates(false)}>← Retour</button>
-                        <h4>Choisir un modèle</h4>
+                        <button className={styles.backBtn} onClick={() => {
+                            setShowTemplates(false);
+                            setMessageMethod(null);
+                        }}>← Retour</button>
+                        <h4>Choisir un modèle {messageMethod === 'whatsapp' ? 'WhatsApp' : 'SMS'}</h4>
                         <div className={styles.templateList}>
                             {SMS_TEMPLATES.map(t => (
                                 <button
                                     key={t.id}
                                     className={styles.templateItem}
-                                    onClick={() => handleMessage(selectedTemplate === null ? 'whatsapp' : 'sms', t)}
+                                    onClick={() => handleMessage(t)}
                                 >
                                     <strong>{t.title}</strong>
                                     <p>{t.message(member.first_name, authUser?.first_name || 'Leader')}</p>
                                 </button>
                             ))}
-                            <button className={styles.templateItem} onClick={() => handleMessage(selectedTemplate === null ? 'whatsapp' : 'sms')}>
+                            <button className={styles.templateItem} onClick={() => handleMessage()}>
                                 <strong>Message vide</strong>
                                 <p>Ouvrir sans message prédéfini</p>
                             </button>

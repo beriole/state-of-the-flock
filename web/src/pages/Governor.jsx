@@ -26,14 +26,20 @@ import {
     ChevronRight,
     Download,
     Calendar,
-    ArrowLeft
+    ArrowLeft,
+    MessageCircle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { ContactModal } from '../components/ContactModals';
 import styles from './Governor.module.css';
+import { callLogAPI } from '../utils/api';
 
 const Governor = () => {
+    const navigate = useNavigate();
+    const { user: authUser } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get('tab') || 'dashboard';
 
@@ -75,6 +81,10 @@ const Governor = () => {
     const [callTrackingData, setCallTrackingData] = useState([]);
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
+
+    // Contact Modal
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [selectedMemberForContact, setSelectedMemberForContact] = useState(null);
 
     // Modals
     const [showLeaderModal, setShowLeaderModal] = useState(false);
@@ -196,6 +206,33 @@ const Governor = () => {
         } catch (error) {
             console.error('Error fetching call tracking data:', error);
         }
+    };
+
+    const openContactModal = (member) => {
+        setSelectedMemberForContact(member);
+        setIsContactModalOpen(true);
+    };
+
+    const handleActionComplete = async (type, method, templateTitle) => {
+        if (!selectedMemberForContact) return;
+        try {
+            await callLogAPI.createCallLog({
+                member_id: selectedMemberForContact.id,
+                outcome: 'Contacted',
+                contact_method: method === 'whatsapp' ? 'WhatsApp' : (type === 'Call' ? 'Phone' : 'SMS'),
+                notes: `${type} via ${method}${templateTitle ? ` (Modèle: ${templateTitle})` : ''}`
+            });
+            // Si on est dans le rapport de suivi, on rafraîchit les données
+            if (activeTab === 'reports' && selectedReportType === 'call_tracking') {
+                fetchCallTrackingData();
+            }
+        } catch (error) {
+            console.error('Error logging action:', error);
+        }
+    };
+
+    const handleMemberDetail = (memberId) => {
+        navigate(`/members/${memberId}`);
     };
 
     useEffect(() => {
@@ -841,17 +878,17 @@ const Governor = () => {
                                         </div>
                                         <div>
                                             <span className={styles.userName}>{member.first_name} {member.last_name}</span>
-                                            <span className={styles.userEmail}>{member.phone || 'Pas de téléphone'}</span>
+                                            <span className={styles.userEmail}>{member.phone_primary || 'Pas de téléphone'}</span>
                                         </div>
                                     </div>
                                 </td>
                                 <td className={styles.td}>
                                     <span className={`${styles.badge} ${styles.badgeArea}`}>
-                                        {member.Area?.name || 'N/A'}
+                                        {member.area?.name || 'N/A'}
                                     </span>
                                 </td>
                                 <td className={styles.td}>
-                                    {member.Leader ? `${member.Leader.first_name} ${member.Leader.last_name}` : 'N/A'}
+                                    {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}
                                 </td>
                                 <td className={styles.td}>
                                     <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
@@ -859,11 +896,11 @@ const Governor = () => {
                                     </span>
                                 </td>
                                 <td className={styles.td}>
-                                    <div className={styles.actions}>
-                                        <button className={styles.actionBtn} title="Appeler">
+                                    <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
+                                        <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(member)}>
                                             <Phone size={18} />
                                         </button>
-                                        <button className={styles.actionBtn} title="Détails">
+                                        <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(member.id)}>
                                             <ChevronRight size={18} />
                                         </button>
                                     </div>
@@ -1151,68 +1188,82 @@ const Governor = () => {
                                                 <th className={styles.th}>Appelé par</th>
                                             </>
                                         )}
+                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {callTrackingData.length > 0 ? (
-                                        callTrackingData.map((item, idx) => (
-                                            <tr key={idx} className={styles.tr}>
-                                                <td className={styles.td}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div style={{
-                                                            width: '32px', height: '32px', borderRadius: '50%',
-                                                            background: item.photo_url ? `url(${item.photo_url}) center/cover` : 'rgba(255,255,255,0.1)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            color: 'white', fontSize: '0.8rem'
-                                                        }}>
-                                                            {!item.photo_url && (item.member?.first_name?.[0] || item.first_name?.[0])}
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ color: 'white', fontWeight: '500' }}>
-                                                                {item.member ? `${item.member.first_name} ${item.member.last_name}` : `${item.first_name} ${item.last_name}`}
+                                        callTrackingData.map((item, idx) => {
+                                            const targetMember = item.member || item;
+                                            return (
+                                                <tr key={idx} className={styles.tr}>
+                                                    <td className={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <div style={{
+                                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                                background: targetMember.photo_url ? `url(${targetMember.photo_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                color: 'white', fontSize: '0.8rem'
+                                                            }}>
+                                                                {!targetMember.photo_url && (targetMember.first_name?.[0] || 'M')}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ color: 'white', fontWeight: '500' }}>
+                                                                    {`${targetMember.first_name} ${targetMember.last_name}`}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className={styles.td} style={{ color: '#94a3b8' }}>
-                                                    {item.member ? item.member.phone_primary : item.phone_primary}
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-                                                        {item.member?.area?.name || item.area?.name || '-'}
-                                                    </span>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    {item.member?.leader ? `${item.member.leader.first_name} ${item.member.leader.last_name}` :
-                                                        item.leader ? `${item.leader.first_name} ${item.leader.last_name}` : '-'}
-                                                </td>
-                                                {callTrackingView === 'not_called' ? (
-                                                    <td className={styles.td} style={{ color: '#ef4444' }}>
-                                                        {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
                                                     </td>
-                                                ) : (
-                                                    <>
-                                                        <td className={styles.td}>
-                                                            {new Date(item.call_date).toLocaleDateString()}
+                                                    <td className={styles.td} style={{ color: '#94a3b8' }}>
+                                                        {targetMember.phone_primary}
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                                                            {targetMember.area?.name || targetMember.Area?.name || '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
+                                                            targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
+                                                    </td>
+                                                    {callTrackingView === 'not_called' ? (
+                                                        <td className={styles.td} style={{ color: '#ef4444' }}>
+                                                            {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
                                                         </td>
-                                                        <td className={styles.td}>
-                                                            <span className={styles.badge} style={{
-                                                                background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                                                color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
-                                                            }}>
-                                                                {item.outcome}
-                                                            </span>
-                                                        </td>
-                                                        <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                                            {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                        ))
+                                                    ) : (
+                                                        <>
+                                                            <td className={styles.td}>
+                                                                {new Date(item.call_date).toLocaleDateString()}
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <span className={styles.badge} style={{
+                                                                    background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                                    color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
+                                                                }}>
+                                                                    {item.outcome}
+                                                                </span>
+                                                            </td>
+                                                            <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                                {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                    <td className={styles.td}>
+                                                        <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
+                                                            <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
+                                                                <Phone size={18} />
+                                                            </button>
+                                                            <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
+                                                                <ChevronRight size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                            <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                                                 Aucune donnée trouvée pour cette période.
                                             </td>
                                         </tr>
@@ -1443,6 +1494,14 @@ const Governor = () => {
                     </div>
                 </div>
             )}
+
+            <ContactModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+                member={selectedMemberForContact}
+                authUser={authUser}
+                onActionComplete={handleActionComplete}
+            />
         </div>
     );
 };
