@@ -5,28 +5,45 @@ import styles from './ContactModals.module.css';
 export const SMS_TEMPLATES = [
     {
         id: 1,
-        title: 'Bienvenue / Suivi',
-        message: (memberName, leaderName) => `Bonjour ${memberName}, c'est ${leaderName}. Je voulais vous saluer et vous rappeler que vous êtes précieux pour notre Bacenta. 🙏 Si vous avez besoin de prières, n'hésitez pas. Que Dieu vous bénisse !`
+        title: 'Message de bienvenue / suivi',
+        message: (memberName, leaderName) => `Bonjour ${memberName},
+C'est ${leaderName}. Je voulais prendre un moment pour vous saluer et vous rappeler que vous êtes une partie précieuse de notre Bacenta. 🙏
+Si vous avez besoin de prières ou d'assistance, n'hésitez pas à me contacter.
+Que Dieu vous bénisse !`
     },
     {
         id: 2,
-        title: 'Invitation Événement',
-        message: (memberName, leaderName) => `Bonjour ${memberName}, ici ${leaderName}. Nous organisons un événement spécial ce dimanche à 9h. Votre présence sera une joie ! Merci de confirmer. 🙌`
+        title: 'Invitation à un événement',
+        message: (memberName, leaderName) => `Bonjour ${memberName},
+Ici ${leaderName}. Nous organisons [Nom de l'événement] ce [Jour] à [Heure]. Votre présence sera une grande joie pour nous !
+Merci de confirmer votre participation. 🙌`
     },
     {
         id: 3,
-        title: 'Encouragement',
-        message: (memberName, leaderName) => `Salut ${memberName}, ${leaderName} ici. Je prie pour vous aujourd'hui. Restez fort dans la foi. Que Dieu vous guide ! ✨`
+        title: 'Message de motivation / encouragement spirituel',
+        message: (memberName, leaderName) => `Salut ${memberName},
+${leaderName} ici. Je prie pour vous aujourd'hui et vous encourage à rester fort dans la foi.
+Que Dieu vous guide et vous protège dans toutes vos démarches. ✨`
     },
     {
         id: 4,
-        title: 'Prise de nouvelles',
-        message: (memberName, leaderName) => `Bonjour ${memberName}, c'est ${leaderName}. Juste un petit message pour savoir comment vous allez ? N'hésitez pas si vous avez besoin de quoi que ce soit. 🙏`
+        title: 'Message pour prise de nouvelles',
+        message: (memberName, leaderName) => `Bonjour ${memberName},
+C'est ${leaderName}. Juste un petit message pour prendre de vos nouvelles et savoir comment vous allez spirituellement et personnellement.
+N'hésitez pas à me répondre ou à demander de la prière. 🙏`
     },
     {
         id: 5,
-        title: 'Rappel Réunion',
-        message: (memberName, leaderName) => `Bonjour ${memberName}, ici ${leaderName}. Rappel : notre réunion Bacenta a lieu demain à 18h. Votre présence est importante ! ✨`
+        title: 'Rappel de réunion / rencontre Bacenta',
+        message: (memberName, leaderName) => `Bonjour ${memberName},
+Ici ${leaderName}. Nous avons notre prochaine réunion Bacenta le [Jour] à [Heure].
+Votre présence est très importante, merci de ne pas oublier ! ✨`
+    },
+    {
+        id: 6,
+        title: 'Message de félicitations / encouragement personnel',
+        message: (memberName, leaderName) => `Bonjour ${memberName},
+${leaderName} ici. Je tenais à vous féliciter pour [Événement / Réussite du membre]. Que le Seigneur continue de bénir vos efforts et votre chemin ! 🎉`
     }
 ];
 
