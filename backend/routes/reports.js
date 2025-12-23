@@ -24,4 +24,7 @@ router.get('/member-growth', reportController.getMemberGrowthReport);
 // GET /api/reports/governor/attendance
 router.get('/governor/attendance', reportController.getGovernorAttendanceReport);
 
+// GET /api/reports/call-logs
+router.get('/call-logs', reportController.getCallLogReport);
+
 module.exports = router;

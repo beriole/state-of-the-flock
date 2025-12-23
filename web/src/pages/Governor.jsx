@@ -1131,7 +1131,7 @@ const Governor = () => {
                                 <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
                                     {callTrackingView === 'not_called'
                                         ? `Membres sans appel (${callTrackingSummary?.count || 0})`
-                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
+                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'}) [V:${callTrackingSummary?.backend_version || '?'}]`
                                     }
                                 </h3>
                             </div>

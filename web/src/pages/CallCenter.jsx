@@ -23,10 +23,10 @@ const CallCenter = () => {
 
     // Form State
     const [logData, setLogData] = useState({
-        type: 'call',
-        summary: '',
-        duration: '5',
-        outcome: 'reached'
+        contact_method: 'Phone',
+        notes: '',
+        call_duration: '5',
+        outcome: 'Contacted'
     });
 
     useEffect(() => {
@@ -55,10 +55,10 @@ const CallCenter = () => {
     const openLogModal = (member) => {
         setSelectedMember(member);
         setLogData({
-            type: 'call',
-            summary: '',
-            duration: '5',
-            outcome: 'reached'
+            contact_method: 'Phone',
+            notes: '',
+            call_duration: '5',
+            outcome: 'Contacted'
         });
         setShowLogModal(true);
     };
@@ -68,8 +68,7 @@ const CallCenter = () => {
         try {
             await callLogAPI.createCallLog({
                 member_id: selectedMember.id,
-                ...logData,
-                date: new Date().toISOString()
+                ...logData
             });
             setShowLogModal(false);
             fetchData(); // Refresh logs
@@ -81,12 +80,12 @@ const CallCenter = () => {
     const getStats = () => {
         const today = new Date().toISOString().split('T')[0];
         const logs = Array.isArray(callLogs) ? callLogs : [];
-        const todayLogs = logs.filter(log => log && log.date && log.date.startsWith(today));
+        const todayLogs = logs.filter(log => log && log.call_date && log.call_date.startsWith(today));
 
         return {
-            totalCalls: logs.filter(l => l && l.type === 'call').length,
-            todayCalls: todayLogs.filter(l => l && l.type === 'call').length,
-            reached: logs.filter(l => l && l.outcome === 'reached').length
+            totalCalls: logs.filter(l => l && l.contact_method === 'Phone').length,
+            todayCalls: todayLogs.filter(l => l && l.contact_method === 'Phone').length,
+            reached: logs.filter(l => l && l.outcome === 'Contacted').length
         };
     };
 
@@ -151,7 +150,7 @@ const CallCenter = () => {
                                         <div className={styles.info}>
                                             <span className={styles.name}>{member.first_name} {member.last_name}</span>
                                             <span className={styles.details}>
-                                                <Phone size={14} /> {member.phone}
+                                                <Phone size={14} /> {member.phone_primary || member.phone}
                                             </span>
                                         </div>
                                     </div>
@@ -183,18 +182,18 @@ const CallCenter = () => {
                     </h2>
                     <div className={styles.historyList}>
                         {(Array.isArray(callLogs) ? callLogs : []).slice(0, 10).map(log => (
-                            <div key={log.id} className={`${styles.historyItem} ${styles[log.type]}`}>
+                            <div key={log.id} className={`${styles.historyItem} ${styles[log.contact_method?.toLowerCase()]}`}>
                                 <div className={styles.historyHeader}>
                                     <span style={{ fontWeight: 600, color: 'white' }}>
-                                        {members.find(m => m.id === log.member_id)?.first_name || 'Membre'}
+                                        {log.member?.first_name || 'Membre'}
                                     </span>
-                                    <span>{new Date(log.date).toLocaleDateString()}</span>
+                                    <span>{new Date(log.call_date).toLocaleDateString()}</span>
                                 </div>
                                 <div className={styles.historyContent}>
-                                    {log.summary}
+                                    {log.notes}
                                 </div>
                                 <div className={styles.historyFooter}>
-                                    <span>{log.type === 'call' ? 'Appel' : 'Visite'}</span>
+                                    <span>{log.contact_method}</span>
                                     <span>•</span>
                                     <span>{log.outcome}</span>
                                 </div>
@@ -232,12 +231,13 @@ const CallCenter = () => {
                                 <label className={styles.label}>Type de contact</label>
                                 <select
                                     className={styles.select}
-                                    value={logData.type}
-                                    onChange={e => setLogData({ ...logData, type: e.target.value })}
+                                    value={logData.contact_method}
+                                    onChange={e => setLogData({ ...logData, contact_method: e.target.value })}
                                 >
-                                    <option value="call">Appel Téléphonique</option>
-                                    <option value="visit">Visite</option>
-                                    <option value="message">Message</option>
+                                    <option value="Phone">Appel Téléphonique</option>
+                                    <option value="WhatsApp">WhatsApp</option>
+                                    <option value="SMS">SMS</option>
+                                    <option value="Visit">Visite</option>
                                 </select>
                             </div>
 
@@ -248,11 +248,11 @@ const CallCenter = () => {
                                     value={logData.outcome}
                                     onChange={e => setLogData({ ...logData, outcome: e.target.value })}
                                 >
-                                    <option value="reached">Joint / Rencontré</option>
-                                    <option value="no_answer">Pas de réponse</option>
-                                    <option value="left_message">Message laissé</option>
-                                    <option value="busy">Occupé</option>
-                                    <option value="wrong_number">Mauvais numéro</option>
+                                    <option value="Contacted">Joint / Rencontré</option>
+                                    <option value="No_Answer">Pas de réponse</option>
+                                    <option value="Callback_Requested">Rappel demandé</option>
+                                    <option value="Wrong_Number">Mauvais numéro</option>
+                                    <option value="Other">Autre</option>
                                 </select>
                             </div>
 
@@ -261,8 +261,8 @@ const CallCenter = () => {
                                 <input
                                     type="number"
                                     className={styles.input}
-                                    value={logData.duration}
-                                    onChange={e => setLogData({ ...logData, duration: e.target.value })}
+                                    value={logData.call_duration}
+                                    onChange={e => setLogData({ ...logData, call_duration: e.target.value })}
                                 />
                             </div>
 
@@ -270,8 +270,8 @@ const CallCenter = () => {
                                 <label className={styles.label}>Résumé / Notes</label>
                                 <textarea
                                     className={styles.textarea}
-                                    value={logData.summary}
-                                    onChange={e => setLogData({ ...logData, summary: e.target.value })}
+                                    value={logData.notes}
+                                    onChange={e => setLogData({ ...logData, notes: e.target.value })}
                                     placeholder="De quoi avez-vous parlé ?"
                                     required
                                 />

@@ -232,7 +232,7 @@ const reportController = {
             {
               model: Member,
               as: 'member',
-              where: memberWhere,
+              where: Object.keys(memberWhere).length > 0 ? memberWhere : undefined,
               include: [
                 { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] },
                 { model: Area, as: 'area', attributes: ['id', 'name'] }
@@ -256,7 +256,7 @@ const reportController = {
             total_in_period_debug: totalCallsInPeriod,
             total_all_time: totalAllTime,
             outcome_stats: outcomeStats,
-            debug_filters: { memberWhere, callLogWhere }
+            backend_version: '1.2'
           },
           data: callLogs
         });
