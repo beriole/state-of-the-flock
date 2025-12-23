@@ -168,7 +168,7 @@ const reportController = {
         dateFilter[Op.between] = [new Date(start_date), endDateTime];
       }
 
-      const memberWhere = { is_active: true };
+      const memberWhere = {};
       if (area_id) memberWhere.area_id = area_id;
       if (leader_id) memberWhere.leader_id = leader_id;
 
@@ -180,8 +180,11 @@ const reportController = {
 
       if (view_type === 'not_called') {
         // CAS: MEMBRES NON APPELÉS
+        // On ne veut que les membres ACTIFS qui n'ont pas été appelés
+        const notCalledWhere = { ...memberWhere, is_active: true };
+
         const allMembers = await Member.findAll({
-          where: memberWhere,
+          where: notCalledWhere,
           include: [
             { model: User, as: 'leader', attributes: ['id', 'first_name', 'last_name'] },
             { model: Area, as: 'area', attributes: ['id', 'name'] }
@@ -212,6 +215,12 @@ const reportController = {
         // CAS: HISTORIQUE DES APPELS
         const callLogWhere = {};
         if (start_date && end_date) callLogWhere.call_date = dateFilter;
+
+        console.log('DEBUG CALL LOGS:', {
+          callLogWhere,
+          memberWhere,
+          dateFilter
+        });
 
         const callLogs = await CallLog.findAll({
           where: callLogWhere,
