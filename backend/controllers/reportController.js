@@ -163,7 +163,9 @@ const reportController = {
 
       const dateFilter = {};
       if (start_date && end_date) {
-        dateFilter[Op.between] = [start_date, end_date];
+        const endDateTime = new Date(end_date);
+        endDateTime.setHours(23, 59, 59, 999);
+        dateFilter[Op.between] = [new Date(start_date), endDateTime];
       }
 
       const memberWhere = { is_active: true };

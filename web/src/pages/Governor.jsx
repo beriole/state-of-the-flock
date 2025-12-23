@@ -1062,6 +1062,26 @@ const Governor = () => {
                                         }
                                     </select>
                                 </div>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Début</label>
+                                    <input
+                                        type="date"
+                                        className={styles.input}
+                                        style={{ padding: '0.4rem', width: 'auto' }}
+                                        value={reportFilters.startDate}
+                                        onChange={e => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                                    />
+                                </div>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Fin</label>
+                                    <input
+                                        type="date"
+                                        className={styles.input}
+                                        style={{ padding: '0.4rem', width: 'auto' }}
+                                        value={reportFilters.endDate}
+                                        onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                                    />
+                                </div>
                             </>
                         )}
                         {selectedReportType === 'call_tracking' && (
