@@ -223,6 +223,7 @@ const reportController = {
         });
 
         const totalCallsInPeriod = await CallLog.count({ where: callLogWhere });
+        const totalAllTime = await CallLog.count();
 
         const callLogs = await CallLog.findAll({
           where: callLogWhere,
@@ -253,6 +254,7 @@ const reportController = {
           summary: {
             total_calls: callLogs.length,
             total_in_period_debug: totalCallsInPeriod,
+            total_all_time: totalAllTime,
             outcome_stats: outcomeStats,
             debug_filters: { memberWhere, callLogWhere }
           },
