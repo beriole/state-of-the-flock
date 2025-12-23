@@ -265,15 +265,22 @@ const reportController = {
   // Rapport de croissance des membres
   getMemberGrowthReport: async (req, res) => {
     try {
-      const { period = '3months' } = req.query;
+      const { period, start_date, end_date } = req.query;
 
-      const endDate = new Date();
-      const startDate = new Date();
-      if (period === '1month') startDate.setMonth(endDate.getMonth() - 1);
-      else if (period === '3months') startDate.setMonth(endDate.getMonth() - 3);
-      else if (period === '6months') startDate.setMonth(endDate.getMonth() - 6);
-      else if (period === '1year') startDate.setFullYear(endDate.getFullYear() - 1);
-      else startDate.setMonth(endDate.getMonth() - 3);
+      let startDate, endDate;
+
+      if (start_date && end_date) {
+        startDate = new Date(start_date);
+        endDate = new Date(end_date);
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        if (period === '1month') startDate.setMonth(endDate.getMonth() - 1);
+        else if (period === '3months') startDate.setMonth(endDate.getMonth() - 3);
+        else if (period === '6months') startDate.setMonth(endDate.getMonth() - 6);
+        else if (period === '1year') startDate.setFullYear(endDate.getFullYear() - 1);
+        else startDate.setMonth(endDate.getMonth() - 3);
+      }
 
       const whereClause = {};
       if (req.user.role === 'Bacenta_Leader') {

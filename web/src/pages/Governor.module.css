@@ -537,6 +537,12 @@
     border-color: rgba(255, 255, 255, 0.1);
 }
 
+.reportCardActive {
+    border-color: #DC2626 !important;
+    background: rgba(220, 38, 38, 0.05) !important;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.1) !important;
+}
+
 .reportIcon {
     width: 64px;
     height: 64px;

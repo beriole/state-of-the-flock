@@ -120,8 +120,7 @@ const Governor = () => {
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
             } else if (activeTab === 'reports') {
-                const res = await reportAPI.getGovernorAttendanceReport(reportFilters);
-                setAttendanceReportData(res.data.report || []);
+                // Géré par useEffect local à renderReports
             }
         } catch (error) {
             console.error('Error fetching governor data:', error);
@@ -757,7 +756,41 @@ const Governor = () => {
         </div>
     );
 
-    const renderReports = () => (
+    // Dans Governor.jsx, dans la fonction renderReports
+    const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
+
+    useEffect(() => {
+        if (activeTab === 'reports') {
+            if (selectedReportType === 'attendance') {
+                fetchAttendanceData();
+            } else {
+                fetchGrowthData();
+            }
+        }
+    }, [reportFilters, selectedReportType, activeTab]);
+
+    const fetchAttendanceData = async () => {
+        try {
+            const res = await reportAPI.getGovernorAttendanceReport(reportFilters);
+            setAttendanceReportData(res.data.report || []);
+        } catch (error) {
+            console.error('Error fetching attendance report:', error);
+        }
+    };
+
+    const fetchGrowthData = async () => {
+        try {
+            const res = await reportAPI.getMemberGrowthReport({
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate
+            });
+            setGrowthData(res.data);
+        } catch (error) {
+            console.error('Error fetching growth report:', error);
+        }
+    };
+
+    return (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Rapports & Analyses</h2>
@@ -782,40 +815,58 @@ const Governor = () => {
                             onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
                         />
                     </div>
-                    <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                        <label className={styles.label} style={{ fontSize: '0.7rem' }}>Grouper par</label>
-                        <select
-                            className={styles.select}
-                            style={{ padding: '0.4rem' }}
-                            value={reportFilters.groupBy}
-                            onChange={e => setReportFilters({ ...reportFilters, groupBy: e.target.value })}
-                        >
-                            <option value="area">Zone</option>
-                            <option value="leader">Leader</option>
-                        </select>
-                    </div>
+                    {selectedReportType === 'attendance' && (
+                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>Grouper par</label>
+                            <select
+                                className={styles.select}
+                                style={{ padding: '0.4rem' }}
+                                value={reportFilters.groupBy}
+                                onChange={e => setReportFilters({ ...reportFilters, groupBy: e.target.value })}
+                            >
+                                <option value="area">Zone</option>
+                                <option value="leader">Leader</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div className={styles.reportsGrid}>
-                <div className={styles.reportCard} onClick={generateAttendancePDF}>
+                <div
+                    className={`${styles.reportCard} ${selectedReportType === 'attendance' ? styles.reportCardActive : ''}`}
+                    onClick={() => setSelectedReportType('attendance')}
+                >
                     <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
                         <Calendar size={32} />
                     </div>
                     <h3 className={styles.reportTitle}>Rapport de Présence</h3>
                     <p className={styles.reportDesc}>Analyse détaillée de la présence hebdomadaire par zone et par leader.</p>
-                    <button className={styles.primaryBtn} style={{ marginTop: 'auto', width: '100%' }}>
+                    <button
+                        className={styles.primaryBtn}
+                        style={{ marginTop: 'auto', width: '100%' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            generateAttendancePDF();
+                        }}
+                    >
                         <Download size={18} /> Générer PDF
                     </button>
                 </div>
-                <div className={styles.reportCard}>
+                <div
+                    className={`${styles.reportCard} ${selectedReportType === 'growth' ? styles.reportCardActive : ''}`}
+                    onClick={() => setSelectedReportType('growth')}
+                >
                     <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
                         <TrendingUp size={32} />
                     </div>
                     <h3 className={styles.reportTitle}>Croissance des Membres</h3>
                     <p className={styles.reportDesc}>Suivi de l'évolution du nombre de membres et des nouveaux convertis.</p>
-                    <button className={styles.primaryBtn} style={{ marginTop: 'auto', width: '100%' }} disabled>
-                        <Download size={18} /> Bientôt
+                    <button
+                        className={styles.primaryBtn}
+                        style={{ marginTop: 'auto', width: '100%' }}
+                    >
+                        <FileBarChart size={18} /> Voir Graphique
                     </button>
                 </div>
                 <div className={styles.reportCard}>
@@ -832,57 +883,69 @@ const Governor = () => {
 
             <div className={styles.tableContainer} style={{ marginTop: '2rem' }}>
                 <div className={styles.sectionHeader} style={{ padding: '1rem' }}>
-                    <h3 className={styles.sectionTitle} style={{ fontSize: '1.1rem' }}>Données du Rapport</h3>
+                    <h3 className={styles.sectionTitle} style={{ fontSize: '1.1rem' }}>
+                        {selectedReportType === 'attendance' ? 'Données de Présence' : 'Évolution de la Croissance'}
+                    </h3>
                 </div>
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>{reportFilters.groupBy === 'area' ? 'Zone' : 'Leader'}</th>
-                            {reportFilters.groupBy === 'leader' && <th className={styles.th}>Zone</th>}
-                            <th className={styles.th}>Total Membres</th>
-                            <th className={styles.th}>Présents</th>
-                            <th className={styles.th}>Taux %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {attendanceReportData.length > 0 ? (
-                            attendanceReportData.map((item, idx) => (
-                                <tr key={idx} className={styles.tr}>
-                                    <td className={styles.td}>
-                                        {reportFilters.groupBy === 'area'
-                                            ? item.area_name
-                                            : `${item.leader_first_name} ${item.leader_last_name}`}
-                                    </td>
-                                    {reportFilters.groupBy === 'leader' && <td className={styles.td}>{item.area_name}</td>}
-                                    <td className={styles.td}>{item.total_members}</td>
-                                    <td className={styles.td}>{item.attendance_count}</td>
-                                    <td className={styles.td}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div className={styles.progressContainer} style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
-                                                <div
-                                                    className={styles.progressBar}
-                                                    style={{
-                                                        width: `${item.attendance_rate}%`,
-                                                        height: '100%',
-                                                        background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
-                                                        borderRadius: '3px'
-                                                    }}
-                                                />
+
+                {selectedReportType === 'attendance' ? (
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>{reportFilters.groupBy === 'area' ? 'Zone' : 'Leader'}</th>
+                                {reportFilters.groupBy === 'leader' && <th className={styles.th}>Zone</th>}
+                                <th className={styles.th}>Total Membres</th>
+                                <th className={styles.th}>Présents</th>
+                                <th className={styles.th}>Taux %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {attendanceReportData.length > 0 ? (
+                                attendanceReportData.map((item, idx) => (
+                                    <tr key={idx} className={styles.tr}>
+                                        <td className={styles.td}>
+                                            {reportFilters.groupBy === 'area'
+                                                ? item.area_name
+                                                : `${item.leader_first_name} ${item.leader_last_name}`}
+                                        </td>
+                                        {reportFilters.groupBy === 'leader' && <td className={styles.td}>{item.area_name}</td>}
+                                        <td className={styles.td}>{item.total_members}</td>
+                                        <td className={styles.td}>{item.attendance_count}</td>
+                                        <td className={styles.td}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div className={styles.progressContainer} style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>
+                                                    <div
+                                                        className={styles.progressBar}
+                                                        style={{
+                                                            width: `${item.attendance_rate}%`,
+                                                            height: '100%',
+                                                            background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
+                                                            borderRadius: '3px'
+                                                        }}
+                                                    />
+                                                </div>
+                                                <span>{item.attendance_rate}%</span>
                                             </div>
-                                            <span>{item.attendance_rate}%</span>
-                                        </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                        Aucune donnée disponible pour cette période.
                                     </td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                    Aucune donnée disponible pour cette période.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            )}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div style={{ padding: '1rem' }}>
+                        {renderGrowthChart()}
+                        <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                            <p>Total nouveaux membres sur la période : <strong>{growthData?.total_new || 0}</strong></p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
