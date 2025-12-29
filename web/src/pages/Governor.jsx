@@ -81,6 +81,7 @@ const Governor = () => {
     const [callTrackingData, setCallTrackingData] = useState([]);
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
+    const [bacentaReportData, setBacentaReportData] = useState([]);
 
     // Contact Modal
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -153,6 +154,8 @@ const Governor = () => {
                     fetchGrowthData();
                 } else if (selectedReportType === 'call_tracking') {
                     fetchCallTrackingData();
+                } else if (selectedReportType === 'bacenta_meetings') {
+                    fetchBacentaReportData();
                 }
             }
         } catch (error) {
@@ -200,11 +203,24 @@ const Governor = () => {
                 leader_id: reportFilters.leaderId,
                 view_type: callTrackingView
             });
-            setCallTrackingData(res.data.data || []);
-            if (res.data.summary) setCallTrackingSummary(res.data.summary);
-            else setCallTrackingSummary({ count: res.data.count });
+            setCallTrackingData(res.data.report || []);
+            setCallTrackingSummary(res.data.summary);
         } catch (error) {
-            console.error('Error fetching call tracking data:', error);
+            console.error('Error fetching call tracking report:', error);
+        }
+    };
+
+    const fetchBacentaReportData = async () => {
+        try {
+            const res = await reportAPI.getBacentaReport({
+                start_date: reportFilters.startDate,
+                end_date: reportFilters.endDate,
+                area_id: reportFilters.areaId,
+                leader_id: reportFilters.leaderId
+            });
+            setBacentaReportData(res.data.meetings || []);
+        } catch (error) {
+            console.error('Error fetching bacenta report:', error);
         }
     };
 
@@ -1025,16 +1041,16 @@ const Governor = () => {
                         <div
                             className={styles.reportCard}
                             onClick={() => {
-                                setSelectedReportType('call_tracking');
+                                setSelectedReportType('bacenta_meetings');
                                 setIsViewingReport(true);
                             }}
                         >
-                            <div className={styles.reportIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                                <Phone size={32} />
+                            <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
+                                <MessageCircle size={32} />
                             </div>
-                            <h3 className={styles.reportTitle}>Suivi des Appels</h3>
-                            <p className={styles.reportDesc}>Statistiques sur les appels de suivi effectués par les leaders.</p>
-                            <div className={styles.reportBadge} style={{ background: '#10b981' }}>Nouveau</div>
+                            <h3 className={styles.reportTitle}>Comptes rendus Bacenta</h3>
+                            <p className={styles.reportDesc}>Rapports détaillés des réunions hebdomadaires effectués par les leaders.</p>
+                            <div className={styles.reportBadge} style={{ background: '#38bdf8' }}>Récent</div>
                         </div>
                     </div>
                 </div>
@@ -1055,12 +1071,14 @@ const Governor = () => {
                         <div>
                             <h2 className={styles.sectionTitle}>
                                 {selectedReportType === 'attendance' ? 'Rapport de Présence' :
-                                    selectedReportType === 'growth' ? 'Croissance des Membres' : 'Suivi des Appels'}
+                                    selectedReportType === 'growth' ? 'Croissance des Membres' :
+                                        selectedReportType === 'call_tracking' ? 'Suivi des Appels' : 'Comptes rendus Bacenta'}
                             </h2>
                             <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
                                 {selectedReportType === 'attendance' ? 'Analyse filtrée par zone, leader et période' :
                                     selectedReportType === 'growth' ? 'Analyse d\'évolution temporelle premium' :
-                                        'Membres contactés et non contactés par période'}
+                                        selectedReportType === 'call_tracking' ? 'Membres contactés et non contactés par période' :
+                                            'Détails des réunions de partage et activités par zone'}
                             </p>
                         </div>
                     </div>
@@ -1271,6 +1289,67 @@ const Governor = () => {
                                 </tbody>
                             </table>
                         </>
+                    ) : selectedReportType === 'bacenta_meetings' ? (
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th className={styles.th}>Date</th>
+                                    <th className={styles.th}>Leader</th>
+                                    <th className={styles.th}>Zone</th>
+                                    <th className={styles.th}>Type</th>
+                                    <th className={styles.th}>Présents</th>
+                                    <th className={styles.th}>Offrande</th>
+                                    <th className={styles.th} style={{ textAlign: 'right' }}>Détails</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {bacentaReportData.length > 0 ? (
+                                    bacentaReportData.map((meeting, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>{new Date(meeting.meeting_date).toLocaleDateString()}</td>
+                                            <td className={styles.td}>
+                                                {meeting.leader ? `${meeting.leader.first_name} ${meeting.leader.last_name}` : 'N/A'}
+                                            </td>
+                                            <td className={styles.td}>
+                                                <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
+                                                    {meeting.area?.name || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className={styles.td}>
+                                                <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#fff' }}>
+                                                    {meeting.meeting_type}
+                                                </span>
+                                            </td>
+                                            <td className={styles.td}>
+                                                <strong>{meeting.total_members_present}</strong>
+                                                <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '4px' }}>
+                                                    / {meeting.expected_participants || '-'}
+                                                </span>
+                                            </td>
+                                            <td className={styles.td}>{meeting.offering_amount} <span style={{ fontSize: '0.8rem' }}>CFA</span></td>
+                                            <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                {meeting.notes && (
+                                                    <button className={styles.actionBtn} title={meeting.notes}>
+                                                        <MessageCircle size={16} />
+                                                    </button>
+                                                )}
+                                                {meeting.photo_url && (
+                                                    <button className={styles.actionBtn} onClick={() => window.open(meeting.photo_url, '_blank')}>
+                                                        <Home size={16} />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                            Aucun compte rendu trouvé pour cette période.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     ) : selectedReportType === 'attendance' ? (
                         <table className={styles.table}>
                             <thead>

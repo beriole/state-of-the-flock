@@ -68,6 +68,9 @@ const bacentaController = {
         offerings: meeting.offering_amount,
         familyPhoto: meeting.family_photo,
         photo_url: meeting.photo_url,
+        preacher: meeting.preacher,
+        theme: meeting.theme,
+        notes: meeting.notes,
         status: meeting.is_verified ? 'completed' : 'planned',
         attendance: meeting.attendances?.map(att => ({
           member_id: att.member_id,
@@ -107,7 +110,10 @@ const bacentaController = {
         expectedParticipants,
         agenda,
         offerings,
-        familyPhoto
+        familyPhoto,
+        preacher,
+        theme,
+        notes
       } = req.body;
 
       if (!date || !type) {
@@ -137,7 +143,9 @@ const bacentaController = {
         location,
         offering_amount: offerings || 0,
         total_members_present: 0,
-        notes: agenda ? agenda.join('\n') : null,
+        preacher,
+        theme,
+        notes: notes || (agenda ? agenda.join('\n') : null),
         is_verified: false
       });
 
@@ -162,6 +170,9 @@ const bacentaController = {
         offerings: newMeeting.offering_amount,
         familyPhoto: newMeeting.family_photo,
         photo_url: newMeeting.photo_url,
+        preacher: newMeeting.preacher,
+        theme: newMeeting.theme,
+        notes: newMeeting.notes,
         status: 'planned'
       };
 
@@ -232,7 +243,10 @@ const bacentaController = {
         expectedParticipants,
         agenda,
         offerings,
-        familyPhoto
+        familyPhoto,
+        preacher,
+        theme,
+        notes
       } = req.body;
 
       const meeting = await BacentaMeeting.findByPk(meetingId);
@@ -261,8 +275,10 @@ const bacentaController = {
         agenda,
         family_photo: familyPhoto,
         location,
-        offering_amount: offerings,
-        notes: agenda ? agenda.join('\n') : meeting.notes
+        offering_amount: offerings !== undefined ? offerings : meeting.offering_amount,
+        preacher: preacher,
+        theme: theme,
+        notes: notes || (agenda ? agenda.join('\n') : meeting.notes)
       };
 
       await meeting.update(updateData);
@@ -289,6 +305,9 @@ const bacentaController = {
         offerings: updatedMeeting.offering_amount,
         familyPhoto: updatedMeeting.family_photo,
         photo_url: updatedMeeting.photo_url,
+        preacher: updatedMeeting.preacher,
+        theme: updatedMeeting.theme,
+        notes: updatedMeeting.notes,
         status: updatedMeeting.is_verified ? 'completed' : 'planned'
       };
 

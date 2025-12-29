@@ -33,9 +33,9 @@ const Bacenta = () => {
     const [showReportModal, setShowReportModal] = useState(false);
     const [reportData, setReportData] = useState({
         offerings: [
-            { type: 'Offrande', amount: 0 },
-            { type: 'Dîme', amount: 0 },
-            { type: 'Autre', amount: 0 }
+            { type: 'Offering', amount: 0, label: 'Offrande' },
+            { type: 'Tithe', amount: 0, label: 'Dîme' },
+            { type: 'Other', amount: 0, label: 'Autre' }
         ],
         preacher: '',
         theme: '',
@@ -75,8 +75,8 @@ const Bacenta = () => {
 
     const fetchMembers = async () => {
         try {
-            const response = await memberAPI.getMembers().catch(e => ({ data: { members: [] } }));
-            const membersData = response?.data?.members || [];
+            const response = await bacentaAPI.getMembers().catch(e => ({ data: [] }));
+            const membersData = response?.data || [];
             setMembers(Array.isArray(membersData) ? membersData : []);
         } catch (error) {
             console.error('Error fetching members:', error);
@@ -95,7 +95,14 @@ const Bacenta = () => {
         e.preventDefault();
         try {
             setUploading(true);
-            const response = await bacentaAPI.createMeeting(newMeeting);
+
+            // Nettoyage de l'agenda avant envoi
+            const cleanedMeeting = {
+                ...newMeeting,
+                agenda: newMeeting.agenda.filter(item => item && item.trim() !== '')
+            };
+
+            const response = await bacentaAPI.createMeeting(cleanedMeeting);
             const meetingId = response.data.id;
 
             if (selectedFile) {
@@ -172,23 +179,23 @@ const Bacenta = () => {
         setSelectedMeeting(meeting);
 
         let initialOfferings = [
-            { type: 'Offrande', amount: 0 },
-            { type: 'Dîme', amount: 0 },
-            { type: 'Autre', amount: 0 }
+            { type: 'Offering', amount: 0, label: 'Offrande' },
+            { type: 'Tithe', amount: 0, label: 'Dîme' },
+            { type: 'Other', amount: 0, label: 'Autre' }
         ];
 
-        if (meeting.offerings?.breakdown) {
+        if (meeting.offerings_breakdown) {
             initialOfferings = initialOfferings.map(def => {
-                const existing = meeting.offerings.breakdown.find(o => o.type === def.type);
+                const existing = meeting.offerings_breakdown.find(o => o.type === def.type);
                 return existing ? { ...def, amount: existing.amount } : def;
             });
         }
 
         setReportData({
             offerings: initialOfferings,
-            preacher: meeting.details?.preacher || '',
-            theme: meeting.details?.theme || '',
-            notes: meeting.details?.notes || ''
+            preacher: meeting.preacher || '',
+            theme: meeting.theme || '',
+            notes: meeting.notes || ''
         });
         setShowReportModal(true);
     };
@@ -641,12 +648,12 @@ const Bacenta = () => {
                                 </div>
                             )}
 
-                            {selectedMeeting.photo_url && (
+                            {(selectedMeeting.photo_url || selectedMeeting.familyPhoto) && (
                                 <div style={{ marginTop: '2rem' }}>
                                     <h4 className={styles.label}>Photo de la réunion</h4>
                                     <div className={styles.photoPreviewContainer}>
                                         <img
-                                            src={selectedMeeting.photo_url}
+                                            src={selectedMeeting.photo_url || selectedMeeting.familyPhoto}
                                             alt="Réunion"
                                             className={styles.photoPreview}
                                         />
@@ -654,11 +661,11 @@ const Bacenta = () => {
                                 </div>
                             )}
 
-                            {selectedMeeting.details?.notes && (
+                            {selectedMeeting.notes && (
                                 <div style={{ marginTop: '2rem' }}>
                                     <h4 className={styles.label}>Notes & Témoignages</h4>
                                     <p style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '1rem' }}>
-                                        {selectedMeeting.details.notes}
+                                        {selectedMeeting.notes}
                                     </p>
                                 </div>
                             )}
@@ -689,7 +696,7 @@ const Bacenta = () => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     {reportData.offerings.map((offering, index) => (
                                         <div key={offering.type} className={styles.offeringItem}>
-                                            <label className={styles.label} style={{ fontSize: '0.75rem' }}>{offering.type}</label>
+                                            <label className={styles.label} style={{ fontSize: '0.75rem' }}>{offering.label}</label>
                                             <div style={{ position: 'relative' }}>
                                                 <DollarSign size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
                                                 <input

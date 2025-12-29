@@ -70,10 +70,15 @@ module.exports = (sequelize) => {
     },
     photo_url: {
       type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isUrl: true
-      }
+      allowNull: true
+    },
+    preacher: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    theme: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
     notes: {
       type: DataTypes.TEXT,

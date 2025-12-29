@@ -7,12 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://state-of-the-flock.onrender.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'https://state-of-the-flock.onrender.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       }

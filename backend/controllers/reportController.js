@@ -114,6 +114,8 @@ const reportController = {
         whereClause['$leader.area_id$'] = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause['$leader.area_id$'] = req.user.area_id;
+      } else if (req.user.role === 'Governor' && area_id) {
+        whereClause['$leader.area_id$'] = area_id;
       }
 
       if (leader_id) whereClause.leader_id = leader_id;
@@ -128,7 +130,11 @@ const reportController = {
       const meetings = await BacentaMeeting.findAll({
         where: whereClause,
         include: [
-          { model: User, as: 'leader' },
+          {
+            model: User,
+            as: 'leader',
+            include: [{ model: Area, as: 'area' }]
+          },
           {
             model: BacentaAttendance,
             as: 'attendances',
@@ -146,8 +152,13 @@ const reportController = {
           meeting_date: meeting.meeting_date,
           meeting_type: meeting.meeting_type,
           leader: meeting.leader,
+          area: meeting.leader?.area,
           location: meeting.location,
           total_members_present: meeting.total_members_present,
+          expected_participants: meeting.expected_participants,
+          offering_amount: meeting.offering_amount,
+          notes: meeting.notes,
+          photo_url: meeting.photo_url
         }))
       });
     } catch (error) {
@@ -361,17 +372,17 @@ const reportController = {
       const initialCount = await Member.count({
         where: {
           ...whereClause,
-          created_at: { [Op.lt]: startDate }
+          createdAt: { [Op.lt]: startDate }
         }
       });
 
       const newMembers = await Member.findAll({
         where: {
           ...whereClause,
-          created_at: { [Op.between]: [startDate, endDate] }
+          createdAt: { [Op.between]: [startDate, endDate] }
         },
-        attributes: ['id', 'created_at'],
-        order: [['created_at', 'ASC']]
+        attributes: ['id', 'createdAt'],
+        order: [['createdAt', 'ASC']]
       });
 
       const labels = [];
@@ -388,7 +399,7 @@ const reportController = {
 
       newMembers.forEach(member => {
         currentCount++;
-        labels.push(formatDate(member.created_at));
+        labels.push(formatDate(member.createdAt));
         dataPoints.push(currentCount);
       });
 
