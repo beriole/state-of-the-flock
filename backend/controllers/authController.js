@@ -45,6 +45,13 @@ const authController = {
 
       await user.update({ last_login: new Date() });
 
+      // Vérification du secret JWT
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        console.error('❌ ERREUR CRITIQUE: JWT_SECRET n\'est pas défini');
+        throw new Error('Configuration serveur incomplète (JWT_SECRET manquant)');
+      }
+
       // Création du token
       const token = jwt.sign(
         {
@@ -53,7 +60,7 @@ const authController = {
           role: user.role,
           area_id: user.area_id
         },
-        process.env.JWT_SECRET,
+        secret,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
