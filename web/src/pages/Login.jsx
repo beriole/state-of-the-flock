@@ -33,7 +33,9 @@ const Login = () => {
         } catch (err) {
             console.error(err);
             if (err.response) {
-                setError(err.response.data?.error || `Erreur ${err.response.status}`);
+                const message = err.response.data?.error || `Erreur ${err.response.status}`;
+                const details = err.response.data?.details;
+                setError(details ? `${message} : ${details}` : message);
             } else if (err.request) {
                 setError('Erreur de connexion au serveur');
             } else {
