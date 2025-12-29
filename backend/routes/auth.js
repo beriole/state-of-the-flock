@@ -14,4 +14,7 @@ router.get('/verify', authMiddleware, authController.verifyToken);
 // POST /api/auth/change-password
 router.post('/change-password', authMiddleware, authController.changePassword);
 
+// POST /api/auth/logout
+router.post('/logout', authController.logout);
+
 module.exports = router;

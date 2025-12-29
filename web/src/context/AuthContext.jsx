@@ -52,11 +52,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion serveur:', error);
+        }
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Optionnel : appel API logout si nécessaire
-        // await api.post('/auth/logout');
+        window.location.href = '/login';
     };
 
     const updateUser = async (updatedUserData) => {

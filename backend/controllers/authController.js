@@ -147,6 +147,15 @@ const authController = {
       console.error('Change password error:', error);
       res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
     }
+  },
+  // Déconnexion
+  logout: (req, res) => {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+    res.json({ message: 'Déconnexion réussie' });
   }
 };
 

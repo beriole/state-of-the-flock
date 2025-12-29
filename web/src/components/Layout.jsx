@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import styles from './Layout.module.css';
 import logo from '../assets/logo.png';
+import ProfileModal from './ProfileModal';
 
 const Layout = () => {
     const { user, logout } = useAuth();
@@ -24,7 +25,10 @@ const Layout = () => {
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-    const handleLogout = () => {
+    const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+
+    const handleLogout = (e) => {
+        e.stopPropagation(); // Éviter d'ouvrir le profil
         logout();
         navigate('/login');
     };
@@ -105,7 +109,7 @@ const Layout = () => {
                     ))}
                 </div>
 
-                <div className={styles.userSection}>
+                <div className={styles.userSection} onClick={() => setIsProfileOpen(true)} style={{ cursor: 'pointer' }} title="Voir mon profil">
                     <div className={styles.userInfo}>
                         <div className={styles.avatar}>
                             {user?.first_name?.charAt(0) || 'U'}
@@ -155,6 +159,8 @@ const Layout = () => {
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
+
+            <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
         </div>
     );
 };
