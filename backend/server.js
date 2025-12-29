@@ -41,7 +41,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, '../web/dist')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
@@ -98,12 +98,9 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/areas', areaRoutes);
 
-// Serve index.html for all non-API routes
-app.get(/.*/, (req, res) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API Route not found', path: req.originalUrl });
-  }
-  res.sendFile(path.join(__dirname, '../web/dist', 'index.html'));
+// Root route
+app.get('/', (req, res) => {
+  res.json({ message: 'FirstLove Church API is running' });
 });
 
 // Final fallback
