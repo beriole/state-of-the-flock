@@ -136,14 +136,9 @@ const reportController = {
           {
             model: User,
             as: 'leader',
+            required: false, // Force LEFT JOIN
             where: Object.keys(leaderWhereClause).length > 0 ? leaderWhereClause : undefined,
-            include: [{ model: Area, as: 'area' }]
-          },
-          {
-            model: BacentaAttendance,
-            as: 'attendances',
-            where: { present: true },
-            required: false
+            include: [{ model: Area, as: 'area', required: false }] // Force LEFT JOIN
           }
         ],
         order: [['meeting_date', 'DESC']]
