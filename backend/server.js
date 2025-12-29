@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 
 const {
   sequelize,
@@ -39,7 +40,8 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, '../web/dist')));
 
 // Routes santé
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
@@ -53,8 +55,12 @@ app.get('/seed', async (req, res) => {
     // First, try to update existing user
     const existingUser = await User.findOne({ where: { email: 'berioletsague@gmail.com' } });
     if (existingUser) {
-      await existingUser.update({ role: 'Bishop' });
-      res.json({ message: 'User role updated to Bishop successfully' });
+      const password_hash = await bcrypt.hash('Beriole', 12);
+      await existingUser.update({
+        role: 'Bishop',
+        password_hash: password_hash
+      });
+      res.json({ message: 'User berioletsague@gmail.com updated with password Beriole and role Bishop' });
       return;
     }
 
@@ -92,6 +98,15 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/areas', areaRoutes);
 
+// Serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API Route not found', path: req.originalUrl });
+  }
+  res.sendFile(path.join(__dirname, '../web/dist', 'index.html'));
+});
+
+// Final fallback
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found', path: req.originalUrl });
 });
