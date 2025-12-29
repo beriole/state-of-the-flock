@@ -246,7 +246,8 @@ const bacentaController = {
         familyPhoto,
         preacher,
         theme,
-        notes
+        notes,
+        details // Added details for potential fallback
       } = req.body;
 
       const meeting = await BacentaMeeting.findByPk(meetingId);
@@ -276,9 +277,9 @@ const bacentaController = {
         family_photo: familyPhoto,
         location,
         offering_amount: offerings !== undefined ? offerings : meeting.offering_amount,
-        preacher: preacher,
-        theme: theme,
-        notes: notes || (agenda ? agenda.join('\n') : meeting.notes)
+        preacher: preacher || details?.preacher || meeting.preacher,
+        theme: theme || details?.theme || meeting.theme,
+        notes: notes || details?.notes || (agenda ? agenda.join('\n') : meeting.notes)
       };
 
       await meeting.update(updateData);

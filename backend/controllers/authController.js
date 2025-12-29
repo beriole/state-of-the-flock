@@ -5,7 +5,7 @@ const { User, Area } = require('../models');
 
 const authController = {
   // Connexion
-login: async (req, res) => {
+  login: async (req, res) => {
     try {
       const { email, password } = req.body;
 
@@ -86,7 +86,11 @@ login: async (req, res) => {
 
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
+      res.status(500).json({
+        error: 'Erreur serveur lors de la connexion',
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   },
 
