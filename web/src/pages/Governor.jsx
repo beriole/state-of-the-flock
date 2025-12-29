@@ -1293,6 +1293,16 @@ const Governor = () => {
                         <table className={styles.table}>
                             <thead>
                                 <tr>
+                                    <th colSpan="7" style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>Total des Offrandes (Période & Filtres)</span>
+                                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
+                                                {bacentaReportData.reduce((sum, m) => sum + (Number(m.offering_amount) || 0), 0).toLocaleString()} CFA
+                                            </span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
                                     <th className={styles.th}>Date</th>
                                     <th className={styles.th}>Leader</th>
                                     <th className={styles.th}>Zone</th>
