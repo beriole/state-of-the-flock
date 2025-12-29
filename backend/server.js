@@ -110,10 +110,17 @@ app.use((err, req, res, next) => {
     // Init des associations
     setupAssociations();
 
-    // Synchronisation désactivée - tables déjà créées manuellement
-    await sequelize.sync({ alter: true });
+    // Démarrage immédiat du serveur pour éviter les timeouts Render
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT}`);
+      console.log(`📡 URL Health: http://localhost:${PORT}/health`);
 
-    app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT} (accessible sur http://${require('os').networkInterfaces().eth0?.[0]?.address || 'votre-ip'}:${PORT})`));
+      // Synchronisation en arrière-plan (non-bloquante pour le démarrage)
+      console.log('🔄 Synchronisation de la base de données en cours...');
+      sequelize.sync({ alter: true })
+        .then(() => console.log('✅ Base de données synchronisée'))
+        .catch(err => console.error('❌ Erreur de synchronisation DB:', err));
+    });
   } catch (error) {
     console.error('❌ Erreur au démarrage:', error);
     process.exit(1);
