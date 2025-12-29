@@ -9,8 +9,7 @@
     "db:sync": "node scripts/sync-database.js",
     "db:seed": "node scripts/seedUser.js",
     "db:seed:bacenta": "node seedBacenta.js",
-    "db:init": "node scripts/init-database.js",
-    "postinstall": "npm install --prefix ../web && npm run build --prefix ../web"
+    "db:init": "node scripts/init-database.js"
   },
   "author": "",
   "license": "ISC",
