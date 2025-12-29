@@ -105,17 +105,20 @@ const reportController = {
     try {
       const { start_date, end_date, area_id, leader_id } = req.query;
 
+      console.log('REQUEST Bacenta Report:', { query: req.query, user: req.user.role });
+
       const whereClause = {};
+      const leaderWhereClause = {};
 
       // Filtrage basé sur le rôle
       if (req.user.role === 'Bacenta_Leader') {
         whereClause.leader_id = req.user.userId;
       } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
-        whereClause['$leader.area_id$'] = req.user.area_id;
+        leaderWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
-        whereClause['$leader.area_id$'] = req.user.area_id;
+        leaderWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Governor' && area_id) {
-        whereClause['$leader.area_id$'] = area_id;
+        leaderWhereClause.area_id = area_id;
       }
 
       if (leader_id) whereClause.leader_id = leader_id;
@@ -133,6 +136,7 @@ const reportController = {
           {
             model: User,
             as: 'leader',
+            where: Object.keys(leaderWhereClause).length > 0 ? leaderWhereClause : undefined,
             include: [{ model: Area, as: 'area' }]
           },
           {
@@ -144,6 +148,8 @@ const reportController = {
         ],
         order: [['meeting_date', 'DESC']]
       });
+
+      console.log(`FOUND ${meetings.length} meetings for report.`);
 
       res.json({
         period: { start_date, end_date },
