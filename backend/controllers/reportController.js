@@ -136,8 +136,8 @@ const reportController = {
           {
             model: User,
             as: 'leader',
-            // Si on filtre par leader/zone, on DOIT faire un INNER JOIN pour filtrer les résultats
-            required: Object.keys(leaderWhereClause).length > 0,
+            // REVERT: Force LEFT JOIN temporaire pour restaurer l'affichage
+            required: false,
             where: Object.keys(leaderWhereClause).length > 0 ? leaderWhereClause : undefined,
             include: [{ model: Area, as: 'area', required: false }]
           }
