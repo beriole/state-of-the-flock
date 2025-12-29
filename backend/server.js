@@ -99,7 +99,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/areas', areaRoutes);
 
 // Serve index.html for all non-API routes
-app.get('/*', (req, res) => {
+app.get(/.*/, (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API Route not found', path: req.originalUrl });
   }
