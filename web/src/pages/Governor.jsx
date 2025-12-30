@@ -69,7 +69,7 @@ const Governor = () => {
 
     // Reports
     const [reportFilters, setReportFilters] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+        startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
         groupBy: 'area', // area, leader
         areaId: '',
