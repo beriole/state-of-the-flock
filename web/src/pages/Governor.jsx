@@ -1675,96 +1675,138 @@ const Governor = () => {
 const MeetingDetailsModal = ({ isOpen, onClose, meeting }) => {
     if (!isOpen || !meeting) return null;
 
+    const attendanceRate = meeting.expected_participants > 0
+        ? Math.round((meeting.total_members_present / meeting.expected_participants) * 100)
+        : 0;
+
     return (
         <div className={styles.modalOverlay} onClick={onClose}>
-            <div className={styles.modalContent} style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
-                <div className={styles.modalHeader}>
+            <div className={styles.modalContentPremium} onClick={e => e.stopPropagation()}>
+                <div className={styles.modalHeaderPremium}>
                     <div>
-                        <h2 className={styles.modalTitle}>Détails de la Réunion</h2>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        <h2 className={styles.modalTitle}>Rapport de Réunion</h2>
+                        <p className={styles.modalSubtitle}>
+                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}
                         </p>
                     </div>
-                    <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+                    <button className={styles.closeBtn} onClick={onClose}><X size={24} /></button>
                 </div>
 
-                <div className={styles.detailsHeader}>
-                    <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Type</span>
-                        <span className={styles.detailValue}>{meeting.meeting_type?.replace('_', ' ')}</span>
+                <div className={styles.infoGrid}>
+                    <div className={styles.metricCard}>
+                        <div className={styles.metricIcon} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
+                            <FileBarChart size={18} />
+                        </div>
+                        <span className={styles.metricLabel}>Type</span>
+                        <span className={styles.metricValue}>{meeting.meeting_type?.replace('_', ' ') || 'Réunion'}</span>
                     </div>
-                    <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Lieu</span>
-                        <span className={styles.detailValue}>{meeting.location || 'Non spécifié'}</span>
+                    <div className={styles.metricCard}>
+                        <div className={styles.metricIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
+                            <Map size={18} />
+                        </div>
+                        <span className={styles.metricLabel}>Lieu</span>
+                        <span className={styles.metricValue}>{meeting.location || 'Bériole'}</span>
                     </div>
-                    <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Présents</span>
-                        <span className={styles.detailValue} style={{ color: '#10b981' }}>{meeting.total_members_present} / {meeting.expected_participants}</span>
+                    <div className={styles.metricCard}>
+                        <div className={styles.metricIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24' }}>
+                            <Users size={18} />
+                        </div>
+                        <span className={styles.metricLabel}>Présence</span>
+                        <span className={styles.metricValue}>
+                            {meeting.total_members_present} / {meeting.expected_participants}
+                            <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>({attendanceRate}%)</span>
+                        </span>
                     </div>
-                    <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Offrande</span>
-                        <span className={styles.detailValue} style={{ color: '#f59e0b' }}>{Number(meeting.offering_amount).toLocaleString()} CFA</span>
+                    <div className={styles.metricCard}>
+                        <div className={styles.metricIcon} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}>
+                            <TrendingUp size={18} />
+                        </div>
+                        <span className={styles.metricLabel}>Offrande</span>
+                        <span className={styles.metricValue}>{Number(meeting.offering_amount).toLocaleString()} CFA</span>
                     </div>
                 </div>
 
-                <div className={styles.sectionGrid}>
-                    <div className={styles.contentBox}>
-                        <h3 className={styles.contentTitle}><MessageCircle size={16} /> Contenu de la Réunion</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <span className={styles.detailLabel}>Prédicateur</span>
-                                <p className={styles.detailValue}>{meeting.preacher || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <span className={styles.detailLabel}>Thème</span>
-                                <p className={styles.detailValue}>{meeting.theme || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <span className={styles.detailLabel}>Ordre du jour / Notes</span>
-                                <p className={styles.contentText}>{meeting.notes || 'Aucune note.'}</p>
+                <div className={styles.modalBody}>
+                    <div className={styles.contentSection}>
+                        <div className={styles.infoSection}>
+                            <h3 className={styles.sectionTitlePremium}><MessageCircle size={16} /> Contenu & Message</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <div>
+                                    <span className={styles.metricLabel}>Prédicateur</span>
+                                    <p className={styles.metricValue} style={{ fontSize: '1rem', marginTop: '0.25rem' }}>
+                                        {meeting.preacher || <span className={styles.emptyText}>Non renseigné</span>}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className={styles.metricLabel}>Thème du message</span>
+                                    <p className={styles.metricValue} style={{ fontSize: '1rem', marginTop: '0.25rem' }}>
+                                        {meeting.theme || <span className={styles.emptyText}>À définir</span>}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className={styles.metricLabel}>Notes & Ordre du jour</span>
+                                    <p className={styles.mainContent} style={{ marginTop: '0.5rem' }}>
+                                        {meeting.notes || <span className={styles.emptyText}>Aucune note particulière pour cette réunion.</span>}
+                                    </p>
+                                </div>
                             </div>
                         </div>
+
                         {meeting.photo_url && (
-                            <img
-                                src={meeting.photo_url}
-                                alt="Réunion"
-                                className={styles.meetingPhoto}
-                                onClick={() => window.open(meeting.photo_url, '_blank')}
-                            />
+                            <div className={styles.infoSection}>
+                                <h3 className={styles.sectionTitlePremium}><Home size={16} /> Photo de la Réunion</h3>
+                                <img
+                                    src={meeting.photo_url}
+                                    alt="Compte rendu"
+                                    className={styles.meetingPhoto}
+                                    style={{ marginTop: '0.5rem' }}
+                                    onClick={() => window.open(meeting.photo_url, '_blank')}
+                                />
+                            </div>
                         )}
                     </div>
 
-                    <div className={styles.contentBox}>
-                        <h3 className={styles.contentTitle}><Users size={16} /> Liste des Présences</h3>
-                        <div className={styles.attendanceList}>
-                            {meeting.attendances?.length > 0 ? (
-                                meeting.attendances.map((att, i) => (
-                                    <div key={i} className={styles.attendanceItem}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: '700' }}>
-                                                {att.member?.first_name?.[0] || 'M'}
+                    <div className={styles.contentSection}>
+                        <div className={styles.infoSection}>
+                            <h3 className={styles.sectionTitlePremium}><Users size={16} /> Liste des Présences</h3>
+                            <div className={styles.attendanceListPremium}>
+                                {meeting.attendances?.length > 0 ? (
+                                    meeting.attendances.map((att, i) => (
+                                        <div key={i} className={styles.attendanceRow}>
+                                            <div className={styles.memberMeta}>
+                                                <div className={styles.avatarSmall}>
+                                                    {att.member?.first_name?.[0] || 'M'}
+                                                </div>
+                                                <span style={{ fontWeight: '500' }}>
+                                                    {att.member ? `${att.member.first_name} ${att.member.last_name}` : 'Membre inconnu'}
+                                                </span>
                                             </div>
-                                            <span style={{ fontWeight: '500' }}>{att.member ? `${att.member.first_name} ${att.member.last_name}` : 'Membre inconnu'}</span>
+                                            <div className={styles.statusIndicator} style={{ color: att.status === 'present' ? '#10b981' : '#ef4444' }}>
+                                                {att.status === 'present' ? <CheckCircle size={14} /> : <X size={14} />}
+                                                <span>{att.status === 'present' ? 'Présent' : 'Absent'}</span>
+                                            </div>
                                         </div>
-                                        <span className={styles.badge} style={{
-                                            background: att.status === 'present' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                            color: att.status === 'present' ? '#10b981' : '#ef4444'
-                                        }}>
-                                            {att.status === 'present' ? 'Présent' : 'Absent'}
-                                        </span>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.5 }}>
+                                        <Users size={32} style={{ margin: '0 auto 1rem' }} />
+                                        <p className={styles.emptyText}>Aucune liste nominative enregistrée.</p>
                                     </div>
-                                ))
-                            ) : (
-                                <p style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', marginTop: '2rem' }}>
-                                    Aucune liste nominative disponible.
-                                </p>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className={styles.modalActions}>
-                    <button className={styles.submitBtn} onClick={onClose}>Fermer</button>
+                <div className={styles.modalActions} style={{ padding: '0 2rem 2rem' }}>
+                    <button className={styles.submitBtn} onClick={onClose} style={{ width: '100%', borderRadius: '12px' }}>
+                        Fermer le Rapport
+                    </button>
                 </div>
             </div>
         </div>

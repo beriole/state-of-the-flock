@@ -692,108 +692,190 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Meeting Details Modal Specifics */
-.detailsHeader {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
-}
-
-.detailItem {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.detailLabel {
-    font-size: 0.75rem;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
-
-.detailValue {
-    font-size: 1rem;
-    font-weight: 600;
+/* Meeting Details Modal Premium Overhaul */
+.modalContentPremium {
+    background: rgba(13, 17, 23, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    width: 95%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     color: white;
 }
 
-.sectionGrid {
+.modalHeaderPremium {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%);
+    padding: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modalSubtitle {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+    text-transform: capitalize;
+}
+
+.infoGrid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+}
+
+.metricCard {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1.25rem;
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.metricCard:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.metricIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+}
+
+.metricLabel {
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.metricValue {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+}
+
+.modalBody {
+    padding: 0 2rem 2rem;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
     gap: 2rem;
 }
 
-@media (max-width: 768px) {
-    .sectionGrid {
+@media (max-width: 850px) {
+    .modalBody {
         grid-template-columns: 1fr;
     }
 }
 
-.contentBox {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    height: 100%;
+.contentSection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
-.contentTitle {
-    font-size: 0.9rem;
+.infoSection {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.sectionTitlePremium {
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: #4f46e5;
+    text-transform: uppercase;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.contentText {
-    font-size: 0.95rem;
+.mainContent {
+    font-size: 1rem;
     line-height: 1.6;
     color: #cbd5e1;
     white-space: pre-wrap;
 }
 
-.attendanceList {
+.emptyText {
+    color: #475569;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.attendanceListPremium {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    max-height: 300px;
+    gap: 0.75rem;
+    max-height: 400px;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
 
-.attendanceItem {
+.attendanceRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 0.75rem;
     border: 1px solid transparent;
-    transition: all 0.2s;
 }
 
-.attendanceItem:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
+.memberMeta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.meetingPhoto {
-    width: 100%;
-    border-radius: 1rem;
-    margin-top: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: transform 0.3s;
+.avatarSmall {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
-.meetingPhoto:hover {
-    transform: scale(1.02);
+.statusIndicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Scrollbar for attendance */
+.attendanceListPremium::-webkit-scrollbar {
+    width: 4px;
+}
+
+.attendanceListPremium::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.attendanceListPremium::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
