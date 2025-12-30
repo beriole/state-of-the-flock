@@ -676,3 +676,124 @@
         justify-content: center;
     }
 }
+
+/* Bacenta Report Improvements */
+.bacentaReportWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1.5rem;
+}
+
+.tableWrapper {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Meeting Details Modal Specifics */
+.detailsHeader {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+}
+
+.detailItem {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detailLabel {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.detailValue {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.sectionGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .sectionGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.contentBox {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    height: 100%;
+}
+
+.contentTitle {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.contentText {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+    white-space: pre-wrap;
+}
+
+.attendanceList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.attendanceItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.attendanceItem:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.meetingPhoto {
+    width: 100%;
+    border-radius: 1rem;
+    margin-top: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.meetingPhoto:hover {
+    transform: scale(1.02);
+}

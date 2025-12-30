@@ -83,6 +83,8 @@ const Governor = () => {
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
     const [bacentaReportData, setBacentaReportData] = useState([]);
     const [reportDebugInfo, setReportDebugInfo] = useState(null);
+    const [selectedMeeting, setSelectedMeeting] = useState(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     // Contact Modal
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -1006,6 +1008,47 @@ const Governor = () => {
         </div>
     );
 
+    const renderBacentaStats = () => {
+        if (!bacentaReportData.length) return null;
+
+        const totalOfferings = bacentaReportData.reduce((sum, m) => sum + (Number(m.offering_amount) || 0), 0);
+        const totalMeetings = bacentaReportData.length;
+        const totalPresence = bacentaReportData.reduce((sum, m) => sum + (m.total_members_present || 0), 0);
+        const avgPresence = Math.round(totalPresence / totalMeetings);
+
+        return (
+            <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #10b981' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                            <TrendingUp size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{totalOfferings.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
+                    <div className={styles.statLabel}>Total des Offrandes</div>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #3b82f6' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                            <Calendar size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{totalMeetings}</div>
+                    <div className={styles.statLabel}>Réunions Tenues</div>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #f59e0b' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <Users size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{avgPresence}</div>
+                    <div className={styles.statLabel}>Moyenne de Présence</div>
+                </div>
+            </div>
+        );
+    };
+
     const renderReports = () => {
         if (!isViewingReport) {
             return (
@@ -1294,84 +1337,100 @@ const Governor = () => {
                             </table>
                         </>
                     ) : selectedReportType === 'bacenta_meetings' ? (
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th colSpan="7" style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>Total des Offrandes (Période & Filtres)</span>
-                                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
-                                                {bacentaReportData.reduce((sum, m) => sum + (Number(m.offering_amount) || 0), 0).toLocaleString()} CFA
-                                            </span>
-                                        </div>
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th className={styles.th}>Date</th>
-                                    <th className={styles.th}>Leader</th>
-                                    <th className={styles.th}>Zone</th>
-                                    <th className={styles.th}>Type</th>
-                                    <th className={styles.th}>Présents</th>
-                                    <th className={styles.th}>Offrande</th>
-                                    <th className={styles.th} style={{ textAlign: 'right' }}>Détails</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {bacentaReportData.length > 0 ? (
-                                    bacentaReportData.map((meeting, idx) => (
-                                        <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{new Date(meeting.meeting_date).toLocaleDateString()}</td>
-                                            <td className={styles.td}>
-                                                {meeting.leader ? `${meeting.leader.first_name} ${meeting.leader.last_name}` : 'N/A'}
-                                            </td>
-                                            <td className={styles.td}>
-                                                <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
-                                                    {meeting.area?.name || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td className={styles.td}>
-                                                <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#fff' }}>
-                                                    {meeting.meeting_type}
-                                                </span>
-                                            </td>
-                                            <td className={styles.td}>
-                                                <strong>{meeting.total_members_present}</strong>
-                                                <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '4px' }}>
-                                                    / {meeting.expected_participants || '-'}
-                                                </span>
-                                            </td>
-                                            <td className={styles.td}>{meeting.offering_amount} <span style={{ fontSize: '0.8rem' }}>CFA</span></td>
-                                            <td className={styles.td} style={{ textAlign: 'right' }}>
-                                                {meeting.notes && (
-                                                    <button className={styles.actionBtn} title={meeting.notes}>
-                                                        <MessageCircle size={16} />
-                                                    </button>
-                                                )}
-                                                {meeting.photo_url && (
-                                                    <button className={styles.actionBtn} onClick={() => window.open(meeting.photo_url, '_blank')}>
-                                                        <Home size={16} />
-                                                    </button>
-                                                )}
-                                            </td>
+                        <div className={styles.bacentaReportWrapper}>
+                            {renderBacentaStats()}
+                            <div className={styles.tableWrapper}>
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th className={styles.th}>Date</th>
+                                            <th className={styles.th}>Leader</th>
+                                            <th className={styles.th}>Zone</th>
+                                            <th className={styles.th}>Type</th>
+                                            <th className={styles.th}>Présents</th>
+                                            <th className={styles.th}>Offrande</th>
+                                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                                         </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                            <div className={styles.emptyState}>
-                                                <p>Aucun compte rendu trouvé pour cette période.</p>
-                                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                                    Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
-                                                    <br />
-                                                    <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
-                                                    {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        {bacentaReportData.length > 0 ? (
+                                            bacentaReportData.map((meeting, idx) => (
+                                                <tr key={idx} className={styles.tr}>
+                                                    <td className={styles.td}>
+                                                        <div style={{ fontWeight: '600', color: 'white' }}>
+                                                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                            {new Date(meeting.meeting_date).getFullYear()}
+                                                        </div>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        {meeting.leader ? (
+                                                            <div className={styles.userCell}>
+                                                                <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem' }}>
+                                                                    {meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}
+                                                                </div>
+                                                                <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
+                                                            </div>
+                                                        ) : 'N/A'}
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                            {meeting.area?.name || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
+                                                            {meeting.meeting_type?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
+                                                                {meeting.total_members_present}
+                                                            </strong>
+                                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                                / {meeting.expected_participants || '-'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
+                                                        <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
+                                                    </td>
+                                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                        <button
+                                                            className={styles.primaryBtn}
+                                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
+                                                            onClick={() => {
+                                                                setSelectedMeeting(meeting);
+                                                                setIsDetailsModalOpen(true);
+                                                            }}
+                                                        >
+                                                            Voir Détails
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                    <div className={styles.emptyState}>
+                                                        <p>Aucun compte rendu trouvé pour cette période.</p>
+                                                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                                            Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
+                                                            <br />
+                                                            <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
+                                                            {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     ) : selectedReportType === 'attendance' ? (
                         <table className={styles.table}>
                             <thead>
@@ -1603,6 +1662,111 @@ const Governor = () => {
                 authUser={authUser}
                 onActionComplete={handleActionComplete}
             />
+
+            <MeetingDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                meeting={selectedMeeting}
+            />
+        </div>
+    );
+};
+
+const MeetingDetailsModal = ({ isOpen, onClose, meeting }) => {
+    if (!isOpen || !meeting) return null;
+
+    return (
+        <div className={styles.modalOverlay} onClick={onClose}>
+            <div className={styles.modalContent} style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
+                <div className={styles.modalHeader}>
+                    <div>
+                        <h2 className={styles.modalTitle}>Détails de la Réunion</h2>
+                        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                    </div>
+                    <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+                </div>
+
+                <div className={styles.detailsHeader}>
+                    <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>Type</span>
+                        <span className={styles.detailValue}>{meeting.meeting_type?.replace('_', ' ')}</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>Lieu</span>
+                        <span className={styles.detailValue}>{meeting.location || 'Non spécifié'}</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>Présents</span>
+                        <span className={styles.detailValue} style={{ color: '#10b981' }}>{meeting.total_members_present} / {meeting.expected_participants}</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>Offrande</span>
+                        <span className={styles.detailValue} style={{ color: '#f59e0b' }}>{Number(meeting.offering_amount).toLocaleString()} CFA</span>
+                    </div>
+                </div>
+
+                <div className={styles.sectionGrid}>
+                    <div className={styles.contentBox}>
+                        <h3 className={styles.contentTitle}><MessageCircle size={16} /> Contenu de la Réunion</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <span className={styles.detailLabel}>Prédicateur</span>
+                                <p className={styles.detailValue}>{meeting.preacher || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <span className={styles.detailLabel}>Thème</span>
+                                <p className={styles.detailValue}>{meeting.theme || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <span className={styles.detailLabel}>Ordre du jour / Notes</span>
+                                <p className={styles.contentText}>{meeting.notes || 'Aucune note.'}</p>
+                            </div>
+                        </div>
+                        {meeting.photo_url && (
+                            <img
+                                src={meeting.photo_url}
+                                alt="Réunion"
+                                className={styles.meetingPhoto}
+                                onClick={() => window.open(meeting.photo_url, '_blank')}
+                            />
+                        )}
+                    </div>
+
+                    <div className={styles.contentBox}>
+                        <h3 className={styles.contentTitle}><Users size={16} /> Liste des Présences</h3>
+                        <div className={styles.attendanceList}>
+                            {meeting.attendances?.length > 0 ? (
+                                meeting.attendances.map((att, i) => (
+                                    <div key={i} className={styles.attendanceItem}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: '700' }}>
+                                                {att.member?.first_name?.[0] || 'M'}
+                                            </div>
+                                            <span style={{ fontWeight: '500' }}>{att.member ? `${att.member.first_name} ${att.member.last_name}` : 'Membre inconnu'}</span>
+                                        </div>
+                                        <span className={styles.badge} style={{
+                                            background: att.status === 'present' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            color: att.status === 'present' ? '#10b981' : '#ef4444'
+                                        }}>
+                                            {att.status === 'present' ? 'Présent' : 'Absent'}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', marginTop: '2rem' }}>
+                                    Aucune liste nominative disponible.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.modalActions}>
+                    <button className={styles.submitBtn} onClick={onClose}>Fermer</button>
+                </div>
+            </div>
         </div>
     );
 };
