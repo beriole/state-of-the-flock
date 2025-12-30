@@ -8,16 +8,20 @@ const authController = {
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
+      console.log(`🔑 Login attempt for: ${email}`);
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Email et mot de passe requis' });
       }
 
+      console.log('📡 Querying database for user...');
       const user = await User.findOne({
         where: { email },
         include: [{ model: Area, as: 'area' }],
         attributes: { include: ['password_hash'] }
       });
+
+      console.log(`📡 User found: ${user ? 'YES' : 'NO'}`);
 
       if (!user) {
         return res.status(401).json({ error: 'Identifiants invalides' });

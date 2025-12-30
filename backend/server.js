@@ -33,23 +33,8 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 
 // Configuration CORS plus permissive pour le développement local
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  ...(process.env.ALLOWED_ORIGINS?.split(',') || [])
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Autoriser les requêtes sans origine (comme les outils de test ou en local)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Autoriser temporairement toutes les origines pour débloquer
   credentials: true
 }));
 
@@ -153,7 +138,7 @@ app.use((err, req, res, next) => {
 
       // Synchronisation en arrière-plan
       console.log('🔄 Synchronisation de la base de données en cours...');
-      sequelize.sync({ alter: true })
+      sequelize.sync()
         .then(async () => {
           console.log('✅ Base de données synchronisée');
           const { BacentaMeeting } = require('./models');
