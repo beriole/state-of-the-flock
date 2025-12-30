@@ -127,10 +127,18 @@ app.use((err, req, res, next) => {
       console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT}`);
       console.log(`📡 URL Health: http://localhost:${PORT}/health`);
 
-      // Synchronisation en arrière-plan (non-bloquante pour le démarrage)
+      // Synchronisation en arrière-plan
       console.log('🔄 Synchronisation de la base de données en cours...');
       sequelize.sync({ alter: true })
-        .then(() => console.log('✅ Base de données synchronisée'))
+        .then(async () => {
+          console.log('✅ Base de données synchronisée');
+
+          // DEBUG: Vérifier le contenu de la table BacentaMeeting au boot
+          const { BacentaMeeting } = require('./models');
+          const count = await BacentaMeeting.count();
+          console.log('--- 🚀 BACKEND VERSION: 1.2.0 (DEBUG) ---');
+          console.log(`--- 📊 TOTAL MEETINGS IN DB: ${count} ---`);
+        })
         .catch(err => console.error('❌ Erreur de synchronisation DB:', err));
     });
   } catch (error) {
