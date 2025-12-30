@@ -82,6 +82,7 @@ const Governor = () => {
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
     const [bacentaReportData, setBacentaReportData] = useState([]);
+    const [reportDebugInfo, setReportDebugInfo] = useState(null);
 
     // Contact Modal
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -219,6 +220,7 @@ const Governor = () => {
                 leader_id: reportFilters.leaderId
             });
             setBacentaReportData(res.data.meetings || []);
+            setReportDebugInfo(res.data.debug);
         } catch (error) {
             console.error('Error fetching bacenta report:', error);
         }
@@ -1357,8 +1359,10 @@ const Governor = () => {
                                             <div className={styles.emptyState}>
                                                 <p>Aucun compte rendu trouvé pour cette période.</p>
                                                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                                    Diagnostic : {areas.length} Zones, {leaders.length} Leaders trouvés en base.
-                                                    {areas.length === 0 && <span style={{ color: '#ef4444', display: 'block' }}>⚠️ Votre base de données semble vide ou inaccessible.</span>}
+                                                    Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
+                                                    <br />
+                                                    <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
+                                                    {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
                                                 </div>
                                             </div>
                                         </td>

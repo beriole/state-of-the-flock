@@ -145,9 +145,30 @@ const reportController = {
         order: [['meeting_date', 'DESC']]
       });
 
+      // DEBUG: Log to file
+      const fs = require('fs');
+      const path = require('path');
+      const logFile = path.join(__dirname, '../debug_reports.log');
+
+      const logData = `
+----------------------------------------
+[${new Date().toISOString()}] REQUEST (RETRY):
+Query: ${JSON.stringify(req.query)}
+User: ${JSON.stringify(req.user)}
+Where: ${JSON.stringify(whereClause)}
+LeaderWhere: ${JSON.stringify(leaderWhereClause)}
+Meetings Found: ${meetings.length}
+----------------------------------------
+`;
+      fs.appendFileSync(logFile, logData);
+
       console.log(`FOUND ${meetings.length} meetings for report.`);
 
+      // DEBUG: Count total meetings in DB to diagnose visibility issues (unfiltered)
+      const totalInDb = await BacentaMeeting.count();
+
       res.json({
+        debug: { count: totalInDb },
         period: { start_date, end_date },
         meetings: meetings.map(meeting => ({
           id: meeting.id,
