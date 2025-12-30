@@ -1354,7 +1354,13 @@ const Governor = () => {
                                 ) : (
                                     <tr>
                                         <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                            Aucun compte rendu trouvé pour cette période.
+                                            <div className={styles.emptyState}>
+                                                <p>Aucun compte rendu trouvé pour cette période.</p>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                                    Diagnostic : {areas.length} Zones, {leaders.length} Leaders trouvés en base.
+                                                    {areas.length === 0 && <span style={{ color: '#ef4444', display: 'block' }}>⚠️ Votre base de données semble vide ou inaccessible.</span>}
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
