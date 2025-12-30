@@ -261,6 +261,8 @@ const Governor = () => {
                 fetchGrowthData();
             } else if (selectedReportType === 'call_tracking') {
                 fetchCallTrackingData();
+            } else if (selectedReportType === 'bacenta_meetings') {
+                fetchBacentaReportData();
             }
         }
     }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
