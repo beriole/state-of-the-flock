@@ -31,7 +31,28 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'], credentials: true }));
+
+// Configuration CORS plus permissive pour le développement local
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  ...(process.env.ALLOWED_ORIGINS?.split(',') || [])
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origine (comme les outils de test ou en local)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 // Activer trust proxy pour Render (proxy inverse)
 app.set('trust proxy', 1);
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
@@ -116,6 +137,9 @@ app.use((err, req, res, next) => {
 // Démarrage serveur et DB
 (async () => {
   try {
+    console.log('📡 Tentative de connexion à la base de données...');
+    console.log(`📡 DB Config: Host=${process.env.DB_HOST || 'DATABASE_URL detected'}, Port=${process.env.DB_PORT || 'N/A'}`);
+
     await sequelize.authenticate();
     console.log('✅ Connexion à la base de données OK');
 
@@ -123,26 +147,32 @@ app.use((err, req, res, next) => {
     setupAssociations();
 
     // Démarrage immédiat du serveur pour éviter les timeouts Render
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT}`);
-      console.log(`📡 URL Health: http://localhost:${PORT}/health`);
+      console.log(`--- 🚀 BACKEND VERSION: 1.2.1 (FIXED CORS) ---`);
 
       // Synchronisation en arrière-plan
       console.log('🔄 Synchronisation de la base de données en cours...');
       sequelize.sync({ alter: true })
         .then(async () => {
           console.log('✅ Base de données synchronisée');
-
-          // DEBUG: Vérifier le contenu de la table BacentaMeeting au boot
           const { BacentaMeeting } = require('./models');
           const count = await BacentaMeeting.count();
-          console.log('--- 🚀 BACKEND VERSION: 1.2.0 (DEBUG) ---');
           console.log(`--- 📊 TOTAL MEETINGS IN DB: ${count} ---`);
         })
-        .catch(err => console.error('❌ Erreur de synchronisation DB:', err));
+        .catch(err => {
+          console.error('❌ Erreur de synchronisation DB:', err.message);
+          // On ne quitte pas forcément si sync échoue mais que la connexion est OK
+        });
     });
+
+    server.on('error', (err) => {
+      console.error('❌ Erreur critique sur le serveur HTTP:', err);
+    });
+
   } catch (error) {
-    console.error('❌ Erreur au démarrage:', error);
+    console.error('❌ Erreur fatale au démarrage:', error.message);
+    if (error.stack) console.error(error.stack);
     process.exit(1);
   }
 })();
