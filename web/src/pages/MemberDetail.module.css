@@ -68,8 +68,8 @@
 /* Grid Layout */
 .grid {
     display: grid;
-    grid-template-columns: 400px 1fr;
-    gap: 2.5rem;
+    grid-template-columns: 450px 1fr;
+    gap: 3rem;
     align-items: start;
 }
 
@@ -81,20 +81,20 @@
 
 /* Profile Card */
 .card {
-    background: rgba(2, 6, 23, 0.4);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 2.5rem;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3rem;
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--glass-shadow);
     position: relative;
 }
 
 .profileHeader {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 23, 42, 0) 100%);
-    padding: 3rem 2rem;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(15, 23, 42, 0) 100%);
+    padding: 4rem 2rem;
     text-align: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
 }
 
@@ -182,10 +182,19 @@
 
 .infoGroup {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 1.25rem;
-    padding: 1.25rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.5rem;
+    transition: all 0.2s;
+}
+
+.infoGroup:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
 }
 
 .infoGroup:last-child {
@@ -193,10 +202,16 @@
 }
 
 .infoIcon {
-    color: #ef4444;
+    width: 48px;
+    height: 48px;
     background: rgba(239, 68, 68, 0.1);
-    padding: 0.6rem;
-    border-radius: 12px;
+    color: var(--accent-red);
+    padding: 0.75rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
 }
 
 .infoLabel {
@@ -277,20 +292,21 @@
 }
 
 .statCard {
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 2.5rem 1.5rem;
-    border-radius: 2rem;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 2.5rem;
+    padding: 2rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
+    gap: 0.75rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--glass-shadow);
 }
 
 .statCard:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.05);
     transform: translateY(-5px);
     border-color: rgba(255, 255, 255, 0.15);
 }
@@ -336,11 +352,11 @@
 
 /* History Section */
 .section {
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 2.5rem;
-    padding: 2.5rem;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3rem;
+    padding: 3rem;
 }
 
 .sectionTitle {
@@ -363,15 +379,17 @@
     display: flex;
     gap: 1.5rem;
     padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .historyItem:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: scale(1.02);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .historyIcon {

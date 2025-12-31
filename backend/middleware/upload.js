@@ -13,11 +13,18 @@ uploadDirs.forEach(dir => {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    let dest = '';
     if (req.baseUrl.includes('users') || req.path.includes('profile')) {
-      cb(null, 'uploads/profiles');
+      dest = path.join(__dirname, '..', 'uploads/profiles');
     } else {
-      cb(null, 'uploads/members');
+      dest = path.join(__dirname, '..', 'uploads/members');
     }
+
+    // Ensure dir exists (double check)
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

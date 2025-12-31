@@ -125,7 +125,8 @@ const MemberDetail = () => {
             setMember({ ...member, photo_url: response.data.photo_url });
         } catch (err) {
             console.error('Error uploading photo:', err);
-            alert('Erreur lors de l\'upload de la photo');
+            const errorMsg = err.response?.data?.error || 'Erreur lors de l\'upload de la photo';
+            alert(errorMsg);
         } finally {
             setUploading(false);
         }

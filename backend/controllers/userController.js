@@ -208,12 +208,14 @@ const userController = {
   // Uploader une photo de profil
   uploadProfilePicture: async (req, res) => {
     try {
+      console.log('👤 Tentative d\'upload photo profil. User ID:', req.user.userId);
       if (!req.file) {
+        console.warn('❌ Aucun fichier reçu dans req.file');
         return res.status(400).json({ error: 'Aucun fichier fourni' });
       }
 
-      const userId = req.user.userId;
-      const user = await User.findByPk(userId);
+      const user = await User.findByPk(req.user.userId);
+      console.log('📁 Fichier reçu:', req.file.path);
 
       if (!user) {
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -222,23 +224,22 @@ const userController = {
       // Supprimer l'ancienne photo si elle existe
       const fs = require('fs');
       const path = require('path');
-      if (user.photo_url) {
+      if (user.photo_url && user.photo_url.startsWith('uploads/')) {
         const oldPath = path.join(__dirname, '..', user.photo_url);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
+          console.log('🗑️ Ancienne photo supprimée:', oldPath);
         }
       }
 
-      const photoUrl = `uploads/profiles/${req.file.filename}`;
-      await user.update({ photo_url: photoUrl });
+      const relativePath = `uploads/profiles/${req.file.filename}`;
 
-      res.json({
-        message: 'Photo de profil mise à jour',
-        photo_url: photoUrl
-      });
+      await user.update({ photo_url: relativePath });
+      console.log('✅ Profil mis à jour:', relativePath);
+      res.json({ photo_url: relativePath });
     } catch (error) {
-      console.error('Upload profile picture error:', error);
-      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo' });
+      console.error('❌ Upload profile picture error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo: ' + error.message });
     }
   }
 };

@@ -8,7 +8,7 @@
 /* Sidebar */
 .sidebar {
     width: 280px;
-    background: rgba(2, 6, 23, 0.5);
+    background: var(--sidebar-bg);
     backdrop-filter: blur(40px) saturate(200%);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
@@ -232,8 +232,8 @@
 .header {
     height: 80px;
     background: rgba(2, 6, 23, 0.4);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;

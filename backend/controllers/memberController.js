@@ -227,9 +227,12 @@ const memberController = {
   // Uploader une photo de membre
   uploadPhoto: async (req, res) => {
     try {
+      console.log('📸 Tentative d\'upload photo membre. ID:', req.params.id);
       if (!req.file) {
+        console.warn('❌ Aucun fichier reçu dans req.file');
         return res.status(400).json({ error: 'Aucun fichier fourni' });
       }
+      console.log('📁 Fichier reçu:', req.file.path, 'Type:', req.file.mimetype);
 
       const memberId = req.params.id;
       const member = await Member.findByPk(memberId);
@@ -256,13 +259,11 @@ const memberController = {
       const photoUrl = `uploads/members/${req.file.filename}`;
       await member.update({ photo_url: photoUrl });
 
-      res.json({
-        message: 'Photo du membre mise à jour',
-        photo_url: photoUrl
-      });
+      console.log('✅ Photo mise à jour dans la base de données:', photoUrl);
+      res.json({ photo_url: photoUrl });
     } catch (error) {
-      console.error('Upload member photo error:', error);
-      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo' });
+      console.error('❌ Upload member photo error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo: ' + error.message });
     }
   }
 };
