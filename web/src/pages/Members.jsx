@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { memberAPI, getPhotoUrl } from '../utils/api';
+import { generateProfessionalPDF } from '../utils/pdfGenerator';
 import { useNavigate } from 'react-router-dom';
-import {
-    Search,
-    Plus,
-    Download,
-    MoreVertical,
-    Phone,
-    Mail,
-    Trash2,
-    Edit2
-} from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { useAuth } from '../context/AuthContext';
 import { ContactModal } from '../components/ContactModals';
 import { callLogAPI } from '../utils/api';
@@ -45,97 +34,25 @@ const Members = () => {
     };
 
     const handleExportPDF = () => {
-        const doc = new jsPDF();
-
-        // --- Header Design ---
-        // Top Bar
-        doc.setFillColor(153, 27, 27); // Deep Red (#991B1B)
-        doc.rect(0, 0, 210, 40, 'F');
-
-        // Logo
-        try {
-            doc.addImage('/church_logo.png', 'PNG', 15, 7, 25, 25);
-        } catch (e) {
-            console.error("Logo not found, skipping image");
-        }
-
-        // Church Name
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('FIRST LOVE CHURCH', 45, 20);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('LISTE OFFICIELLE DES MEMBRES', 45, 27);
-
-        // Report Title (Right Aligned)
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('REGISTRE DES MEMBRES', 195, 22, { align: 'right' });
-
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'italic');
-        doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 195, 30, { align: 'right' });
-
-        // --- Table ---
-        const tableColumn = ["NOM COMPLET", "EMAIL", "TÉLÉPHONE", "STATUT"];
-        const tableRows = filteredMembers.map(member => [
+        const columns = ["NOM COMPLET", "EMAIL", "TÉLÉPHONE", "STATUT"];
+        const rows = filteredMembers.map(member => [
             `${member.first_name} ${member.last_name}`.toUpperCase(),
             member.email || '-',
             member.phone_primary || member.phone || '-',
             (member.status || 'Actif').toUpperCase()
         ]);
 
-        autoTable(doc, {
-            startY: 50,
-            head: [tableColumn],
-            body: tableRows,
-            theme: 'striped',
-            headStyles: {
-                fillColor: [153, 27, 27],
-                textColor: [255, 255, 255],
-                fontSize: 10,
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            styles: {
-                fontSize: 9,
-                cellPadding: 4,
-                valign: 'middle'
-            },
-            columnStyles: {
-                0: { cellWidth: 60 },
-                1: { cellWidth: 55 },
-                2: { cellWidth: 40, halign: 'center' },
-                3: { cellWidth: 25, halign: 'center', fontStyle: 'bold' }
-            },
-            didParseCell: function (data) {
-                if (data.section === 'body' && data.column.index === 3) {
-                    if (data.cell.raw === 'ACTIF') {
-                        data.cell.styles.textColor = [22, 163, 74];
-                    } else if (data.cell.raw === 'INACTIF') {
-                        data.cell.styles.textColor = [220, 38, 38];
-                    }
-                }
-            }
+        generateProfessionalPDF({
+            title: "Registre des Membres",
+            subtitle: `Total: ${filteredMembers.length} membres`,
+            columns,
+            rows,
+            fileName: 'Membres_FirstLove',
+            stats: [
+                { label: "Total Membres", value: filteredMembers.length },
+                { label: "Actifs", value: filteredMembers.filter(m => (m.status || 'actif').toLowerCase() === 'actif').length, color: [16, 185, 129] }
+            ]
         });
-
-        // --- Footer ---
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setDrawColor(153, 27, 27);
-            doc.setLineWidth(0.5);
-            doc.line(15, 282, 195, 282);
-
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text('First Love Church - Database Management System', 15, 288);
-            doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
-        }
-
-        doc.save('Membres_FirstLove.pdf');
     };
 
     const handleActionComplete = async (type, method, templateTitle) => {

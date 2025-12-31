@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { memberAPI, attendanceAPI } from '../utils/api';
+import { generateProfessionalPDF } from '../utils/pdfGenerator';
 import {
     Calendar,
     CheckCircle,
@@ -11,9 +12,6 @@ import {
     History,
     Search
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import styles from './Attendance.module.css';
 
 const Attendance = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -148,7 +146,6 @@ const Attendance = () => {
     };
 
     const generatePDF = () => {
-        const doc = new jsPDF();
         const dateStr = selectedDate.toLocaleDateString('fr-FR', {
             weekday: 'long',
             year: 'numeric',
@@ -156,142 +153,29 @@ const Attendance = () => {
             day: 'numeric'
         });
 
-        // --- Header Design ---
-        // Top Bar
-        doc.setFillColor(153, 27, 27); // Deep Red (#991B1B)
-        doc.rect(0, 0, 210, 40, 'F');
-
-        // Logo
-        try {
-            doc.addImage('/church_logo.png', 'PNG', 15, 7, 25, 25);
-        } catch (e) {
-            console.error("Logo not found, skipping image");
-        }
-
-        // Church Name
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('FIRST LOVE CHURCH', 45, 20);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('LOYALTY HOUSE INTERNATIONAL', 45, 27);
-
-        // Report Title (Right Aligned)
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('RAPPORT DE PRÉSENCE', 195, 22, { align: 'right' });
-
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'italic');
-        doc.text(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), 195, 30, { align: 'right' });
-
-        // --- Stats Section ---
-        const stats = getStats();
-        const startY = 50;
-
-        // Decorative Line
-        doc.setDrawColor(180, 83, 9); // Gold (#B45309)
-        doc.setLineWidth(1);
-        doc.line(15, startY - 5, 195, startY - 5);
-
-        // Stats Cards
-        const cardW = 55;
-        const cardH = 20;
-        const gap = 10;
-
-        // Card 1: Présents
-        doc.setFillColor(240, 253, 244); // Light Green
-        doc.setDrawColor(34, 197, 94); // Green
-        doc.roundedRect(15, startY, cardW, cardH, 2, 2, 'FD');
-        doc.setTextColor(21, 128, 61);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PRÉSENTS', 15 + cardW / 2, startY + 6, { align: 'center' });
-        doc.setFontSize(14);
-        doc.text(stats.present.toString(), 15 + cardW / 2, startY + 15, { align: 'center' });
-
-        // Card 2: Absents
-        doc.setFillColor(254, 242, 242); // Light Red
-        doc.setDrawColor(239, 68, 68); // Red
-        doc.roundedRect(15 + cardW + gap, startY, cardW, cardH, 2, 2, 'FD');
-        doc.setTextColor(185, 28, 28);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('ABSENTS', 15 + cardW + gap + cardW / 2, startY + 6, { align: 'center' });
-        doc.setFontSize(14);
-        doc.text(stats.absent.toString(), 15 + cardW + gap + cardW / 2, startY + 15, { align: 'center' });
-
-        // Card 3: Taux
-        const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-        doc.setFillColor(255, 251, 235); // Light Gold
-        doc.setDrawColor(180, 83, 9); // Gold
-        doc.roundedRect(15 + (cardW + gap) * 2, startY, cardW, cardH, 2, 2, 'FD');
-        doc.setTextColor(146, 64, 14);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TAUX DE PRÉSENCE', 15 + (cardW + gap) * 2 + cardW / 2, startY + 6, { align: 'center' });
-        doc.setFontSize(14);
-        doc.text(`${rate}%`, 15 + (cardW + gap) * 2 + cardW / 2, startY + 15, { align: 'center' });
-
-        // --- Table ---
-        const tableData = members.map(m => [
+        const columns = ['NOM DU MEMBRE', 'TÉLÉPHONE', 'BACENTA / GROUPE', 'STATUT'];
+        const rows = members.map(m => [
             `${m.first_name} ${m.last_name}`.toUpperCase(),
             m.phone_primary || m.phone || '-',
             m.area?.name || 'BACENTA A',
             attendance[m.id] === 'present' ? 'PRÉSENT' : attendance[m.id] === 'absent' ? 'ABSENT' : 'NON MARQUÉ'
         ]);
 
-        autoTable(doc, {
-            startY: startY + 30,
-            head: [['NOM DU MEMBRE', 'TÉLÉPHONE', 'BACENTA / GROUPE', 'STATUT']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: {
-                fillColor: [153, 27, 27],
-                textColor: [255, 255, 255],
-                fontSize: 10,
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            styles: {
-                fontSize: 9,
-                cellPadding: 4,
-                valign: 'middle'
-            },
-            columnStyles: {
-                0: { cellWidth: 60 },
-                1: { cellWidth: 40, halign: 'center' },
-                2: { cellWidth: 45, halign: 'center' },
-                3: { cellWidth: 35, halign: 'center', fontStyle: 'bold' }
-            },
-            didParseCell: function (data) {
-                if (data.section === 'body' && data.column.index === 3) {
-                    if (data.cell.raw === 'PRÉSENT') {
-                        data.cell.styles.textColor = [22, 163, 74];
-                    } else if (data.cell.raw === 'ABSENT') {
-                        data.cell.styles.textColor = [220, 38, 38];
-                    }
-                }
-            }
+        const statsData = getStats();
+        const rate = statsData.total > 0 ? Math.round((statsData.present / statsData.total) * 100) : 0;
+
+        generateProfessionalPDF({
+            title: "Suivi des Présences",
+            subtitle: dateStr.charAt(0).toUpperCase() + dateStr.slice(1),
+            columns,
+            rows,
+            fileName: `Presence_${selectedDate.toISOString().split('T')[0]}`,
+            stats: [
+                { label: "Présents", value: statsData.present, color: [34, 197, 94] },
+                { label: "Absents", value: statsData.absent, color: [239, 68, 68] },
+                { label: "Taux", value: `${rate}%`, color: [180, 83, 9] }
+            ]
         });
-
-        // --- Footer ---
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setDrawColor(153, 27, 27);
-            doc.setLineWidth(0.5);
-            doc.line(15, 282, 195, 282);
-
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text('First Love Church - Bacenta Management System', 15, 288);
-            doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
-        }
-
-        doc.save(`Presence_${selectedDate.toISOString().split('T')[0]}.pdf`);
     };
 
     const stats = getStats();

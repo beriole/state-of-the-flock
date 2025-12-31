@@ -44,6 +44,7 @@ import { useAuth } from '../context/AuthContext';
 import { ContactModal } from '../components/ContactModals';
 import styles from './Governor.module.css';
 import { callLogAPI } from '../utils/api';
+import { generateProfessionalPDF } from '../utils/pdfGenerator';
 
 const Governor = () => {
     const navigate = useNavigate();
@@ -394,26 +395,12 @@ const Governor = () => {
             const data = res.data.report || [];
             const type = res.data.type;
 
-            const doc = new jsPDF();
-
-            // Header
-            doc.setFontSize(20);
-            doc.setTextColor(220, 38, 38);
-            doc.text('First Love Church', 105, 20, { align: 'center' });
-
-            doc.setFontSize(16);
-            doc.setTextColor(0, 0, 0);
-            doc.text('Rapport de Présence Gouverneur', 105, 30, { align: 'center' });
-
-            doc.setFontSize(10);
-            doc.text(`Période: ${reportFilters.startDate} au ${reportFilters.endDate}`, 105, 38, { align: 'center' });
-
-            let tableColumn = [];
-            let tableRows = [];
+            let columns = [];
+            let rows = [];
 
             if (type === 'member_detail') {
-                tableColumn = ["Membre", "Statut", "Présences", "Total Possible", "Taux %"];
-                tableRows = data.map(item => [
+                columns = ["Membre", "Statut", "Présences", "Total Possible", "Taux %"];
+                rows = data.map(item => [
                     item.member_name,
                     item.status === 'active' ? 'Actif' : 'Inactif',
                     item.attendance_count,
@@ -421,8 +408,8 @@ const Governor = () => {
                     `${item.attendance_rate}%`
                 ]);
             } else if (type === 'area_leaders' || type === 'leader') {
-                tableColumn = ["Leader", "Zone", "Total Membres", "Présents", "Taux %"];
-                tableRows = data.map(item => [
+                columns = ["Leader", "Zone", "Total Membres", "Présents", "Taux %"];
+                rows = data.map(item => [
                     item.leader_name || `${item.leader_first_name} ${item.leader_last_name}`,
                     item.area_name || '',
                     item.total_members,
@@ -430,8 +417,8 @@ const Governor = () => {
                     `${item.attendance_rate}%`
                 ]);
             } else {
-                tableColumn = ["Zone", "Total Membres", "Présents", "Taux %"];
-                tableRows = data.map(item => [
+                columns = ["Zone", "Total Membres", "Présents", "Taux %"];
+                rows = data.map(item => [
                     item.area_name,
                     item.total_members,
                     item.attendance_count,
@@ -439,21 +426,83 @@ const Governor = () => {
                 ]);
             }
 
-            doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 45,
-                theme: 'grid',
-                headStyles: { fillColor: [220, 38, 38] }
+            // Calculate overall stats for header cards
+            const totalMembres = data.reduce((acc, curr) => acc + (curr.total_members || 0), 0);
+            const totalPresents = data.reduce((acc, curr) => acc + (curr.attendance_count || 0), 0);
+            const avgRate = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + (curr.attendance_rate || 0), 0) / data.length) : 0;
+
+            generateProfessionalPDF({
+                title: "Rapport de Présence",
+                subtitle: `Période: ${reportFilters.startDate} au ${reportFilters.endDate}`,
+                columns,
+                rows,
+                fileName: `Rapport_Presence_${reportFilters.startDate}_${reportFilters.endDate}`,
+                stats: [
+                    { label: "Total Membres", value: totalMembres },
+                    { label: "Total Présents", value: totalPresents, color: [16, 185, 129] },
+                    { label: "Taux Moyen", value: `${avgRate}%`, color: [180, 83, 9] }
+                ]
             });
 
-            doc.save(`Rapport_Presence_${reportFilters.startDate}_${reportFilters.endDate}.pdf`);
         } catch (error) {
             console.error('Error generating PDF:', error);
             alert('Erreur lors de la génération du rapport');
         } finally {
             setLoading(false);
         }
+    };
+
+    const generateBacentaPDF = () => {
+        if (!bacentaReportData || bacentaReportData.length === 0) return;
+
+        const columns = ["Date", "Leader", "Zone", "Type", "Présents", "Offrande"];
+        const rows = bacentaReportData.map(m => [
+            new Date(m.meeting_date).toLocaleDateString('fr-FR'),
+            `${m.leader?.first_name} ${m.leader?.last_name}`,
+            m.area?.name || 'N/A',
+            m.meeting_type?.replace('_', ' '),
+            `${m.total_members_present} / ${m.expected_participants || '-'}`,
+            `${Number(m.offering_amount).toLocaleString()} CFA`
+        ]);
+
+        const totalPresents = bacentaReportData.reduce((acc, curr) => acc + (curr.total_members_present || 0), 0);
+        const totalOffering = bacentaReportData.reduce((acc, curr) => acc + Number(curr.offering_amount || 0), 0);
+
+        generateProfessionalPDF({
+            title: "Comptes Rendus Bacenta",
+            subtitle: `Période: ${reportFilters.startDate} au ${reportFilters.endDate}`,
+            columns,
+            rows,
+            fileName: `Rapports_Bacenta_${reportFilters.startDate}`,
+            stats: [
+                { label: "Nb Réunions", value: bacentaReportData.length },
+                { label: "Total Présents", value: totalPresents, color: [16, 185, 129] },
+                { label: "Total Offrandes", value: `${totalOffering.toLocaleString()} CFA`, color: [180, 83, 9] }
+            ]
+        });
+    };
+
+    const generateGrowthPDF = () => {
+        if (!growthData || !growthData.history) return;
+
+        const columns = ["Période", "Nouveaux Membres", "Cumul"];
+        const rows = growthData.history.map(h => [
+            h.period,
+            h.count,
+            h.cumulative
+        ]);
+
+        generateProfessionalPDF({
+            title: "Analyse de Croissance",
+            subtitle: "Évolution du nombre de membres",
+            columns,
+            rows,
+            fileName: "Rapport_Croissance",
+            stats: [
+                { label: "Nouveaux (Période)", value: growthData.total_new, color: [16, 185, 129] },
+                { label: "Total Actuels", value: stats?.members || 0, color: [59, 130, 246] }
+            ]
+        });
     };
 
     const openLeaderModal = (leader = null) => {
@@ -1178,6 +1227,18 @@ const Governor = () => {
                     </div>
 
                     <div className={styles.headerActions} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={() => {
+                                if (selectedReportType === 'attendance') generateAttendancePDF();
+                                else if (selectedReportType === 'bacenta_meetings') generateBacentaPDF();
+                                else if (selectedReportType === 'growth') generateGrowthPDF();
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem' }}
+                        >
+                            <Download size={18} />
+                            <span>Exporter PDF</span>
+                        </button>
                         {selectedReportType !== 'growth' && (
                             <>
                                 <div className={styles.formGroup} style={{ marginBottom: 0 }}>
