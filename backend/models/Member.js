@@ -66,10 +66,7 @@ module.exports = (sequelize) => {
     },
     photo_url: {
       type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isUrl: true
-      }
+      allowNull: true
     },
     is_active: {
       type: DataTypes.BOOLEAN,

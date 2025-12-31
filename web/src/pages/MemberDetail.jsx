@@ -156,204 +156,145 @@ const MemberDetail = () => {
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
-                <button className={styles.backButton} onClick={() => navigate('/members')}>
-                    <ArrowLeft size={24} />
+            <header className={styles.header}>
+                <button className={styles.backBtn} onClick={() => navigate('/members')}>
+                    <ArrowLeft size={18} />
                 </button>
-                <h1 className={styles.title}>Détails du Membre</h1>
-            </div>
+                <h1 className={styles.title}>Fiche Membre</h1>
+            </header>
 
-            <div className={styles.grid}>
-                {/* Left Column: Profile Card */}
-                <div className={styles.leftColumn}>
-                    <div className={styles.card}>
-                        {uploading && (
-                            <div className={styles.loadingOverlay}>
-                                <div className={styles.spinner}></div>
+            <div className={styles.mainGrid}>
+                {/* Profile Sidebar */}
+                <aside className={`${styles.card} styles.profileSidebar`}>
+                    <div className={styles.profileSidebar}>
+                        <div
+                            className={styles.avatarWrapper}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <div className={styles.avatar}>
+                                {member.photo_url ? (
+                                    <img src={getPhotoUrl(member.photo_url)} alt="Member" className={styles.avatar} />
+                                ) : (
+                                    member.first_name?.charAt(0)
+                                )}
                             </div>
-                        )}
-                        <div className={styles.profileHeader}>
-                            <div
-                                className={styles.avatarWrapper}
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <div className={styles.avatar}>
-                                    {member.photo_url ? (
-                                        <img src={getPhotoUrl(member.photo_url)} alt="Member" />
-                                    ) : (
-                                        member.first_name?.charAt(0)
-                                    )}
-                                </div>
-                                <div className={styles.editAvatarHint}>
-                                    <Camera size={20} />
-                                </div>
-                            </div>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                style={{ display: 'none' }}
-                                onChange={handlePhotoUpload}
-                                accept="image/*"
-                            />
-                            <h2 className={styles.name}>
-                                {member.first_name} {member.last_name}
-                            </h2>
-                            <span className={styles.statusBadge}>
-                                {member.state || 'Membre'}
-                            </span>
-                        </div>
-
-                        <div className={styles.profileBody}>
-                            <div className={styles.infoGroup}>
-                                <Phone size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Téléphone Principal</span>
-                                    <div className={styles.infoValue}>{member.phone_primary || '-'}</div>
-                                </div>
-                            </div>
-
-                            {member.phone_secondary && (
-                                <div className={styles.infoGroup}>
-                                    <Phone size={20} className={styles.infoIcon} />
-                                    <div>
-                                        <span className={styles.infoLabel}>Téléphone Secondaire</span>
-                                        <div className={styles.infoValue}>{member.phone_secondary}</div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={styles.infoGroup}>
-                                <User size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Genre</span>
-                                    <div className={styles.infoValue}>
-                                        {member.gender === 'M' ? 'Homme' : 'Femme'}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={styles.infoGroup}>
-                                <Briefcase size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Profession</span>
-                                    <div className={styles.infoValue}>{member.profession || 'Non renseignée'}</div>
-                                </div>
-                            </div>
-
-                            <div className={styles.infoGroup}>
-                                <BookOpen size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Ministère</span>
-                                    <div className={styles.infoValue}>{member.ministry || 'Non assigné'}</div>
-                                </div>
-                            </div>
-
-                            <div className={styles.infoGroup}>
-                                <MapPin size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Zone / Bacenta</span>
-                                    <div className={styles.infoValue}>
-                                        {member.area?.name || 'Non assigné'}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={styles.infoGroup}>
-                                <Users size={20} className={styles.infoIcon} />
-                                <div>
-                                    <span className={styles.infoLabel}>Berger (Leader)</span>
-                                    <div className={styles.infoValue}>
-                                        {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'Non assigné'}
-                                    </div>
-                                </div>
+                            <div className={styles.uploadOverlay}>
+                                {uploading ? <Loader2 className={styles.spin} size={14} /> : <Camera size={14} />}
                             </div>
                         </div>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            onChange={handlePhotoUpload}
+                            accept="image/*"
+                        />
+
+                        <h2 className={styles.memberName}>{member.first_name} {member.last_name}</h2>
+                        <div className={styles.badge}>{member.state || 'Membre'}</div>
 
                         <div className={styles.actions}>
-                            <button className={`${styles.actionButton} ${styles.primaryAction}`} onClick={handleCall}>
-                                <Phone size={18} /> Appeler
+                            <button className={styles.primaryAction} onClick={handleCall}>
+                                <Phone size={16} /> Appeler
                             </button>
-                            <button className={`${styles.actionButton} ${styles.secondaryAction}`} onClick={handleSMS}>
-                                <MessageCircle size={18} /> SMS
+                            <button className={styles.secondaryAction} onClick={handleSMS}>
+                                <MessageCircle size={16} /> SMS
                             </button>
                             <button
-                                className={`${styles.actionButton} ${styles.secondaryAction}`}
-                                style={{ gridColumn: '1 / -1' }}
+                                className={styles.secondaryAction}
                                 onClick={() => navigate(`/members/${member.id}/edit`)}
                             >
-                                <Edit2 size={18} /> Modifier les informations
+                                <Edit2 size={16} /> Modifier
                             </button>
                         </div>
                     </div>
-                </div>
+                </aside>
 
-                {/* Right Column: Stats & History */}
-                <div className={styles.rightColumn}>
-                    {/* Stats Cards */}
-                    <div className={styles.statsGrid}>
-                        <div className={styles.statCard}>
-                            <div className={`${styles.statIcon} ${styles.statIconTotal}`}>
-                                <Phone size={24} />
+                {/* Content Area */}
+                <main className={styles.contentArea}>
+                    {/* Stats */}
+                    <div className={styles.statsRow}>
+                        <div className={`${styles.card} ${styles.statItem}`}>
+                            <div className={styles.statIcon} style={{ color: '#60a5fa' }}><Phone size={18} /></div>
+                            <div>
+                                <span className={styles.statValue}>{stats.totalCalls}</span>
+                                <span className={styles.statLabel}>Appels</span>
                             </div>
-                            <div className={styles.statValue}>{stats.totalCalls}</div>
-                            <div className={styles.statLabel}>Appels Totaux</div>
                         </div>
-                        <div className={styles.statCard}>
-                            <div className={`${styles.statIcon} ${styles.statIconContacted}`}>
-                                <CheckCircle size={24} />
+                        <div className={`${styles.card} ${styles.statItem}`}>
+                            <div className={styles.statIcon} style={{ color: '#34d399' }}><CheckCircle size={18} /></div>
+                            <div>
+                                <span className={styles.statValue}>{stats.contacted}</span>
+                                <span className={styles.statLabel}>Joignables</span>
                             </div>
-                            <div className={styles.statValue}>{stats.contacted}</div>
-                            <div className={styles.statLabel}>Contactés</div>
                         </div>
-                        <div className={styles.statCard}>
-                            <div className={`${styles.statIcon} ${styles.statIconNoAnswer}`}>
-                                <PhoneMissed size={24} />
+                        <div className={`${styles.card} ${styles.statItem}`}>
+                            <div className={styles.statIcon} style={{ color: '#f87171' }}><PhoneMissed size={18} /></div>
+                            <div>
+                                <span className={styles.statValue}>{stats.noAnswer}</span>
+                                <span className={styles.statLabel}>Échecs</span>
                             </div>
-                            <div className={styles.statValue}>{stats.noAnswer}</div>
-                            <div className={styles.statLabel}>Sans Réponse</div>
                         </div>
                     </div>
 
-                    {/* Call History */}
-                    <div className={styles.section}>
-                        <div className={styles.sectionTitle}>
-                            Historique des Appels
-                            <Clock size={20} color="#6b7280" />
+                    {/* Personal Info */}
+                    <div className={`${styles.card} ${styles.section}`}>
+                        <h3 className={styles.sectionTitle}><User size={16} /> Informations</h3>
+                        <div className={styles.infoGrid}>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Téléphone</span>
+                                <span className={styles.infoValue}>{member.phone_primary || '-'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Genre</span>
+                                <span className={styles.infoValue}>{member.gender === 'M' ? 'Homme' : 'Femme'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Profession</span>
+                                <span className={styles.infoValue}>{member.profession || 'N/A'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Ministère</span>
+                                <span className={styles.infoValue}>{member.ministry || 'N/A'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Bacenta</span>
+                                <span className={styles.infoValue}>{member.area?.name || 'N/A'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Berger</span>
+                                <span className={styles.infoValue}>{member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}</span>
+                            </div>
                         </div>
+                    </div>
 
-                        {callLogs.length > 0 ? (
-                            <div className={styles.historyList}>
-                                {callLogs.map((log) => (
+                    {/* History */}
+                    <div className={`${styles.card} ${styles.section}`}>
+                        <h3 className={styles.sectionTitle}><Clock size={16} /> Activité Récente</h3>
+                        <div className={styles.historyList}>
+                            {callLogs.length > 0 ? (
+                                callLogs.slice(0, 5).map((log) => (
                                     <div key={log.id} className={styles.historyItem}>
-                                        <div className={styles.historyIcon}>
-                                            {log.outcome === 'Contacted' ? (
-                                                <CheckCircle size={20} color="#059669" />
-                                            ) : log.outcome === 'No_Answer' ? (
-                                                <PhoneMissed size={20} color="#D97706" />
-                                            ) : (
-                                                <RotateCcw size={20} color="#DC2626" />
-                                            )}
+                                        <div className={styles.historyIcon} style={{
+                                            color: log.outcome === 'Contacted' ? '#34d399' : '#f87171'
+                                        }}>
+                                            {log.outcome === 'Contacted' ? <CheckCircle size={18} /> : <PhoneMissed size={18} />}
                                         </div>
                                         <div className={styles.historyContent}>
-                                            <div className={styles.historyHeader}>
-                                                <span className={styles.historyDate}>
-                                                    {new Date(log.call_date).toLocaleDateString()} à {new Date(log.call_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                                <span className={styles.historyType}>{log.outcome}</span>
+                                            <div>
+                                                <span className={styles.historyDate}>{new Date(log.call_date).toLocaleDateString()}</span>
+                                                <span className={styles.historyStatus}>{log.outcome}</span>
                                             </div>
-                                            {log.notes && <p className={styles.historyNotes}>{log.notes}</p>}
+                                            <p className={styles.historyNotes}>{log.notes || 'Aucun commentaire'}</p>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className={styles.emptyState}>
-                                <Phone size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                                <p>Aucun historique d'appel pour ce membre.</p>
-                            </div>
-                        )}
+                                ))
+                            ) : (
+                                <p style={{ textAlign: 'center', opacity: 0.5, padding: '1rem' }}>Aucune historique disponible</p>
+                            )}
+                        </div>
                     </div>
-                </div>
+                </main>
             </div>
 
             <ContactModal
