@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { dashboardAPI, memberAPI } from '../utils/api';
+import { dashboardAPI, memberAPI, getPhotoUrl } from '../utils/api';
 import {
     Users,
     CheckCircle,
@@ -166,7 +166,11 @@ const Dashboard = () => {
                             recentMembers.map((member) => (
                                 <div key={member.id} className={styles.memberItem}>
                                     <div className={styles.avatar}>
-                                        {member.first_name?.charAt(0)}
+                                        {member.photo_url ? (
+                                            <img src={getPhotoUrl(member.photo_url)} alt="M" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                        ) : (
+                                            member.first_name?.charAt(0)
+                                        )}
                                     </div>
                                     <div className={styles.memberInfo}>
                                         <span className={styles.memberName}>

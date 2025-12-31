@@ -5,7 +5,8 @@ import {
     dashboardAPI,
     reportAPI,
     memberAPI,
-    bacentaAPI
+    bacentaAPI,
+    getPhotoUrl
 } from '../utils/api';
 import {
     LayoutDashboard,
@@ -33,7 +34,8 @@ import {
     Mail,
     Lock,
     Save,
-    AlertCircle
+    AlertCircle,
+    Camera
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -277,6 +279,26 @@ const Governor = () => {
         }
     }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
 
+    const handleLeaderPhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !editingItem) return;
+
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        setModalLoading(true);
+        try {
+            const res = await governorAPI.uploadUserPhoto(editingItem.id, formData);
+            setLeaderForm(prev => ({ ...prev, photo_url: res.data.photo_url }));
+            fetchData();
+        } catch (error) {
+            console.error('Error uploading leader photo:', error);
+            setModalError('Erreur lors de l\'upload de la photo');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
     const handleSaveLeader = async (e) => {
         e.preventDefault();
         setModalLoading(true);
@@ -445,7 +467,8 @@ const Governor = () => {
                 email: leader.email,
                 phone: leader.phone || '',
                 password: '',
-                area_id: leader.area_id || ''
+                area_id: leader?.area_id || '',
+                photo_url: leader?.photo_url || ''
             });
         } else {
             setEditingItem(null);
@@ -767,7 +790,11 @@ const Governor = () => {
                                 <td className={styles.td}>
                                     <div className={styles.userCell}>
                                         <div className={styles.avatar}>
-                                            {leader.first_name[0]}{leader.last_name[0]}
+                                            {leader.photo_url ? (
+                                                <img src={getPhotoUrl(leader.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                            ) : (
+                                                <>{leader.first_name[0]}{leader.last_name[0]}</>
+                                            )}
                                         </div>
                                         <div>
                                             <span className={styles.userName}>{leader.first_name} {leader.last_name}</span>
@@ -912,7 +939,11 @@ const Governor = () => {
                                 <td className={styles.td}>
                                     <div className={styles.userCell}>
                                         <div className={styles.avatar}>
-                                            {member.first_name[0]}{member.last_name[0]}
+                                            {member.photo_url ? (
+                                                <img src={getPhotoUrl(member.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                            ) : (
+                                                <>{member.first_name[0]}{member.last_name[0]}</>
+                                            )}
                                         </div>
                                         <div>
                                             <span className={styles.userName}>{member.first_name} {member.last_name}</span>
@@ -1282,11 +1313,15 @@ const Governor = () => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                             <div style={{
                                                                 width: '32px', height: '32px', borderRadius: '50%',
-                                                                background: targetMember.photo_url ? `url(${targetMember.photo_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                                                                background: 'rgba(255,255,255,0.1)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                color: 'white', fontSize: '0.8rem'
+                                                                color: 'white', fontSize: '0.8rem', overflow: 'hidden'
                                                             }}>
-                                                                {!targetMember.photo_url && (targetMember.first_name?.[0] || 'M')}
+                                                                {targetMember.photo_url ? (
+                                                                    <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    targetMember.first_name?.[0] || 'M'
+                                                                )}
                                                             </div>
                                                             <div>
                                                                 <div style={{ color: 'white', fontWeight: '500' }}>
@@ -1383,8 +1418,12 @@ const Governor = () => {
                                                     <td className={styles.td}>
                                                         {meeting.leader ? (
                                                             <div className={styles.userCell}>
-                                                                <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem' }}>
-                                                                    {meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}
+                                                                <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
+                                                                    {meeting.leader?.photo_url ? (
+                                                                        <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    ) : (
+                                                                        <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
+                                                                    )}
                                                                 </div>
                                                                 <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
                                                             </div>
@@ -1524,7 +1563,7 @@ const Governor = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </div >
         );
     };
 
@@ -1580,6 +1619,53 @@ const Governor = () => {
                                     <div className={styles.errorBanner}>
                                         <AlertCircle size={20} />
                                         <span>{modalError}</span>
+                                    </div>
+                                )}
+
+                                {editingItem && (
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                                        <div
+                                            className={styles.avatarUploadWrapper}
+                                            onClick={() => document.getElementById('leader-photo-input').click()}
+                                            style={{
+                                                width: '100px',
+                                                height: '100px',
+                                                borderRadius: '50%',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                position: 'relative',
+                                                border: '2px dashed rgba(255,255,255,0.2)',
+                                                overflow: 'hidden'
+                                            }}
+                                        >
+                                            {leaderForm.photo_url ? (
+                                                <img src={getPhotoUrl(leaderForm.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <Camera size={32} style={{ opacity: 0.5 }} />
+                                            )}
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                background: 'rgba(0,0,0,0.5)',
+                                                padding: '4px',
+                                                textAlign: 'center',
+                                                fontSize: '0.7rem'
+                                            }}>
+                                                Changer
+                                            </div>
+                                        </div>
+                                        <input
+                                            id="leader-photo-input"
+                                            type="file"
+                                            style={{ display: 'none' }}
+                                            onChange={handleLeaderPhotoUpload}
+                                            accept="image/*"
+                                        />
                                     </div>
                                 )}
 
@@ -1880,7 +1966,11 @@ const MeetingDetailsModal = ({ isOpen, onClose, meeting }) => {
                                         <div key={i} className={styles.attendanceRow}>
                                             <div className={styles.memberMeta}>
                                                 <div className={styles.avatarSmall}>
-                                                    {att.member?.first_name?.[0] || 'M'}
+                                                    {att.member?.photo_url ? (
+                                                        <img src={getPhotoUrl(att.member.photo_url)} alt="M" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        att.member?.first_name?.[0] || 'M'
+                                                    )}
                                                 </div>
                                                 <span style={{ fontWeight: '500' }}>
                                                     {att.member ? `${att.member.first_name} ${att.member.last_name}` : 'Membre inconnu'}

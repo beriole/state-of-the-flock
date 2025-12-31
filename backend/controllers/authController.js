@@ -85,6 +85,7 @@ const authController = {
         area: user.area,
         area_id: user.area_id,
         phone: user.phone,
+        photo_url: user.photo_url,
         is_active: user.is_active,
         last_login: user.last_login
       };

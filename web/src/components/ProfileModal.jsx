@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Mail, Phone, Lock, LogOut, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import styles from './ProfileModal.module.css';
-import api from '../utils/api';
+import api, { getPhotoUrl } from '../utils/api';
 
 const ProfileModal = ({ isOpen, onClose }) => {
     const { user, logout, updateUser } = useAuth();
@@ -90,11 +90,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
         }
     };
 
-    const getPhotoUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        return `/${url}`;
-    };
+
 
     return (
         <div className={styles.overlay} onClick={onClose}>

@@ -18,6 +18,7 @@ import {
 import styles from './Layout.module.css';
 import logo from '../assets/logo.png';
 import ProfileModal from './ProfileModal';
+import { getPhotoUrl } from '../utils/api';
 
 const Layout = () => {
     const { user, logout } = useAuth();
@@ -112,7 +113,11 @@ const Layout = () => {
                 <div className={styles.userSection} onClick={() => setIsProfileOpen(true)} style={{ cursor: 'pointer' }} title="Voir mon profil">
                     <div className={styles.userInfo}>
                         <div className={styles.avatar}>
-                            {user?.first_name?.charAt(0) || 'U'}
+                            {user?.photo_url ? (
+                                <img src={getPhotoUrl(user.photo_url)} alt="U" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                                user?.first_name?.charAt(0) || 'U'
+                            )}
                         </div>
                         <div className={styles.userDetails}>
                             <p className={styles.userName}>{user?.first_name} {user?.last_name}</p>

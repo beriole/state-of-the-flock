@@ -27,6 +27,9 @@ router.put('/:id', userController.updateUser);
 // POST /api/users/profile-picture
 router.post('/profile-picture', upload.single('photo'), userController.uploadProfilePicture);
 
+// POST /api/users/:id/photo (Admin/Governor only)
+router.post('/:id/photo', requireRole(['Bishop', 'Governor']), upload.single('photo'), userController.uploadUserPhotoById);
+
 // DELETE /api/users/:id
 router.delete('/:id', requireRole(['Bishop', 'Governor']), userController.deleteUser);
 

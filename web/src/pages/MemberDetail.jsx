@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { memberAPI, callLogAPI } from '../utils/api';
+import { memberAPI, callLogAPI, getPhotoUrl } from '../utils/api';
 import {
     ArrowLeft,
     Phone,
@@ -130,12 +130,6 @@ const MemberDetail = () => {
         } finally {
             setUploading(false);
         }
-    };
-
-    const getPhotoUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        return `/${url}`;
     };
 
     if (loading) return (

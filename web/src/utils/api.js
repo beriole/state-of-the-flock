@@ -3,6 +3,14 @@ import axios from 'axios';
 // Base URL relative pour utiliser le proxy Vite
 const BASE_URL = '/api';
 
+// Utility function to handle photo URLs
+export const getPhotoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    // Vite proxy expects leading slash for /uploads
+    return url.startsWith('/') ? url : `/${url}`;
+};
+
 // Créer une instance axios
 const api = axios.create({
     baseURL: BASE_URL,
@@ -120,6 +128,9 @@ export const governorAPI = {
     createBacentaLeader: (data) => api.post('/users', { ...data, role: 'Bacenta_Leader' }),
     updateBacentaLeader: (id, data) => api.put(`/users/${id}`, data),
     deleteBacentaLeader: (id) => api.delete(`/users/${id}`),
+    uploadUserPhoto: (id, formData) => api.post(`/users/${id}/photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     getGlobalStats: () => api.get('/dashboard'),
 };
 

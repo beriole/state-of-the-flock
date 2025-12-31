@@ -241,6 +241,41 @@ const userController = {
       console.error('❌ Upload profile picture error:', error);
       res.status(500).json({ error: 'Erreur lors de l\'upload de la photo: ' + error.message });
     }
+  },
+
+  // Uploader une photo pour un utilisateur spécifique (pour Gouverneur/Bishop)
+  uploadUserPhotoById: async (req, res) => {
+    try {
+      const { id } = req.params;
+      console.log('👤 Upload photo pour utilisateur ID:', id, 'par:', req.user.userId);
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      const user = await User.findByPk(id);
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+
+      // Supprimer l'ancienne photo
+      const fs = require('fs');
+      const path = require('path');
+      if (user.photo_url && user.photo_url.startsWith('uploads/')) {
+        const oldPath = path.join(__dirname, '..', user.photo_url);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      const relativePath = `uploads/profiles/${req.file.filename}`;
+      await user.update({ photo_url: relativePath });
+
+      res.json({ photo_url: relativePath });
+    } catch (error) {
+      console.error('❌ Upload user photo by ID error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload: ' + error.message });
+    }
   }
 };
 
