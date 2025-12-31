@@ -1,32 +1,43 @@
-// middleware/upload.js
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Configuration de stockage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/bacenta-meetings/');
-  },
-  filename: function (req, file, cb) {
-    // Format: timestamp-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+// Ensure upload directories exist
+const uploadDirs = ['uploads/profiles', 'uploads/members'];
+uploadDirs.forEach(dir => {
+  const fullPath = path.join(__dirname, '..', dir);
+  if (!fs.existsSync(fullPath)) {
+    fs.mkdirSync(fullPath, { recursive: true });
   }
 });
 
-// Filtrage des types de fichiers
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (req.baseUrl.includes('users') || req.path.includes('profile')) {
+      cb(null, 'uploads/profiles');
+    } else {
+      cb(null, 'uploads/members');
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Seules les images sont autorisées!'), false);
+    cb(new Error('Format de fichier non supporté. Utilisez JPEG, PNG ou WEBP.'), false);
   }
 };
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 5 * 1024 * 1024 // 5MB
   },
   fileFilter: fileFilter
 });

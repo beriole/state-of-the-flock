@@ -68,6 +68,10 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true
     },
+    photo_url: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
   }, {
     tableName: 'users',
     timestamps: true,

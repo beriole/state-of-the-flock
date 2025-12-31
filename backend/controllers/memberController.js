@@ -6,17 +6,17 @@ const memberController = {
   // Lister les membres
   getMembers: async (req, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        search, 
-        area_id, 
-        leader_id, 
-        state, 
+      const {
+        page = 1,
+        limit = 50,
+        search,
+        area_id,
+        leader_id,
+        state,
         is_active,
-        is_registered 
+        is_registered
       } = req.query;
-      
+
       const offset = (page - 1) * limit;
       const whereClause = {};
 
@@ -79,8 +79,8 @@ const memberController = {
         include: [
           { model: Area, as: 'area' },
           { model: User, as: 'leader' },
-          { 
-            model: Attendance, 
+          {
+            model: Attendance,
             as: 'attendances',
             limit: 10,
             order: [['sunday_date', 'DESC']]
@@ -221,6 +221,48 @@ const memberController = {
     } catch (error) {
       console.error('Delete member error:', error);
       res.status(500).json({ error: 'Erreur lors de la désactivation du membre' });
+    }
+  },
+
+  // Uploader une photo de membre
+  uploadPhoto: async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      const memberId = req.params.id;
+      const member = await Member.findByPk(memberId);
+
+      if (!member) {
+        return res.status(404).json({ error: 'Membre non trouvé' });
+      }
+
+      // Check permissions (same as update)
+      if (req.user.role === 'Bacenta_Leader' && member.leader_id !== req.user.userId) {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      // Supprimer l'ancienne photo si elle existe
+      const fs = require('fs');
+      const path = require('path');
+      if (member.photo_url && member.photo_url.startsWith('uploads/')) {
+        const oldPath = path.join(__dirname, '..', member.photo_url);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      const photoUrl = `uploads/members/${req.file.filename}`;
+      await member.update({ photo_url: photoUrl });
+
+      res.json({
+        message: 'Photo du membre mise à jour',
+        photo_url: photoUrl
+      });
+    } catch (error) {
+      console.error('Upload member photo error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo' });
     }
   }
 };

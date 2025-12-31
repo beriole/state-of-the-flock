@@ -522,32 +522,165 @@
 .input:focus,
 .select:focus {
     border-color: #DC2626;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
-.modalActions {
+/* Premium Modal Enhancements */
+.modalHeaderPremium {
+    padding: 2.5rem 3rem;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(0, 0, 0, 0.2));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modalBodyPremium {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.formGridPremium {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.formGroupPremium {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.fullWidth {
+    grid-column: span 2;
+}
+
+.inputWrapperPremium {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 1.25rem;
+    color: #64748b;
+    pointer-events: none;
+    transition: color 0.3s;
+}
+
+.inputPremium,
+.selectPremium {
+    width: 100%;
+    padding: 1rem 1.25rem 1rem 3.25rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    color: white;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inputPremium:focus,
+.selectPremium:focus {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: #DC2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+    outline: none;
+}
+
+.inputPremium:focus+.inputIcon,
+.inputWrapperPremium:focus-within .inputIcon {
+    color: #DC2626;
+}
+
+/* Fix browser auto-fill */
+.inputPremium:-webkit-autofill,
+.inputPremium:-webkit-autofill:hover,
+.inputPremium:-webkit-autofill:focus {
+    -webkit-text-fill-color: white;
+    -webkit-box-shadow: 0 0 0px 1000px #0f172a inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.modalFooterPremium {
+    padding: 2rem 3rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 1.5rem;
 }
 
-.cancelBtn {
-    padding: 0.75rem 1.5rem;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    border-radius: 0.75rem;
-    cursor: pointer;
+.errorBanner {
+    grid-column: span 2;
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    animation: fadeIn 0.3s ease;
 }
 
-.submitBtn {
-    padding: 0.75rem 1.5rem;
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.submitBtnPremium {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
     background: #DC2626;
     color: white;
     border: none;
-    border-radius: 0.75rem;
-    cursor: pointer;
+    border-radius: 1.25rem;
     font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+}
+
+.submitBtnPremium:hover:not(:disabled) {
+    background: #ef4444;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.5);
+}
+
+.submitBtnPremium:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spinnerSmall {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Reports Grid */

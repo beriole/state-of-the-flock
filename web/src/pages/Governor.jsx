@@ -10,8 +10,10 @@ import {
 import {
     LayoutDashboard,
     Users,
+    User,
     Crown,
     Map,
+    MapPin,
     FileBarChart,
     Plus,
     Search,
@@ -27,7 +29,11 @@ import {
     Download,
     Calendar,
     ArrowLeft,
-    MessageCircle
+    MessageCircle,
+    Mail,
+    Lock,
+    Save,
+    AlertCircle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -94,6 +100,8 @@ const Governor = () => {
     const [showLeaderModal, setShowLeaderModal] = useState(false);
     const [showAreaModal, setShowAreaModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [modalError, setModalError] = useState('');
 
     // Forms
     const [leaderForm, setLeaderForm] = useState({
@@ -271,6 +279,8 @@ const Governor = () => {
 
     const handleSaveLeader = async (e) => {
         e.preventDefault();
+        setModalLoading(true);
+        setModalError('');
         try {
             if (editingItem) {
                 await governorAPI.updateBacentaLeader(editingItem.id, leaderForm);
@@ -281,6 +291,10 @@ const Governor = () => {
             fetchData();
         } catch (error) {
             console.error('Error saving leader:', error);
+            const message = error.response?.data?.error || 'Une erreur est survenue lors de l\'enregistrement';
+            setModalError(message);
+        } finally {
+            setModalLoading(false);
         }
     };
 
@@ -421,6 +435,8 @@ const Governor = () => {
     };
 
     const openLeaderModal = (leader = null) => {
+        setModalError('');
+        setModalLoading(false);
         if (leader) {
             setEditingItem(leader);
             setLeaderForm({
@@ -1538,78 +1554,162 @@ const Governor = () => {
 
             {/* Leader Modal */}
             {showLeaderModal && (
-                <div className={styles.modalOverlay} onClick={() => setShowLeaderModal(false)}>
-                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        <div className={styles.modalHeader}>
-                            <h2 className={styles.modalTitle}>{editingItem ? 'Modifier Leader' : 'Nouveau Leader'}</h2>
-                            <button className={styles.closeBtn} onClick={() => setShowLeaderModal(false)}><X size={20} /></button>
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowLeaderModal(false)}>
+                    <div className={`${styles.modalContent} ${styles.modalContentPremium}`} style={{ width: '100%', maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeaderPremium}>
+                            <div>
+                                <h2 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+                                    {editingItem ? 'Modifier le Leader' : 'Nouveau Leader'}
+                                </h2>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                    {editingItem ? 'Mettre à jour les informations du leader' : 'Ajouter un nouveau leader à votre zone'}
+                                </p>
+                            </div>
+                            <button
+                                className={styles.closeBtn}
+                                onClick={() => setShowLeaderModal(false)}
+                                disabled={modalLoading}
+                            >
+                                <X size={24} />
+                            </button>
                         </div>
+
                         <form onSubmit={handleSaveLeader}>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Prénom</label>
-                                <input
-                                    className={styles.input}
-                                    value={leaderForm.first_name}
-                                    onChange={e => setLeaderForm({ ...leaderForm, first_name: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Nom</label>
-                                <input
-                                    className={styles.input}
-                                    value={leaderForm.last_name}
-                                    onChange={e => setLeaderForm({ ...leaderForm, last_name: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Email</label>
-                                <input
-                                    type="email"
-                                    className={styles.input}
-                                    value={leaderForm.email}
-                                    onChange={e => setLeaderForm({ ...leaderForm, email: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Téléphone</label>
-                                <input
-                                    className={styles.input}
-                                    value={leaderForm.phone}
-                                    onChange={e => setLeaderForm({ ...leaderForm, phone: e.target.value })}
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Zone</label>
-                                <select
-                                    className={styles.select}
-                                    value={leaderForm.area_id}
-                                    onChange={e => setLeaderForm({ ...leaderForm, area_id: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Sélectionner une zone</option>
-                                    {areas.map(area => (
-                                        <option key={area.id} value={area.id}>{area.name} (N°{area.number})</option>
-                                    ))}
-                                </select>
-                            </div>
-                            {!editingItem && (
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Mot de passe</label>
-                                    <input
-                                        type="password"
-                                        className={styles.input}
-                                        value={leaderForm.password}
-                                        onChange={e => setLeaderForm({ ...leaderForm, password: e.target.value })}
-                                        required
-                                    />
+                            <div className={styles.modalBodyPremium}>
+                                {modalError && (
+                                    <div className={styles.errorBanner}>
+                                        <AlertCircle size={20} />
+                                        <span>{modalError}</span>
+                                    </div>
+                                )}
+
+                                <div className={styles.formGridPremium}>
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Prénom</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Jean"
+                                                value={leaderForm.first_name}
+                                                onChange={e => setLeaderForm({ ...leaderForm, first_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Nom de famille</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Dupont"
+                                                value={leaderForm.last_name}
+                                                onChange={e => setLeaderForm({ ...leaderForm, last_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
+                                        <label className={styles.label}>Adresse Email</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Mail className={styles.inputIcon} size={18} />
+                                            <input
+                                                type="email"
+                                                className={styles.inputPremium}
+                                                placeholder="leader@example.com"
+                                                value={leaderForm.email}
+                                                onChange={e => setLeaderForm({ ...leaderForm, email: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Téléphone</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Phone className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: 06 12 34 56 78"
+                                                value={leaderForm.phone}
+                                                onChange={e => setLeaderForm({ ...leaderForm, phone: e.target.value })}
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Zone Assignée</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <MapPin className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={leaderForm.area_id}
+                                                onChange={e => setLeaderForm({ ...leaderForm, area_id: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="">Sélectionner une zone</option>
+                                                {areas.map(area => (
+                                                    <option key={area.id} value={area.id}>{area.name} (N°{area.number})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {!editingItem && (
+                                        <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
+                                            <label className={styles.label}>Mot de passe initial</label>
+                                            <div className={styles.inputWrapperPremium}>
+                                                <Lock className={styles.inputIcon} size={18} />
+                                                <input
+                                                    type="password"
+                                                    className={styles.inputPremium}
+                                                    placeholder="Minimum 6 caractères"
+                                                    value={leaderForm.password}
+                                                    onChange={e => setLeaderForm({ ...leaderForm, password: e.target.value })}
+                                                    required
+                                                    disabled={modalLoading}
+                                                    minLength={6}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                            <div className={styles.modalActions}>
-                                <button type="button" className={styles.cancelBtn} onClick={() => setShowLeaderModal(false)}>Annuler</button>
-                                <button type="submit" className={styles.submitBtn}>Enregistrer</button>
+                            </div>
+
+                            <div className={styles.modalFooterPremium}>
+                                <button
+                                    type="button"
+                                    className={styles.cancelBtn}
+                                    onClick={() => setShowLeaderModal(false)}
+                                    disabled={modalLoading}
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtnPremium}
+                                    disabled={modalLoading}
+                                >
+                                    {modalLoading ? (
+                                        <>
+                                            <div className={styles.spinnerSmall}></div>
+                                            <span>Enregistrement...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            <span>Enregistrer le Leader</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </form>
                     </div>

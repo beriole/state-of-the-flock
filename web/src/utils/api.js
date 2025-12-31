@@ -74,6 +74,9 @@ export const memberAPI = {
     createMember: (data) => api.post('/members', data),
     updateMember: (id, data) => api.put(`/members/${id}`, data),
     deleteMember: (id) => api.delete(`/members/${id}`),
+    uploadPhoto: (id, formData) => api.post(`/members/${id}/photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 // Fonctions API pour les présences

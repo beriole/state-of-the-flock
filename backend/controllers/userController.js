@@ -203,6 +203,43 @@ const userController = {
       console.error('Update settings error:', error);
       res.status(500).json({ error: 'Erreur lors de la mise à jour des paramètres' });
     }
+  },
+
+  // Uploader une photo de profil
+  uploadProfilePicture: async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      const userId = req.user.userId;
+      const user = await User.findByPk(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+
+      // Supprimer l'ancienne photo si elle existe
+      const fs = require('fs');
+      const path = require('path');
+      if (user.photo_url) {
+        const oldPath = path.join(__dirname, '..', user.photo_url);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      const photoUrl = `uploads/profiles/${req.file.filename}`;
+      await user.update({ photo_url: photoUrl });
+
+      res.json({
+        message: 'Photo de profil mise à jour',
+        photo_url: photoUrl
+      });
+    } catch (error) {
+      console.error('Upload profile picture error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload de la photo' });
+    }
   }
 };
 

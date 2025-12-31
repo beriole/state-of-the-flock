@@ -13,7 +13,13 @@ import {
     CheckCircle,
     XCircle,
     PhoneMissed,
-    RotateCcw
+    RotateCcw,
+    Camera,
+    Loader2,
+    Briefcase,
+    BookOpen,
+    Users,
+    AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ContactModal } from '../components/ContactModals';
@@ -24,10 +30,12 @@ const MemberDetail = () => {
     const navigate = useNavigate();
     const [member, setMember] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [callLogs, setCallLogs] = useState([]);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const { user } = useAuth();
+    const fileInputRef = React.useRef(null);
     const [stats, setStats] = useState({
         totalCalls: 0,
         contacted: 0,
@@ -94,8 +102,55 @@ const MemberDetail = () => {
         }
     };
 
-    if (loading) return <div className={styles.loading}>Chargement...</div>;
-    if (error) return <div className={styles.error}>{error}</div>;
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Veuillez sélectionner une image');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('L\'image est trop volumineuse (max 5Mo)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        setUploading(true);
+        try {
+            const response = await memberAPI.uploadPhoto(id, formData);
+            setMember({ ...member, photo_url: response.data.photo_url });
+        } catch (err) {
+            console.error('Error uploading photo:', err);
+            alert('Erreur lors de l\'upload de la photo');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const getPhotoUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        return `/${url}`;
+    };
+
+    if (loading) return (
+        <div className={styles.loading}>
+            <Loader2 className={styles.spinner} size={40} style={{ margin: '0 auto 1rem' }} />
+            <div>Chargement des détails...</div>
+        </div>
+    );
+
+    if (error) return (
+        <div className={styles.error}>
+            <AlertCircle size={40} style={{ margin: '0 auto 1rem' }} />
+            <div>{error}</div>
+        </div>
+    );
+
     if (!member) return <div className={styles.error}>Membre introuvable</div>;
 
     return (
@@ -111,10 +166,34 @@ const MemberDetail = () => {
                 {/* Left Column: Profile Card */}
                 <div className={styles.leftColumn}>
                     <div className={styles.card}>
-                        <div className={styles.profileHeader}>
-                            <div className={styles.avatar}>
-                                {member.first_name?.charAt(0)}
+                        {uploading && (
+                            <div className={styles.loadingOverlay}>
+                                <div className={styles.spinner}></div>
                             </div>
+                        )}
+                        <div className={styles.profileHeader}>
+                            <div
+                                className={styles.avatarWrapper}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <div className={styles.avatar}>
+                                    {member.photo_url ? (
+                                        <img src={getPhotoUrl(member.photo_url)} alt="Member" />
+                                    ) : (
+                                        member.first_name?.charAt(0)
+                                    )}
+                                </div>
+                                <div className={styles.editAvatarHint}>
+                                    <Camera size={20} />
+                                </div>
+                            </div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                onChange={handlePhotoUpload}
+                                accept="image/*"
+                            />
                             <h2 className={styles.name}>
                                 {member.first_name} {member.last_name}
                             </h2>
@@ -153,11 +232,37 @@ const MemberDetail = () => {
                             </div>
 
                             <div className={styles.infoGroup}>
+                                <Briefcase size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Profession</span>
+                                    <div className={styles.infoValue}>{member.profession || 'Non renseignée'}</div>
+                                </div>
+                            </div>
+
+                            <div className={styles.infoGroup}>
+                                <BookOpen size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Ministère</span>
+                                    <div className={styles.infoValue}>{member.ministry || 'Non assigné'}</div>
+                                </div>
+                            </div>
+
+                            <div className={styles.infoGroup}>
                                 <MapPin size={20} className={styles.infoIcon} />
                                 <div>
                                     <span className={styles.infoLabel}>Zone / Bacenta</span>
                                     <div className={styles.infoValue}>
                                         {member.area?.name || 'Non assigné'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.infoGroup}>
+                                <Users size={20} className={styles.infoIcon} />
+                                <div>
+                                    <span className={styles.infoLabel}>Berger (Leader)</span>
+                                    <div className={styles.infoValue}>
+                                        {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'Non assigné'}
                                     </div>
                                 </div>
                             </div>
@@ -175,7 +280,7 @@ const MemberDetail = () => {
                                 style={{ gridColumn: '1 / -1' }}
                                 onClick={() => navigate(`/members/${member.id}/edit`)}
                             >
-                                <Edit2 size={18} /> Modifier
+                                <Edit2 size={18} /> Modifier les informations
                             </button>
                         </div>
                     </div>

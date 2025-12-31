@@ -2,6 +2,7 @@
 const express = require('express');
 const userController = require('../controllers/userController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -22,6 +23,9 @@ router.put('/settings', userController.updateSettings);
 
 // PUT /api/users/:id
 router.put('/:id', userController.updateUser);
+
+// POST /api/users/profile-picture
+router.post('/profile-picture', upload.single('photo'), userController.uploadProfilePicture);
 
 // DELETE /api/users/:id
 router.delete('/:id', requireRole(['Bishop', 'Governor']), userController.deleteUser);
