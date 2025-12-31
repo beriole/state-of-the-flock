@@ -447,7 +447,7 @@ const reportController = {
         const members = await Member.findAll({
           where: memberWhere,
           attributes: ['id', 'first_name', 'last_name', 'status'],
-          include: [{ model: Area, as: 'Area', attributes: ['name'] }]
+          include: [{ model: Area, as: 'area', attributes: ['name'] }]
         });
 
         const attendances = await Attendance.findAll({
