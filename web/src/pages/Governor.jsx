@@ -78,11 +78,11 @@ const Governor = () => {
 
     // Reports
     const [reportFilters, setReportFilters] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
+        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
-        groupBy: 'area', // area, leader
         areaId: '',
-        leaderId: ''
+        leaderId: '',
+        attendanceViewType: 'area' // default grouping
     });
 
     const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
@@ -186,7 +186,8 @@ const Governor = () => {
                 start_date: reportFilters.startDate,
                 end_date: reportFilters.endDate,
                 area_id: reportFilters.areaId,
-                leader_id: reportFilters.leaderId
+                leader_id: reportFilters.leaderId,
+                group_by: reportFilters.attendanceViewType
             };
             const res = await reportAPI.getGovernorAttendanceReport(params);
             setAttendanceReportData(res.data.report || []);
@@ -1335,6 +1336,35 @@ const Governor = () => {
                     </div>
                 </div>
 
+                {selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
+                    <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => {
+                                setReportFilters({
+                                    ...reportFilters,
+                                    areaId: '',
+                                    leaderId: '',
+                                    attendanceViewType: 'area'
+                                });
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#60a5fa',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem',
+                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}
+                        >
+                            <ArrowLeft size={16} /> Retour à la vue globale
+                        </button>
+                    </div>
+                )}
+
                 <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
                     {selectedReportType === 'call_tracking' ? (
                         <>
@@ -1557,7 +1587,7 @@ const Governor = () => {
                                             attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
                                     </th>
                                     {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
-                                    {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut</th>}
+                                    {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
                                     <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
                                     {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
                                     <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
@@ -1566,13 +1596,31 @@ const Governor = () => {
                             <tbody>
                                 {attendanceReportData.length > 0 ? (
                                     attendanceReportData.map((item, idx) => (
-                                        <tr key={idx} className={styles.tr}>
+                                        <tr
+                                            key={idx}
+                                            className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
+                                            onClick={() => {
+                                                if (attendanceReportType === 'area') {
+                                                    setReportFilters({
+                                                        ...reportFilters,
+                                                        areaId: item.area_id,
+                                                        attendanceViewType: 'member_detail'
+                                                    });
+                                                }
+                                            }}
+                                            style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
+                                        >
                                             <td className={styles.td}>
-                                                <strong>
-                                                    {attendanceReportType === 'area' ? item.area_name :
-                                                        attendanceReportType === 'member_detail' ? item.member_name :
-                                                            (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
-                                                </strong>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    {attendanceReportType === 'area' && (
+                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
+                                                    )}
+                                                    <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
+                                                        {attendanceReportType === 'area' ? item.area_name :
+                                                            attendanceReportType === 'member_detail' ? item.member_name :
+                                                                (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
+                                                    </strong>
+                                                </div>
                                             </td>
                                             {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
                                             {attendanceReportType === 'member_detail' && (

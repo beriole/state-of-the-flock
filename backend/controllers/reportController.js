@@ -438,10 +438,14 @@ const reportController = {
 
       let report;
 
-      // SI UN LEADER EST SÉLECTIONNÉ : On affiche le détail par membre
-      if (leader_id) {
+      // SI UN LEADER OU UNE VUE DÉTAILLÉE PAR ZONE EST SÉLECTIONNÉE
+      if (leader_id || (area_id && group_by === 'member_detail')) {
+        const memberWhere = {};
+        if (leader_id) memberWhere.leader_id = leader_id;
+        else if (area_id) memberWhere.area_id = area_id;
+
         const members = await Member.findAll({
-          where: { leader_id },
+          where: memberWhere,
           attributes: ['id', 'first_name', 'last_name', 'status'],
           include: [{ model: Area, as: 'Area', attributes: ['name'] }]
         });
