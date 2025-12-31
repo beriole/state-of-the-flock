@@ -590,6 +590,94 @@
     font-weight: 500;
 }
 
+/* Photo Upload */
+.photoUploadZone {
+    width: 100%;
+    height: 200px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.photoUploadZone:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #DC2626;
+    transform: translateY(-2px);
+}
+
+.photoUploadIcon {
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+
+.photoUploadZone:hover .photoUploadIcon {
+    color: #DC2626;
+    transform: scale(1.1);
+}
+
+.photoUploadText {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.photoPreviewContainer {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+}
+
+.photoPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.removePhotoBtn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.removePhotoBtn:hover {
+    background: #DC2626;
+    transform: scale(1.1);
+}
+
+.loadingOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -608,5 +696,9 @@
 
     .formGrid {
         grid-template-columns: 1fr;
+    }
+
+    .photoPreviewContainer {
+        height: 200px;
     }
 }

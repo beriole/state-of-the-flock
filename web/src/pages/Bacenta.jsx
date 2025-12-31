@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { bacentaAPI, memberAPI } from '../utils/api';
+import { bacentaAPI, getPhotoUrl } from '../utils/api';
 import {
     Calendar,
     MapPin,
@@ -209,10 +209,17 @@ const Bacenta = () => {
     const saveReport = async (e) => {
         e.preventDefault();
         try {
+            setUploading(true);
             const offeringsData = reportData.offerings.filter(o => o.amount > 0);
 
             if (offeringsData.length > 0) {
                 await bacentaAPI.addOfferings(selectedMeeting.id, { offerings: offeringsData });
+            }
+
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('photo', selectedFile);
+                await bacentaAPI.uploadPhoto(selectedMeeting.id, formData);
             }
 
             await bacentaAPI.updateMeeting(selectedMeeting.id, {
@@ -224,9 +231,13 @@ const Bacenta = () => {
             });
 
             setShowReportModal(false);
+            setSelectedFile(null);
+            setPreviewUrl(null);
             fetchMeetings();
         } catch (error) {
             console.error('Error saving report:', error);
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -653,7 +664,7 @@ const Bacenta = () => {
                                     <h4 className={styles.label}>Photo de la réunion</h4>
                                     <div className={styles.photoPreviewContainer}>
                                         <img
-                                            src={selectedMeeting.photo_url || selectedMeeting.familyPhoto}
+                                            src={getPhotoUrl(selectedMeeting.photo_url || selectedMeeting.familyPhoto)}
                                             alt="Réunion"
                                             className={styles.photoPreview}
                                         />
@@ -742,6 +753,44 @@ const Bacenta = () => {
                                         onChange={e => setReportData({ ...reportData, notes: e.target.value })}
                                         placeholder="Points clés, témoignages, etc."
                                     />
+                                </div>
+
+                                <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                                    <label className={styles.label}>Photo de famille / réunion</label>
+                                    {previewUrl || selectedMeeting?.photo_url || selectedMeeting?.familyPhoto ? (
+                                        <div className={styles.photoPreviewContainer}>
+                                            <img
+                                                src={previewUrl || getPhotoUrl(selectedMeeting?.photo_url || selectedMeeting?.familyPhoto)}
+                                                alt="Preview"
+                                                className={styles.photoPreview}
+                                            />
+                                            <button
+                                                type="button"
+                                                className={styles.removePhotoBtn}
+                                                onClick={() => {
+                                                    setSelectedFile(null);
+                                                    setPreviewUrl(null);
+                                                }}
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={styles.photoUploadZone}
+                                            onClick={() => document.getElementById('reportPhotoInput').click()}
+                                        >
+                                            <Camera size={48} className={styles.photoUploadIcon} />
+                                            <span className={styles.photoUploadText}>Cliquez pour ajouter une photo</span>
+                                            <input
+                                                id="reportPhotoInput"
+                                                type="file"
+                                                accept="image/*"
+                                                style={{ display: 'none' }}
+                                                onChange={handleFileChange}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

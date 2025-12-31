@@ -16,6 +16,8 @@ const storage = multer.diskStorage({
     let dest = '';
     if (req.baseUrl.includes('users') || req.path.includes('profile')) {
       dest = path.join(__dirname, '..', 'uploads/profiles');
+    } else if (req.baseUrl.includes('bacenta')) {
+      dest = path.join(__dirname, '..', 'uploads/bacenta-meetings');
     } else {
       dest = path.join(__dirname, '..', 'uploads/members');
     }
