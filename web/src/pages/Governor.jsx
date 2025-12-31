@@ -194,11 +194,19 @@ const Governor = () => {
 
             console.log('Fetching Attendance Report:', params); // Debug log
 
+            setAttendanceReportData([]); // Clear previous data to indicate loading/change
+
             const res = await reportAPI.getGovernorAttendanceReport(params);
-            setAttendanceReportData(res.data.report || []);
-            setAttendanceReportType(res.data.type);
+
+            if (res.data) {
+                setAttendanceReportData(res.data.report || []);
+                setAttendanceReportType(res.data.type);
+            }
         } catch (error) {
             console.error('Error fetching attendance report:', error);
+            // Optionally add user feedback here
+            setAttendanceReportData([]); // Ensure table is empty on error
+            alert("Erreur lors du chargement des données. Veuillez réessayer.");
         }
     };
 
