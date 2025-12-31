@@ -446,7 +446,7 @@ const reportController = {
 
         const members = await Member.findAll({
           where: memberWhere,
-          attributes: ['id', 'first_name', 'last_name', 'status'],
+          attributes: ['id', 'first_name', 'last_name', 'is_active'],
           include: [{ model: Area, as: 'area', attributes: ['name'] }]
         });
 
@@ -468,7 +468,7 @@ const reportController = {
         report = members.map(m => ({
           member_id: m.id,
           member_name: `${m.first_name} ${m.last_name}`,
-          status: m.status,
+          status: m.is_active ? 'active' : 'inactive',
           attendance_count: attendanceByMember[m.id] || 0,
           total_possible: totalSundays,
           attendance_rate: Math.round(((attendanceByMember[m.id] || 0) / totalSundays) * 100)
