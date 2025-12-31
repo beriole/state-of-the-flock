@@ -181,14 +181,19 @@ const Governor = () => {
 
     const fetchAttendanceData = async () => {
         try {
+            // Force member_detail if we are drilling down (Area or Leader selected)
+            const isDrillDown = !!(reportFilters.areaId || reportFilters.leaderId);
             const params = {
                 ...reportFilters,
                 start_date: reportFilters.startDate,
                 end_date: reportFilters.endDate,
                 area_id: reportFilters.areaId,
                 leader_id: reportFilters.leaderId,
-                group_by: reportFilters.attendanceViewType
+                group_by: isDrillDown ? 'member_detail' : 'area'
             };
+
+            console.log('Fetching Attendance Report:', params); // Debug log
+
             const res = await reportAPI.getGovernorAttendanceReport(params);
             setAttendanceReportData(res.data.report || []);
             setAttendanceReportType(res.data.type);
