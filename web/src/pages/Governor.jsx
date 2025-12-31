@@ -446,7 +446,8 @@ const Governor = () => {
 
         } catch (error) {
             console.error('Error generating PDF:', error);
-            alert('Erreur lors de la génération du rapport');
+            const errorMsg = error.response?.data?.message || error.message || 'Erreur inconnue';
+            alert(`Erreur lors de la génération du rapport : ${errorMsg}`);
         } finally {
             setLoading(false);
         }
