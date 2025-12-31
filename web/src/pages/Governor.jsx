@@ -1249,7 +1249,15 @@ const Governor = () => {
                                         className={styles.select}
                                         style={{ padding: '0.4rem' }}
                                         value={reportFilters.areaId}
-                                        onChange={e => setReportFilters({ ...reportFilters, areaId: e.target.value, leaderId: '' })}
+                                        onChange={e => {
+                                            const newAreaId = e.target.value;
+                                            setReportFilters({
+                                                ...reportFilters,
+                                                areaId: newAreaId,
+                                                leaderId: '',
+                                                attendanceViewType: newAreaId ? 'member_detail' : 'area'
+                                            });
+                                        }}
                                     >
                                         <option value="">Toutes les Zones</option>
                                         {areas.map(area => (
@@ -1263,7 +1271,14 @@ const Governor = () => {
                                         className={styles.select}
                                         style={{ padding: '0.4rem' }}
                                         value={reportFilters.leaderId}
-                                        onChange={e => setReportFilters({ ...reportFilters, leaderId: e.target.value })}
+                                        onChange={e => {
+                                            const newLeaderId = e.target.value;
+                                            setReportFilters({
+                                                ...reportFilters,
+                                                leaderId: newLeaderId,
+                                                attendanceViewType: newLeaderId ? 'member_detail' : (reportFilters.areaId ? 'member_detail' : 'area')
+                                            });
+                                        }}
                                     >
                                         <option value="">Tous les Leaders</option>
                                         {leaders
