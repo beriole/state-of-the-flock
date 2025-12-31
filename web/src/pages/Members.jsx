@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { memberAPI } from '../utils/api';
+import { memberAPI, getPhotoUrl } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -227,7 +227,11 @@ const Members = () => {
                                             style={{ cursor: 'pointer' }}
                                         >
                                             <div className={styles.avatar}>
-                                                {member.first_name?.charAt(0)}
+                                                {member.photo_url ? (
+                                                    <img src={getPhotoUrl(member.photo_url)} alt="M" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    member.first_name?.charAt(0)
+                                                )}
                                             </div>
                                             <div>
                                                 <div className={styles.memberName}>
