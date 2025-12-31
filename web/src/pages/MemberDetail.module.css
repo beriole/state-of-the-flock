@@ -81,7 +81,7 @@
 
 /* Profile Card */
 .card {
-    background: rgba(15, 23, 42, 0.4);
+    background: rgba(2, 6, 23, 0.4);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 2.5rem;
@@ -91,7 +91,7 @@
 }
 
 .profileHeader {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 23, 42, 0) 100%);
     padding: 3rem 2rem;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -441,6 +441,11 @@
     z-index: 10;
     gap: 1rem;
     border-radius: inherit;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    display: flex;
 }
 
 .spinner {

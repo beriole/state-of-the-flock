@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { X, User, Mail, Phone, Lock, LogOut, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import styles from './ProfileModal.module.css';

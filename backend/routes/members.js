@@ -24,4 +24,7 @@ router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Area_Pastor', '
 // DELETE /api/members/:id
 router.delete('/:id', requireRole(['Bishop', 'Assisting_Overseer']), memberController.deleteMember);
 
+// POST /api/members/:id/photo
+router.post('/:id/photo', upload.single('photo'), memberController.uploadPhoto);
+
 module.exports = router;
