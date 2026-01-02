@@ -65,7 +65,7 @@ const areaController = {
   // Créer une zone
   createArea: async (req, res) => {
     try {
-      const { name, number, overseer_id, description } = req.body;
+      const { name, number, overseer_id, leader_id, region_id, description } = req.body;
 
       if (!name || !number) {
         return res.status(400).json({ error: 'Le nom et le numéro sont obligatoires' });
@@ -81,12 +81,15 @@ const areaController = {
         name,
         number,
         overseer_id,
+        leader_id,
+        region_id,
         description
       });
 
       const newArea = await Area.findByPk(area.id, {
         include: [
-          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] }
+          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] },
+          { model: User, as: 'leader_user', attributes: ['id', 'first_name', 'last_name', 'email'] }
         ]
       });
 
@@ -122,7 +125,8 @@ const areaController = {
 
       const updatedArea = await Area.findByPk(areaId, {
         include: [
-          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] }
+          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] },
+          { model: User, as: 'leader_user', attributes: ['id', 'first_name', 'last_name', 'email'] }
         ]
       });
 

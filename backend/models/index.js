@@ -1,6 +1,9 @@
 const { Sequelize } = require('sequelize');
 const UserModel = require('./User');
 const AreaModel = require('./Area');
+const RegionModel = require('./Region');
+const MinistryModel = require('./Ministry');
+const MinistryAttendanceModel = require('./MinistryAttendance');
 const MemberModel = require('./Member');
 const AttendanceModel = require('./Attendance');
 const CallLogModel = require('./callLog');
@@ -71,7 +74,10 @@ if (!sequelize) {
 
 // Initialisation des modèles
 const User = UserModel(sequelize);
+const Region = RegionModel(sequelize);
 const Area = AreaModel(sequelize);
+const Ministry = MinistryModel(sequelize);
+const MinistryAttendance = MinistryAttendanceModel(sequelize);
 const Member = MemberModel(sequelize);
 const Attendance = AttendanceModel(sequelize);
 const CallLog = CallLogModel(sequelize);
@@ -96,13 +102,24 @@ function setupAssociations() {
   User.hasMany(BacentaOffering, { foreignKey: 'verified_by', as: 'verified_offerings' });
   User.hasMany(BacentaMeeting, { foreignKey: 'verified_by', as: 'verified_bacenta_meetings' });
 
+  // Region
+  Region.hasMany(Area, { foreignKey: 'region_id', as: 'areas' });
+  Region.belongsTo(User, { foreignKey: 'governor_id', as: 'governor' });
+
   // Area
   Area.hasMany(User, { foreignKey: 'area_id', as: 'leaders' });
   Area.hasMany(Member, { foreignKey: 'area_id', as: 'members' });
   Area.belongsTo(User, { foreignKey: 'overseer_id', as: 'overseer' });
+  // New associations for Area
+  Area.belongsTo(Region, { foreignKey: 'region_id', as: 'region' });
+  Area.belongsTo(User, { foreignKey: 'leader_id', as: 'leader_user' }); // Renamed to avoid confusion with potential existing 'leader' methods/mixins
 
   // User hasOne Area as overseer
   User.hasOne(Area, { foreignKey: 'overseer_id', as: 'overseen_area' });
+  // User hasOne Area as leader (responsible)
+  User.hasOne(Area, { foreignKey: 'leader_id', as: 'led_area' });
+  // User hasOne Region as governor
+  User.hasOne(Region, { foreignKey: 'governor_id', as: 'governed_region' });
 
   // Member
   Member.belongsTo(Area, { foreignKey: 'area_id', as: 'area' });
@@ -137,12 +154,28 @@ function setupAssociations() {
 
   // Notification
   Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+  // Ministry and MinistryAttendance
+  Ministry.hasMany(Member, { foreignKey: 'ministry_id', as: 'members' });
+  Ministry.belongsTo(User, { foreignKey: 'leader_id', as: 'leader' });
+  Ministry.hasMany(MinistryAttendance, { foreignKey: 'ministry_id', as: 'attendance_records' });
+
+  Member.belongsTo(Ministry, { foreignKey: 'ministry_id', as: 'ministry_association' }); // Renaming to distinguish from 'ministry' string field if needed, or just 'ministry_details'
+
+  MinistryAttendance.belongsTo(Ministry, { foreignKey: 'ministry_id', as: 'ministry' });
+  MinistryAttendance.belongsTo(Member, { foreignKey: 'member_id', as: 'member' });
+  MinistryAttendance.belongsTo(User, { foreignKey: 'marked_by_user_id', as: 'marked_by' });
+
+  User.hasOne(Ministry, { foreignKey: 'leader_id', as: 'led_ministry' });
 }
 
 module.exports = {
   sequelize,
   User,
+  Region,
   Area,
+  Ministry,
+  MinistryAttendance,
   Member,
   Attendance,
   CallLog,

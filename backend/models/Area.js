@@ -28,6 +28,22 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    leader_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    region_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'regions',
+        key: 'id'
+      }
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true

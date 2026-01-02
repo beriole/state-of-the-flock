@@ -25,6 +25,7 @@ const syncRoutes = require('./routes/sync');
 const dashboardRoutes = require('./routes/dashboard');
 const notificationRoutes = require('./routes/notifications');
 const areaRoutes = require('./routes/areas');
+const ministryRoutes = require('./routes/ministryRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -103,6 +104,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/areas', areaRoutes);
+app.use('/api/ministries', ministryRoutes);
 
 // Root route
 app.get('/', (req, res) => {

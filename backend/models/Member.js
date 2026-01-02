@@ -52,6 +52,14 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    ministry_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'ministries',
+        key: 'id'
+      }
+    },
     ministry: {
       type: DataTypes.STRING,
       allowNull: true

@@ -124,6 +124,7 @@ const memberController = {
         area_id,
         leader_id,
         ministry,
+        ministry_id,
         profession,
         notes
       } = req.body;
@@ -156,6 +157,7 @@ const memberController = {
         area_id: finalAreaId,
         leader_id,
         ministry,
+        ministry_id,
         profession,
         notes,
         is_active: true
