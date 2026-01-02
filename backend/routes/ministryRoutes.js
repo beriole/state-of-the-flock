@@ -2,10 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const ministryController = require('../controllers/ministryController');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authMiddleware } = require('../middleware/auth');
 
 // Protection globale (authentification requise)
-router.use(authenticateToken);
+router.use(authMiddleware);
 
 // Routes
 router.get('/', ministryController.getAllMinistries);
