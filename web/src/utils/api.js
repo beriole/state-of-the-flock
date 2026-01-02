@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Base URL relative pour utiliser le proxy Vite
-const BASE_URL = '/api';
+// Base URL configuration (Render support)
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Utility function to handle photo URLs
 export const getPhotoUrl = (url) => {
