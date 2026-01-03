@@ -19,7 +19,7 @@ router.get('/:id', memberController.getMemberById);
 router.post('/', requireRole(['Bishop', 'Assisting_Overseer', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.createMember);
 
 // PUT /api/members/:id
-router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Area_Pastor', 'Data_Clerk']), memberController.updateMember);
+router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.updateMember);
 
 // DELETE /api/members/:id
 router.delete('/:id', requireRole(['Bishop', 'Assisting_Overseer']), memberController.deleteMember);

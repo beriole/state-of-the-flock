@@ -101,9 +101,17 @@ const memberController = {
         return res.status(404).json({ error: 'Membre non trouvé' });
       }
 
-      if (req.user.role === 'Bacenta_Leader' && member.leader_id.toString() !== req.user.userId.toString()) {
-        console.warn(`[FORBIDDEN] Leader ${req.user.userId} tried to access member ${member.id} belonging to leader ${member.leader_id}`);
-        return res.status(403).json({ error: 'Accès non autorisé à ce membre' });
+      if (req.user.role === 'Bacenta_Leader') {
+        const memberLeaderId = member.leader_id ? member.leader_id.toString().trim().toLowerCase() : null;
+        const requesterId = req.user.userId ? req.user.userId.toString().trim().toLowerCase() : null;
+
+        if (memberLeaderId !== requesterId) {
+          console.warn(`[FORBIDDEN] Leader ${requesterId} tried to access member ${member.id} belonging to leader ${memberLeaderId}`);
+          return res.status(403).json({
+            error: 'Accès non autorisé à ce membre',
+            details: process.env.NODE_ENV === 'development' ? `Leader mismatch: ${requesterId} vs ${memberLeaderId}` : undefined
+          });
+        }
       }
 
       res.json(member);
@@ -196,9 +204,17 @@ const memberController = {
         return res.status(404).json({ error: 'Membre non trouvé' });
       }
 
-      if (req.user.role === 'Bacenta_Leader' && member.leader_id.toString() !== req.user.userId.toString()) {
-        console.warn(`[FORBIDDEN] Leader ${req.user.userId} tried to update member ${member.id} belonging to leader ${member.leader_id}`);
-        return res.status(403).json({ error: 'Accès non autorisé' });
+      if (req.user.role === 'Bacenta_Leader') {
+        const memberLeaderId = member.leader_id ? member.leader_id.toString().trim().toLowerCase() : null;
+        const requesterId = req.user.userId ? req.user.userId.toString().trim().toLowerCase() : null;
+
+        if (memberLeaderId !== requesterId) {
+          console.warn(`[FORBIDDEN] Leader ${requesterId} tried to update member ${member.id} belonging to leader ${memberLeaderId}`);
+          return res.status(403).json({
+            error: 'Accès non autorisé',
+            details: process.env.NODE_ENV === 'development' ? `Leader mismatch: ${requesterId} vs ${memberLeaderId}` : undefined
+          });
+        }
       }
 
       // Sanitisation des chaînes vides envoyées comme IDs (clés étrangères)
