@@ -14,6 +14,7 @@ router.delete('/:id', ministryController.deleteMinistry);
 router.get('/:id/members', ministryController.getMinistryMembers);
 
 // Gestion des présences
+router.get('/overview', ministryController.getMinistriesAttendanceOverview);
 router.post('/:id/attendance', ministryController.markAttendance);
 router.get('/:id/attendance/stats', ministryController.getMinistryAttendanceStats);
 

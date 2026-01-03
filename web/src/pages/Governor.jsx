@@ -102,6 +102,7 @@ const Governor = () => {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [ministryReportData, setMinistryReportData] = useState([]);
     const [selectedMinistryForReport, setSelectedMinistryForReport] = useState('');
+    const [ministryOverviewData, setMinistryOverviewData] = useState([]);
 
     // Contact Modal
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -346,15 +347,21 @@ const Governor = () => {
     }, [reportFilters, selectedReportType, activeTab, callTrackingView, selectedMinistryForReport]);
 
     const fetchMinistryReportData = async () => {
-        if (!selectedMinistryForReport) {
-            setMinistryReportData([]);
-            return;
-        }
+        setLoading(true);
         try {
-            const res = await ministryAPI.getAttendanceStats(selectedMinistryForReport, reportFilters.startDate);
-            setMinistryReportData(res.data.details || []);
+            if (!selectedMinistryForReport) {
+                const res = await ministryAPI.getAttendanceOverview(reportFilters.startDate);
+                setMinistryOverviewData(res.data || []);
+                setMinistryReportData([]);
+            } else {
+                const res = await ministryAPI.getAttendanceStats(selectedMinistryForReport, reportFilters.startDate);
+                setMinistryReportData(res.data.details || []);
+                setMinistryOverviewData([]);
+            }
         } catch (error) {
             console.error('Error fetching ministry report:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -713,6 +720,10 @@ const Governor = () => {
         ));
     };
 
+    const handleMarkAllAttendance = (present) => {
+        setMinistryAttendanceMembers(prev => prev.map(m => ({ ...m, present })));
+    };
+
     const handleSaveMinistryAttendance = async () => {
         if (!selectedMinistryForAttendance) return;
         setModalLoading(true);
@@ -726,6 +737,7 @@ const Governor = () => {
             });
             setShowMinistryAttendanceModal(false);
             alert('Présences enregistrées avec succès');
+            fetchMinistryReportData();
         } catch (error) {
             console.error('Error saving ministry attendance:', error);
             alert('Erreur lors de l\'enregistrement des présences');
@@ -1129,9 +1141,91 @@ const Governor = () => {
         </div>
     );
 
-    const renderMinistryReport = () => (
-        <div style={{ width: '100%' }}>
-            {selectedMinistryForReport ? (
+    const renderMinistryReport = () => {
+        if (!selectedMinistryForReport) {
+            return (
+                <div style={{ width: '100%' }}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Ministère</th>
+                                <th className={styles.th}>Effectif</th>
+                                <th className={styles.th}>Présents</th>
+                                <th className={styles.th}>Taux %</th>
+                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ministryOverviewData.length > 0 ? (
+                                ministryOverviewData.map(m => (
+                                    <tr key={m.id} className={styles.tr}>
+                                        <td className={styles.td}>
+                                            <div style={{ fontWeight: '600', color: 'white' }}>{m.name}</div>
+                                        </td>
+                                        <td className={styles.td}>{m.total_members}</td>
+                                        <td className={styles.td}>
+                                            <span style={{ color: m.present_count > 0 ? '#10b981' : '#94a3b8' }}>
+                                                {m.present_count}
+                                            </span>
+                                        </td>
+                                        <td className={styles.td}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                    <div style={{ width: `${m.attendance_rate}%`, height: '100%', background: m.attendance_rate > 50 ? '#10b981' : '#f59e0b' }}></div>
+                                                </div>
+                                                <span style={{ fontSize: '0.8rem' }}>{m.attendance_rate}%</span>
+                                            </div>
+                                        </td>
+                                        <td className={styles.td} style={{ textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                <button
+                                                    className={styles.actionBtn}
+                                                    onClick={() => setSelectedMinistryForReport(m.id)}
+                                                    title="Détails"
+                                                >
+                                                    <Search size={16} />
+                                                </button>
+                                                <button
+                                                    className={styles.actionBtn}
+                                                    onClick={() => {
+                                                        setMinistryAttendanceDate(reportFilters.startDate);
+                                                        openMinistryAttendance(m);
+                                                    }}
+                                                    title="Saisir les présences"
+                                                >
+                                                    <CheckCircle size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
+                                        {loading ? <Loader2 className={styles.spin} /> : 'Aucun ministère trouvé.'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ width: '100%' }}>
+                <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button
+                        className={styles.actionBtn}
+                        onClick={() => setSelectedMinistryForReport('')}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '8px' }}
+                    >
+                        <ArrowLeft size={16} /> Retour à la vue globale
+                    </button>
+                    <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                        {ministryReportData.filter(m => m.present).length} présents sur {ministryReportData.length}
+                    </div>
+                </div>
                 <table className={styles.table}>
                     <thead>
                         <tr>
@@ -1167,14 +1261,9 @@ const Governor = () => {
                         )}
                     </tbody>
                 </table>
-            ) : (
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                    <Library size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                    <p>Veuillez sélectionner un ministère pour voir le rapport.</p>
-                </div>
-            )}
-        </div>
-    );
+            </div>
+        );
+    };
 
     const renderZones = () => (
         <div className={styles.section}>
@@ -2436,6 +2525,23 @@ const Governor = () => {
                                     value={ministryAttendanceDate}
                                     onChange={e => setMinistryAttendanceDate(e.target.value)}
                                 />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                                <button
+                                    className={styles.actionBtn}
+                                    onClick={() => handleMarkAllAttendance(true)}
+                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}
+                                >
+                                    Tout Présent
+                                </button>
+                                <button
+                                    className={styles.actionBtn}
+                                    onClick={() => handleMarkAllAttendance(false)}
+                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem' }}
+                                >
+                                    Tout Absent
+                                </button>
                             </div>
 
                             <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>

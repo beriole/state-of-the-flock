@@ -167,6 +167,45 @@ const ministryController = {
             console.error('Get ministry stats error:', error);
             res.status(500).json({ error: 'Erreur lors de la récupération des stats' });
         }
+    },
+
+    // 7. Obtenir une vue d'ensemble de tous les ministères pour une date
+    getMinistriesAttendanceOverview: async (req, res) => {
+        try {
+            const { date } = req.query;
+            if (!date) {
+                return res.status(400).json({ error: 'Date requise (YYYY-MM-DD)' });
+            }
+
+            // Récupérer tous les ministères
+            const ministries = await Ministry.findAll({
+                include: [
+                    { model: Member, as: 'members', attributes: ['id'] }
+                ]
+            });
+
+            // Récupérer toutes les présences pour cette date
+            const attendances = await MinistryAttendance.findAll({
+                where: { date: date }
+            });
+
+            const overview = ministries.map(m => {
+                const ministryAttendances = attendances.filter(a => a.ministry_id === m.id);
+                const presentCount = ministryAttendances.filter(a => a.present).length;
+                return {
+                    id: m.id,
+                    name: m.name,
+                    total_members: m.members.length,
+                    present_count: presentCount,
+                    attendance_rate: m.members.length > 0 ? Math.round((presentCount / m.members.length) * 100) : 0
+                };
+            });
+
+            res.json(overview);
+        } catch (error) {
+            console.error('Get ministries overview error:', error);
+            res.status(500).json({ error: 'Erreur lors de la récupération de la vue d\'ensemble' });
+        }
     }
 };
 
