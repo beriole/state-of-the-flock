@@ -48,7 +48,9 @@ import { useAuth } from '../context/AuthContext';
 import { ContactModal } from '../components/ContactModals';
 import styles from './Governor.module.css';
 import { callLogAPI } from '../utils/api';
+import { callLogAPI } from '../utils/api';
 import { generateProfessionalPDF } from '../utils/pdfGenerator';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Governor = () => {
     const navigate = useNavigate();
@@ -1375,1299 +1377,1356 @@ const Governor = () => {
                     </table>
                 </div>
             );
-            );
         }
 
-const renderEvolutionChart = () => (
-    <div className={styles.section} style={{ marginTop: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 className={styles.sectionTitle} style={{ fontSize: '1.2rem' }}>Évolution des Statistiques</h3>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <input
-                    type="date"
-                    className={styles.input}
-                    style={{ padding: '0.4rem' }}
-                    value={evolutionDateRange.startDate}
-                    onChange={e => setEvolutionDateRange({ ...evolutionDateRange, startDate: e.target.value })}
-                />
-                <span style={{ color: '#94a3b8' }}>à</span>
-                <input
-                    type="date"
-                    className={styles.input}
-                    style={{ padding: '0.4rem' }}
-                    value={evolutionDateRange.endDate}
-                    onChange={e => setEvolutionDateRange({ ...evolutionDateRange, endDate: e.target.value })}
-                />
-            </div>
-        </div>
-        <div style={{ height: '400px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem' }}>
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={evolutionData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis
-                        dataKey="date"
-                        stroke="#94a3b8"
-                        tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                    />
-                    <YAxis stroke="#94a3b8" />
-                    <Tooltip
-                        contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }}
-                        labelStyle={{ color: '#e2e8f0' }}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="total_members" name="Total Membres" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="attendance" name="Présents" stroke="#10b981" strokeWidth={2} />
-                </LineChart>
-            </ResponsiveContainer>
-        </div>
-    </div>
-);
-
-return (
-    <div style={{ width: '100%' }}>
-        <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <button
-                    className={styles.actionBtn}
-                    onClick={() => {
-                        setSelectedMinistryForReport('');
-                        setShowEvolutionChart(false);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '8px' }}
-                >
-                    <ArrowLeft size={16} /> Retour
-                </button>
-                <button
-                    className={`${styles.actionBtn} ${showEvolutionChart ? styles.active : ''}`}
-                    onClick={() => setShowEvolutionChart(!showEvolutionChart)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        background: showEvolutionChart ? '#3b82f6' : 'rgba(255,255,255,0.05)',
-                        padding: '0.5rem 1rem', borderRadius: '8px'
-                    }}
-                >
-                    <TrendingUp size={16} /> {showEvolutionChart ? 'Voir Liste' : 'Voir Évolution'}
-                </button>
-            </div>
-            <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                {showEvolutionChart ?
-                    'Analyse sur la période sélectionnée' :
-                    `${ministryReportData.filter(m => m.present).length} présents sur ${ministryReportData.length} (Date: ${new Date(reportFilters.startDate).toLocaleDateString()})`
-                }
-            </div>
-        </div>
-
-        {showEvolutionChart ? renderEvolutionChart() : (
-            <table className={styles.table}>
-                <thead>
-                    <tr>
-                        <th className={styles.th}>Membre</th>
-                        <th className={styles.th}>Statut de Présence</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {ministryReportData.length > 0 ? (
-                        ministryReportData.map(m => (
-                            <tr key={m.member_id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <User size={16} />
-                                        </div>
-                                        {m.name}
-                                    </div>
-                                </td>
-                                <td className={styles.td}>
-                                    <span className={`${styles.badge} ${m.present ? styles.badgeActive : styles.badgeInactive}`}>
-                                        {m.present ? 'Présent' : 'Absent'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan={2} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
-                                Aucune donnée pour cette date.
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-        )}
-    </div>
-);
-    };
-
-const renderZones = () => (
-    <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Gestion des Zones</h2>
-            <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
-                <Plus size={20} /> Nouvelle Zone
-            </button>
-        </div>
-
-        <div className={styles.tableContainer}>
-            <table className={styles.table}>
-                <thead>
-                    <tr>
-                        <th className={styles.th}>Nom de la Zone</th>
-                        <th className={styles.th}>Numéro</th>
-                        <th className={styles.th}>Responsable</th>
-                        <th className={styles.th}>Leaders Assignés</th>
-                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {areas.map(area => (
-                        <tr key={area.id} className={styles.tr}>
-                            <td className={styles.td}>
-                                <span className={styles.userName}>{area.name}</span>
-                            </td>
-                            <td className={styles.td}>
-                                <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>
-                                    N° {area.number}
-                                </span>
-                            </td>
-                            <td className={styles.td}>
-                                <span style={{ color: '#94a3b8' }}>
-                                    {(() => {
-                                        const lu = area.leader_user || area.leaderUser;
-                                        if (lu) return `${lu.first_name} ${lu.last_name}`;
-                                        const l = leaders.find(ld => ld.id === area.leader_id);
-                                        if (l) return `${l.first_name} ${l.last_name}`;
-                                        return 'Non assigné';
-                                    })()}
-                                </span>
-                            </td>
-                            <td className={styles.td}>
-                                {leaders.filter(l => l.area_id === area.id).length} Leaders
-                            </td>
-                            <td className={styles.td}>
-                                <div className={styles.actions}>
-                                    <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
-                                        <Pencil size={18} />
-                                    </button>
-                                    <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </div>
-);
-
-const renderMembers = () => (
-    <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Membres de l'Église</h2>
-            <div className={styles.headerActions}>
-                <select
-                    className={styles.select}
-                    style={{ width: 'auto', marginRight: '1rem' }}
-                    value={memberFilters.area_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, area_id: e.target.value })}
-                >
-                    <option value="">Toutes les Zones</option>
-                    {areas.map(area => (
-                        <option key={area.id} value={area.id}>{area.name}</option>
-                    ))}
-                </select>
-                <select
-                    className={styles.select}
-                    style={{ width: 'auto' }}
-                    value={memberFilters.leader_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value })}
-                >
-                    <option value="">Tous les Leaders</option>
-                    {leaders.map(leader => (
-                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                    ))}
-                </select>
-            </div>
-        </div>
-
-        <div className={styles.tableContainer}>
-            <div className={styles.searchBar}>
-                <div className={styles.searchInputWrapper}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        className={styles.searchInput}
-                        placeholder="Rechercher un membre par nom..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
-            <table className={styles.table}>
-                <thead>
-                    <tr>
-                        <th className={styles.th}>Membre</th>
-                        <th className={styles.th}>Zone</th>
-                        <th className={styles.th}>Leader</th>
-                        <th className={styles.th}>Statut</th>
-                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {members.map(member => (
-                        <tr key={member.id} className={styles.tr}>
-                            <td className={styles.td}>
-                                <div className={styles.userCell}>
-                                    <div className={styles.avatar}>
-                                        {member.photo_url ? (
-                                            <img src={getPhotoUrl(member.photo_url)} alt="Profile" className={styles.avatarImage} />
-                                        ) : (
-                                            <>{member.first_name[0]}{member.last_name[0]}</>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <span className={styles.userName}>{member.first_name} {member.last_name}</span>
-                                        <span className={styles.userEmail}>{member.phone_primary || 'Pas de téléphone'}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td className={styles.td}>
-                                <span className={`${styles.badge} ${styles.badgeArea}`}>
-                                    {member.area?.name || 'N/A'}
-                                </span>
-                            </td>
-                            <td className={styles.td}>
-                                {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}
-                            </td>
-                            <td className={styles.td}>
-                                <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                    {member.status === 'active' ? 'Actif' : 'Inactif'}
-                                </span>
-                            </td>
-                            <td className={styles.td}>
-                                <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
-                                    <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(member)}>
-                                        <Phone size={18} />
-                                    </button>
-                                    <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(member.id)}>
-                                        <ChevronRight size={18} />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </div>
-);
-
-const renderLeaderDetail = () => (
-    <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button className={styles.actionBtn} onClick={() => setSelectedLeader(null)}>
-                    <X size={20} />
-                </button>
-                <h2 className={styles.sectionTitle}>Détail Leader : {selectedLeader.first_name} {selectedLeader.last_name}</h2>
-            </div>
-        </div>
-
-        <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-                <h3 className={styles.statValue}>{leaderStats?.totalMembers || 0}</h3>
-                <p className={styles.statLabel}>Membres</p>
-            </div>
-            <div className={styles.statCard}>
-                <h3 className={styles.statValue}>{leaderStats?.attendanceRate || 0}%</h3>
-                <p className={styles.statLabel}>Taux de Présence</p>
-            </div>
-            <div className={styles.statCard}>
-                <h3 className={styles.statValue}>{leaderStats?.recentMeetings || 0}</h3>
-                <p className={styles.statLabel}>Réunions Récentes</p>
-            </div>
-        </div>
-
-        <div className={styles.detailGrid} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-            <div className={styles.tableContainer}>
-                <h3 className={styles.sectionTitle} style={{ padding: '1rem', fontSize: '1.1rem' }}>Membres Assignés</h3>
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>Membre</th>
-                            <th className={styles.th}>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {leaderMembers.map(member => (
-                            <tr key={member.id} className={styles.tr}>
-                                <td className={styles.td}>{member.first_name} {member.last_name}</td>
-                                <td className={styles.td}>
-                                    <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                        {member.status === 'active' ? 'Actif' : 'Inactif'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className={styles.tableContainer}>
-                <h3 className={styles.sectionTitle} style={{ padding: '1rem', fontSize: '1.1rem' }}>Réunions Récentes</h3>
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>Date</th>
-                            <th className={styles.th}>Présents</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {leaderMeetings.map(meeting => (
-                            <tr key={meeting.id} className={styles.tr}>
-                                <td className={styles.td}>{new Date(meeting.date).toLocaleDateString()}</td>
-                                <td className={styles.td}>{meeting.attendance_count || 0}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-);
-
-const renderBacentaStats = () => {
-    if (!bacentaReportData.length) return null;
-
-    const totalOfferings = bacentaReportData.reduce((sum, m) => sum + (Number(m.offering_amount) || 0), 0);
-    const totalMeetings = bacentaReportData.length;
-    const totalPresence = bacentaReportData.reduce((sum, m) => sum + (m.total_members_present || 0), 0);
-    const avgPresence = Math.round(totalPresence / totalMeetings);
-
-    return (
-        <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
-            <div className={styles.statCard} style={{ borderLeft: '4px solid #10b981' }}>
-                <div className={styles.statHeader}>
-                    <div className={styles.statIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                        <TrendingUp size={20} />
+        const renderEvolutionChart = () => (
+            <div className={styles.section} style={{ marginTop: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 className={styles.sectionTitle} style={{ fontSize: '1.2rem' }}>Évolution des Statistiques</h3>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                            type="date"
+                            className={styles.input}
+                            style={{ padding: '0.4rem' }}
+                            value={evolutionDateRange.startDate}
+                            onChange={e => setEvolutionDateRange({ ...evolutionDateRange, startDate: e.target.value })}
+                        />
+                        <span style={{ color: '#94a3b8' }}>à</span>
+                        <input
+                            type="date"
+                            className={styles.input}
+                            style={{ padding: '0.4rem' }}
+                            value={evolutionDateRange.endDate}
+                            onChange={e => setEvolutionDateRange({ ...evolutionDateRange, endDate: e.target.value })}
+                        />
                     </div>
                 </div>
-                <div className={styles.statValue}>{totalOfferings.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
-                <div className={styles.statLabel}>Total des Offrandes</div>
-            </div>
-            <div className={styles.statCard} style={{ borderLeft: '4px solid #3b82f6' }}>
-                <div className={styles.statHeader}>
-                    <div className={styles.statIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                        <Calendar size={20} />
-                    </div>
-                </div>
-                <div className={styles.statValue}>{totalMeetings}</div>
-                <div className={styles.statLabel}>Réunions Tenues</div>
-            </div>
-            <div className={styles.statCard} style={{ borderLeft: '4px solid #f59e0b' }}>
-                <div className={styles.statHeader}>
-                    <div className={styles.statIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                        <Users size={20} />
-                    </div>
-                </div>
-                <div className={styles.statValue}>{avgPresence}</div>
-                <div className={styles.statLabel}>Moyenne de Présence</div>
-            </div>
-        </div>
-    );
-};
-
-const renderReports = () => {
-    const handleApplyFilters = () => {
-        if (pendingFilters) {
-            setReportFilters({
-                ...reportFilters,
-                startDate: pendingFilters.startDate,
-                endDate: pendingFilters.endDate,
-                areaId: pendingFilters.areaId,
-                leaderId: pendingFilters.leaderId
-            });
-            setSelectedMinistryForReport(pendingFilters.selectedMinistryForReport);
-        }
-    };
-
-    if (!isViewingReport) {
-        return (
-            <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Analyse & Rapports</h2>
-                </div>
-                <div className={styles.reportsGrid}>
-                    <div
-                        className={styles.reportCard}
-                        onClick={() => {
-                            setSelectedReportType('attendance');
-                            setIsViewingReport(true);
-                            setPendingFilters({ ...reportFilters });
-                        }}
-                    >
-                        <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
-                            <Calendar size={32} />
-                        </div>
-                        <h3 className={styles.reportTitle}>Rapport de Présence</h3>
-                        <p className={styles.reportDesc}>Analyse détaillée de la présence hebdomadaire par zone et par leader.</p>
-                        <div className={styles.reportBadge}>Prêt</div>
-                    </div>
-                    <div
-                        className={styles.reportCard}
-                        onClick={() => {
-                            setSelectedReportType('growth');
-                            setIsViewingReport(true);
-                            setPendingFilters({ ...reportFilters });
-                        }}
-                    >
-                        <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
-                            <TrendingUp size={32} />
-                        </div>
-                        <h3 className={styles.reportTitle}>Croissance des Membres</h3>
-                        <p className={styles.reportDesc}>Suivi de l'évolution du nombre de membres et des nouveaux convertis.</p>
-                        <div className={styles.reportBadge}>Premium</div>
-                    </div>
-                    <div
-                        className={styles.reportCard}
-                        onClick={() => {
-                            setSelectedReportType('bacenta_meetings');
-                            setIsViewingReport(true);
-                            setPendingFilters({ ...reportFilters });
-                        }}
-                    >
-                        <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
-                            <MessageCircle size={32} />
-                        </div>
-                        <h3 className={styles.reportTitle}>Comptes rendus Bacenta</h3>
-                        <p className={styles.reportDesc}>Rapports détaillés des réunions hebdomadaires effectués par les leaders.</p>
-                        <div className={styles.reportBadge} style={{ background: '#38bdf8' }}>Récent</div>
-                    </div>
-                    <div
-                        className={styles.reportCard}
-                        onClick={() => {
-                            setSelectedReportType('ministries');
-                            setIsViewingReport(true);
-                            setPendingFilters({ ...reportFilters, selectedMinistryForReport });
-                        }}
-                    >
-                        <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
-                            <Library size={32} />
-                        </div>
-                        <h3 className={styles.reportTitle}>Rapport des Ministères</h3>
-                        <p className={styles.reportDesc}>Suivi des présences et de l'engagement par ministère.</p>
-                        <div className={styles.reportBadge}>Nouveau</div>
-                    </div>
+                <div style={{ height: '400px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={evolutionData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                            <XAxis
+                                dataKey="date"
+                                stroke="#94a3b8"
+                                tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                            />
+                            <YAxis stroke="#94a3b8" />
+                            <Tooltip
+                                contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }}
+                                labelStyle={{ color: '#e2e8f0' }}
+                            />
+                            <Legend />
+                            <Line type="monotone" dataKey="total_members" name="Total Membres" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="attendance" name="Présents" stroke="#10b981" strokeWidth={2} />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         );
-    }
 
-    return (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader} style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button
-                        className={styles.actionBtn}
-                        onClick={() => setIsViewingReport(false)}
-                        style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '50%', padding: '0.6rem' }}
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h2 className={styles.sectionTitle}>
-                            {selectedReportType === 'attendance' ? 'Rapport de Présence' :
-                                selectedReportType === 'growth' ? 'Croissance des Membres' :
-                                    selectedReportType === 'call_tracking' ? 'Suivi des Appels' :
-                                        selectedReportType === 'ministries' ? 'Rapport des Ministères' : 'Comptes rendus Bacenta'}
-                        </h2>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                            {selectedReportType === 'attendance' ? 'Analyse filtrée par zone, leader et période' :
-                                selectedReportType === 'growth' ? 'Analyse d\'évolution temporelle premium' :
-                                    selectedReportType === 'call_tracking' ? 'Membres contactés et non contactés par période' :
-                                        selectedReportType === 'ministries' ? 'Présences par ministère et par date' :
-                                            'Détails des réunions de partage et activités par zone'}
-                        </p>
+        return (
+            <div style={{ width: '100%' }}>
+                <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => {
+                                setSelectedMinistryForReport('');
+                                setShowEvolutionChart(false);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '8px' }}
+                        >
+                            <ArrowLeft size={16} /> Retour
+                        </button>
+                        <button
+                            className={`${styles.actionBtn} ${showEvolutionChart ? styles.active : ''}`}
+                            onClick={() => setShowEvolutionChart(!showEvolutionChart)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                background: showEvolutionChart ? '#3b82f6' : 'rgba(255,255,255,0.05)',
+                                padding: '0.5rem 1rem', borderRadius: '8px'
+                            }}
+                        >
+                            <TrendingUp size={16} /> {showEvolutionChart ? 'Voir Liste' : 'Voir Évolution'}
+                        </button>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                        {showEvolutionChart ?
+                            'Analyse sur la période sélectionnée' :
+                            `${ministryReportData.filter(m => m.present).length} présents sur ${ministryReportData.length} (Date: ${new Date(reportFilters.startDate).toLocaleDateString()})`
+                        }
                     </div>
                 </div>
 
-                <div className={styles.headerActions} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button
-                        className={styles.primaryBtn}
-                        onClick={() => {
-                            if (selectedReportType === 'attendance') generateAttendancePDF();
-                            else if (selectedReportType === 'bacenta_meetings') generateBacentaPDF();
-                            else if (selectedReportType === 'growth') generateGrowthPDF();
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem' }}
-                    >
-                        <Download size={18} />
-                        <span>Exporter PDF</span>
-                    </button>
-                    {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
-                        <>
-                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Zone</label>
-                                <select
-                                    className={styles.select}
-                                    style={{ padding: '0.4rem' }}
-                                    value={pendingFilters?.areaId || ''}
-                                    onChange={e => setPendingFilters({ ...pendingFilters, areaId: e.target.value, leaderId: '' })}
-                                >
-                                    <option value="">Toutes les Zones</option>
-                                    {areas.map(area => (
-                                        <option key={area.id} value={area.id}>{area.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Leader</label>
-                                <select
-                                    className={styles.select}
-                                    style={{ padding: '0.4rem' }}
-                                    value={pendingFilters?.leaderId || ''}
-                                    onChange={e => setPendingFilters({ ...pendingFilters, leaderId: e.target.value })}
-                                >
-                                    <option value="">Tous les Leaders</option>
-                                    {leaders
-                                        .filter(l => !pendingFilters?.areaId || l.area_id === parseInt(pendingFilters.areaId))
-                                        .map(leader => (
-                                            <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                                        ))
-                                    }
-                                </select>
-                            </div>
-                        </>
-                    )}
-                    {selectedReportType === 'ministries' && (
-                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>Ministère</label>
-                            <select
-                                className={styles.select}
-                                style={{ padding: '0.4rem', minWidth: '150px' }}
-                                value={pendingFilters?.selectedMinistryForReport || ''}
-                                onChange={e => setPendingFilters({ ...pendingFilters, selectedMinistryForReport: e.target.value })}
-                            >
-                                <option value="">Sélectionner</option>
-                                {ministries.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                    {(selectedReportType !== 'growth' || selectedReportType === 'ministries') && (
-                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>{selectedReportType === 'ministries' ? 'Date' : 'Début'}</label>
-                            <input
-                                type="date"
-                                className={styles.input}
-                                style={{ padding: '0.4rem', width: 'auto' }}
-                                value={pendingFilters?.startDate || ''}
-                                onChange={e => setPendingFilters({ ...pendingFilters, startDate: e.target.value })}
-                            />
-                        </div>
-                    )}
-                    {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
-                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>Fin</label>
-                            <input
-                                type="date"
-                                className={styles.input}
-                                style={{ padding: '0.4rem', width: 'auto' }}
-                                value={pendingFilters?.endDate || ''}
-                                onChange={e => setPendingFilters({ ...pendingFilters, endDate: e.target.value })}
-                            />
-                        </div>
-                    )}
-                    {selectedReportType === 'call_tracking' && (
-                        <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                            <label className={styles.label} style={{ fontSize: '0.7rem' }}>Vue</label>
-                            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
-                                <button
-                                    onClick={() => setCallTrackingView('not_called')}
-                                    style={{
-                                        padding: '0.4rem 0.8rem',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: callTrackingView === 'not_called' ? '#DC2626' : 'transparent',
-                                        color: 'white',
-                                        fontSize: '0.8rem',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Non Appelés
-                                </button>
-                                <button
-                                    onClick={() => setCallTrackingView('called')}
-                                    style={{
-                                        padding: '0.4rem 0.8rem',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: callTrackingView === 'called' ? '#10B981' : 'transparent',
-                                        color: 'white',
-                                        fontSize: '0.8rem',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Appelés
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                    <button
-                        className={styles.primaryBtn}
-                        onClick={handleApplyFilters}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', alignSelf: 'flex-end', height: '38px' }}
-                    >
-                        Filtrer
-                    </button>
-                </div>
-            </div>
-
-            {selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
-                <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
-                    <button
-                        className={styles.actionBtn}
-                        onClick={() => {
-                            setReportFilters({
-                                ...reportFilters,
-                                areaId: '',
-                                leaderId: '',
-                                attendanceViewType: 'area'
-                            });
-                            // also update pending
-                            setPendingFilters({
-                                ...pendingFilters,
-                                areaId: '',
-                                leaderId: ''
-                            });
-                        }}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center', gap: '0.5rem',
-                            background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
-                            padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem',
-                            border: '1px solid rgba(59, 130, 246, 0.2)'
-                        }}
-                    >
-                        <ArrowLeft size={16} /> Retour à la vue globale
-                    </button>
-                </div>
-            )}
-
-            <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
-                {selectedReportType === 'ministries' ? (
-                    renderMinistryReport()
-                ) : selectedReportType === 'call_tracking' ? (
-                    <>
-                        <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
-                                {callTrackingView === 'not_called'
-                                    ? `Membres sans appel (${callTrackingSummary?.count || 0})`
-                                    : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
-                                }
-                            </h3>
-                        </div>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.th}>Membre</th>
-                                    <th className={styles.th}>Téléphone</th>
-                                    <th className={styles.th}>Zone</th>
-                                    <th className={styles.th}>Leader</th>
-                                    {callTrackingView === 'not_called' ? (
-                                        <th className={styles.th}>Dernière Présence</th>
-                                    ) : (
-                                        <>
-                                            <th className={styles.th}>Date Appel</th>
-                                            <th className={styles.th}>Résultat</th>
-                                            <th className={styles.th}>Appelé par</th>
-                                        </>
-                                    )}
-                                    <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {callTrackingData.length > 0 ? (
-                                    callTrackingData.map((item, idx) => {
-                                        const targetMember = item.member || item;
-                                        return (
-                                            <tr key={idx} className={styles.tr}>
-                                                <td className={styles.td}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div style={{
-                                                            width: '32px', height: '32px', borderRadius: '50%',
-                                                            background: 'rgba(255,255,255,0.1)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            color: 'white', fontSize: '0.8rem', overflow: 'hidden'
-                                                        }}>
-                                                            {targetMember.photo_url ? (
-                                                                <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                            ) : (
-                                                                targetMember.first_name?.[0] || 'M'
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ color: 'white', fontWeight: '500' }}>
-                                                                {`${targetMember.first_name} ${targetMember.last_name}`}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className={styles.td} style={{ color: '#94a3b8' }}>
-                                                    {targetMember.phone_primary}
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-                                                        {targetMember.area?.name || targetMember.Area?.name || '-'}
-                                                    </span>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
-                                                        targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
-                                                </td>
-                                                {callTrackingView === 'not_called' ? (
-                                                    <td className={styles.td} style={{ color: '#ef4444' }}>
-                                                        {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
-                                                    </td>
-                                                ) : (
-                                                    <>
-                                                        <td className={styles.td}>
-                                                            {new Date(item.call_date).toLocaleDateString()}
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            <span className={styles.badge} style={{
-                                                                background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                                                color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
-                                                            }}>
-                                                                {item.outcome}
-                                                            </span>
-                                                        </td>
-                                                        <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                                            {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
-                                                        </td>
-                                                    </>
-                                                )}
-                                                <td className={styles.td}>
-                                                    <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
-                                                        <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
-                                                            <Phone size={18} />
-                                                        </button>
-                                                        <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
-                                                            <ChevronRight size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                            Aucune donnée trouvée pour cette période.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </>
-                ) : selectedReportType === 'bacenta_meetings' ? (
-                    <div className={styles.bacentaReportWrapper}>
-                        {renderBacentaStats()}
-                        <div className={styles.tableWrapper}>
-                            <table className={styles.table}>
-                                <thead>
-                                    <tr>
-                                        <th className={styles.th}>Date</th>
-                                        <th className={styles.th}>Leader</th>
-                                        <th className={styles.th}>Zone</th>
-                                        <th className={styles.th}>Type</th>
-                                        <th className={styles.th}>Présents</th>
-                                        <th className={styles.th}>Offrande</th>
-                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {bacentaReportData.length > 0 ? (
-                                        bacentaReportData.map((meeting, idx) => (
-                                            <tr key={idx} className={styles.tr}>
-                                                <td className={styles.td}>
-                                                    <div style={{ fontWeight: '600', color: 'white' }}>
-                                                        {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                        {new Date(meeting.meeting_date).getFullYear()}
-                                                    </div>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    {meeting.leader ? (
-                                                        <div className={styles.userCell}>
-                                                            <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
-                                                                {meeting.leader?.photo_url ? (
-                                                                    <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                ) : (
-                                                                    <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
-                                                                )}
-                                                            </div>
-                                                            <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
-                                                        </div>
-                                                    ) : 'N/A'}
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                                        {meeting.area?.name || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
-                                                        {meeting.meeting_type?.replace('_', ' ')}
-                                                    </span>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
-                                                            {meeting.total_members_present}
-                                                        </strong>
-                                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                                            / {meeting.expected_participants || '-'}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className={styles.td}>
-                                                    <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
-                                                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
-                                                </td>
-                                                <td className={styles.td} style={{ textAlign: 'right' }}>
-                                                    <button
-                                                        className={styles.primaryBtn}
-                                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
-                                                        onClick={() => {
-                                                            setSelectedMeeting(meeting);
-                                                            setIsDetailsModalOpen(true);
-                                                        }}
-                                                    >
-                                                        Voir Détails
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                                <div className={styles.emptyState}>
-                                                    <p>Aucun compte rendu trouvé pour cette période.</p>
-                                                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                                        Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
-                                                        <br />
-                                                        <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
-                                                        {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ) : selectedReportType === 'attendance' ? (
+                {showEvolutionChart ? renderEvolutionChart() : (
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                <th className={styles.th}>
-                                    {attendanceReportType === 'area' ? 'Zone' :
-                                        attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
-                                </th>
-                                {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
-                                {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
-                                <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
-                                {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
-                                <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
+                                <th className={styles.th}>Membre</th>
+                                <th className={styles.th}>Statut de Présence</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {attendanceReportData.length > 0 ? (
-                                attendanceReportData.map((item, idx) => (
-                                    <tr
-                                        key={idx}
-                                        className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
-                                        onClick={() => {
-                                            if (attendanceReportType === 'area') {
-                                                setReportFilters({
-                                                    ...reportFilters,
-                                                    areaId: item.area_id,
-                                                    attendanceViewType: 'member_detail'
-                                                });
-                                            }
-                                        }}
-                                        style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
-                                    >
+                            {ministryReportData.length > 0 ? (
+                                ministryReportData.map(m => (
+                                    <tr key={m.member_id} className={styles.tr}>
                                         <td className={styles.td}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                {attendanceReportType === 'area' && (
-                                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
-                                                )}
-                                                <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
-                                                    {attendanceReportType === 'area' ? item.area_name :
-                                                        attendanceReportType === 'member_detail' ? item.member_name :
-                                                            (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
-                                                </strong>
-                                            </div>
-                                        </td>
-                                        {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
-                                        {attendanceReportType === 'member_detail' && (
-                                            <td className={styles.td}>
-                                                <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                                    {item.status === 'active' ? 'Actif' : 'Inactif'}
-                                                </span>
-                                            </td>
-                                        )}
-                                        <td className={styles.td}>
-                                            {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
-                                        </td>
-                                        {attendanceReportType !== 'member_detail' && (
-                                            <td className={styles.td}>{item.attendance_count}</td>
-                                        )}
-                                        <td className={styles.td}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                                                    <div
-                                                        className={styles.progressBar}
-                                                        style={{
-                                                            width: `${item.attendance_rate}%`,
-                                                            height: '100%',
-                                                            background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
-                                                            borderRadius: '4px'
-                                                        }}
-                                                    />
+                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <User size={16} />
                                                 </div>
-                                                <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
+                                                {m.name}
                                             </div>
+                                        </td>
+                                        <td className={styles.td}>
+                                            <span className={`${styles.badge} ${m.present ? styles.badgeActive : styles.badgeInactive}`}>
+                                                {m.present ? 'Présent' : 'Absent'}
+                                            </span>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                        <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
-                                        Aucune donnée disponible pour cette sélection.
+                                    <td colSpan={2} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
+                                        Aucune donnée pour cette date.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
-                ) : (
-                    <div style={{ padding: '2rem' }}>
-                        {renderGrowthChart()}
-                        <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
-                        </div>
-                    </div>
                 )}
+            </div>
+        );
+    };
+
+    const renderZones = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Gestion des Zones</h2>
+                <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
+                    <Plus size={20} /> Nouvelle Zone
+                </button>
+            </div>
+
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Nom de la Zone</th>
+                            <th className={styles.th}>Numéro</th>
+                            <th className={styles.th}>Responsable</th>
+                            <th className={styles.th}>Leaders Assignés</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {areas.map(area => (
+                            <tr key={area.id} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <span className={styles.userName}>{area.name}</span>
+                                </td>
+                                <td className={styles.td}>
+                                    <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>
+                                        N° {area.number}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>
+                                    <span style={{ color: '#94a3b8' }}>
+                                        {(() => {
+                                            const lu = area.leader_user || area.leaderUser;
+                                            if (lu) return `${lu.first_name} ${lu.last_name}`;
+                                            const l = leaders.find(ld => ld.id === area.leader_id);
+                                            if (l) return `${l.first_name} ${l.last_name}`;
+                                            return 'Non assigné';
+                                        })()}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>
+                                    {leaders.filter(l => l.area_id === area.id).length} Leaders
+                                </td>
+                                <td className={styles.td}>
+                                    <div className={styles.actions}>
+                                        <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
-};
 
-return (
-    <div className={`${styles.container} notranslate`} translate="no">
-        <div className={styles.header}>
-            <h1 className={styles.title}>
-                <span key="gov-title">Espace Gouverneur</span>
-            </h1>
-        </div>
-
-        {loading ? (
-            <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
-                <Loader2 className="animate-spin" size={40} style={{ margin: '0 auto 1rem', display: 'block' }} />
-                <span key="loading-text">Chargement des données administratives...</span>
+    const renderMembers = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Membres de l'Église</h2>
+                <div className={styles.headerActions}>
+                    <select
+                        className={styles.select}
+                        style={{ width: 'auto', marginRight: '1rem' }}
+                        value={memberFilters.area_id}
+                        onChange={e => setMemberFilters({ ...memberFilters, area_id: e.target.value })}
+                    >
+                        <option value="">Toutes les Zones</option>
+                        {areas.map(area => (
+                            <option key={area.id} value={area.id}>{area.name}</option>
+                        ))}
+                    </select>
+                    <select
+                        className={styles.select}
+                        style={{ width: 'auto' }}
+                        value={memberFilters.leader_id}
+                        onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value })}
+                    >
+                        <option value="">Tous les Leaders</option>
+                        {leaders.map(leader => (
+                            <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
-        ) : (
-            <>
-                {selectedLeader ? (
-                    renderLeaderDetail()
-                ) : (
-                    <>
-                        {activeTab === 'dashboard' && renderDashboard()}
-                        {activeTab === 'leaders' && renderLeaders()}
-                        {activeTab === 'zones' && renderZones()}
-                        {activeTab === 'ministries' && renderMinistries()}
-                        {activeTab === 'members' && renderMembers()}
-                        {activeTab === 'reports' && renderReports()}
-                    </>
-                )}
-            </>
-        )}
 
-        {/* Leader Modal */}
-        {showLeaderModal && (
-            <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowLeaderModal(false)}>
-                <div className={`${styles.modalContent} ${styles.modalContentPremium}`} style={{ width: '100%', maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
-                    <div className={styles.modalHeaderPremium}>
+            <div className={styles.tableContainer}>
+                <div className={styles.searchBar}>
+                    <div className={styles.searchInputWrapper}>
+                        <Search size={18} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            className={styles.searchInput}
+                            placeholder="Rechercher un membre par nom..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Membre</th>
+                            <th className={styles.th}>Zone</th>
+                            <th className={styles.th}>Leader</th>
+                            <th className={styles.th}>Statut</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {members.map(member => (
+                            <tr key={member.id} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <div className={styles.userCell}>
+                                        <div className={styles.avatar}>
+                                            {member.photo_url ? (
+                                                <img src={getPhotoUrl(member.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                            ) : (
+                                                <>{member.first_name[0]}{member.last_name[0]}</>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <span className={styles.userName}>{member.first_name} {member.last_name}</span>
+                                            <span className={styles.userEmail}>{member.phone_primary || 'Pas de téléphone'}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className={styles.td}>
+                                    <span className={`${styles.badge} ${styles.badgeArea}`}>
+                                        {member.area?.name || 'N/A'}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>
+                                    {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}
+                                </td>
+                                <td className={styles.td}>
+                                    <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                        {member.status === 'active' ? 'Actif' : 'Inactif'}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>
+                                    <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
+                                        <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(member)}>
+                                            <Phone size={18} />
+                                        </button>
+                                        <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(member.id)}>
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    const renderLeaderDetail = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className={styles.actionBtn} onClick={() => setSelectedLeader(null)}>
+                        <X size={20} />
+                    </button>
+                    <h2 className={styles.sectionTitle}>Détail Leader : {selectedLeader.first_name} {selectedLeader.last_name}</h2>
+                </div>
+            </div>
+
+            <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                    <h3 className={styles.statValue}>{leaderStats?.totalMembers || 0}</h3>
+                    <p className={styles.statLabel}>Membres</p>
+                </div>
+                <div className={styles.statCard}>
+                    <h3 className={styles.statValue}>{leaderStats?.attendanceRate || 0}%</h3>
+                    <p className={styles.statLabel}>Taux de Présence</p>
+                </div>
+                <div className={styles.statCard}>
+                    <h3 className={styles.statValue}>{leaderStats?.recentMeetings || 0}</h3>
+                    <p className={styles.statLabel}>Réunions Récentes</p>
+                </div>
+            </div>
+
+            <div className={styles.detailGrid} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+                <div className={styles.tableContainer}>
+                    <h3 className={styles.sectionTitle} style={{ padding: '1rem', fontSize: '1.1rem' }}>Membres Assignés</h3>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Membre</th>
+                                <th className={styles.th}>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {leaderMembers.map(member => (
+                                <tr key={member.id} className={styles.tr}>
+                                    <td className={styles.td}>{member.first_name} {member.last_name}</td>
+                                    <td className={styles.td}>
+                                        <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                            {member.status === 'active' ? 'Actif' : 'Inactif'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className={styles.tableContainer}>
+                    <h3 className={styles.sectionTitle} style={{ padding: '1rem', fontSize: '1.1rem' }}>Réunions Récentes</h3>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Date</th>
+                                <th className={styles.th}>Présents</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {leaderMeetings.map(meeting => (
+                                <tr key={meeting.id} className={styles.tr}>
+                                    <td className={styles.td}>{new Date(meeting.date).toLocaleDateString()}</td>
+                                    <td className={styles.td}>{meeting.attendance_count || 0}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderBacentaStats = () => {
+        if (!bacentaReportData.length) return null;
+
+        const totalOfferings = bacentaReportData.reduce((sum, m) => sum + (Number(m.offering_amount) || 0), 0);
+        const totalMeetings = bacentaReportData.length;
+        const totalPresence = bacentaReportData.reduce((sum, m) => sum + (m.total_members_present || 0), 0);
+        const avgPresence = Math.round(totalPresence / totalMeetings);
+
+        return (
+            <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #10b981' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                            <TrendingUp size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{totalOfferings.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
+                    <div className={styles.statLabel}>Total des Offrandes</div>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #3b82f6' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                            <Calendar size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{totalMeetings}</div>
+                    <div className={styles.statLabel}>Réunions Tenues</div>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #f59e0b' }}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <Users size={20} />
+                        </div>
+                    </div>
+                    <div className={styles.statValue}>{avgPresence}</div>
+                    <div className={styles.statLabel}>Moyenne de Présence</div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderReports = () => {
+        const handleApplyFilters = () => {
+            if (pendingFilters) {
+                setReportFilters({
+                    ...reportFilters,
+                    startDate: pendingFilters.startDate,
+                    endDate: pendingFilters.endDate,
+                    areaId: pendingFilters.areaId,
+                    leaderId: pendingFilters.leaderId
+                });
+                setSelectedMinistryForReport(pendingFilters.selectedMinistryForReport);
+            }
+        };
+
+        if (!isViewingReport) {
+            return (
+                <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Analyse & Rapports</h2>
+                    </div>
+                    <div className={styles.reportsGrid}>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('attendance');
+                                setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
+                                <Calendar size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Rapport de Présence</h3>
+                            <p className={styles.reportDesc}>Analyse détaillée de la présence hebdomadaire par zone et par leader.</p>
+                            <div className={styles.reportBadge}>Prêt</div>
+                        </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('growth');
+                                setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
+                                <TrendingUp size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Croissance des Membres</h3>
+                            <p className={styles.reportDesc}>Suivi de l'évolution du nombre de membres et des nouveaux convertis.</p>
+                            <div className={styles.reportBadge}>Premium</div>
+                        </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('bacenta_meetings');
+                                setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
+                                <MessageCircle size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Comptes rendus Bacenta</h3>
+                            <p className={styles.reportDesc}>Rapports détaillés des réunions hebdomadaires effectués par les leaders.</p>
+                            <div className={styles.reportBadge} style={{ background: '#38bdf8' }}>Récent</div>
+                        </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('ministries');
+                                setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters, selectedMinistryForReport });
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
+                                <Library size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Rapport des Ministères</h3>
+                            <p className={styles.reportDesc}>Suivi des présences et de l'engagement par ministère.</p>
+                            <div className={styles.reportBadge}>Nouveau</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader} style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => setIsViewingReport(false)}
+                            style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '50%', padding: '0.6rem' }}
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
                         <div>
-                            <h2 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
-                                {editingItem ? 'Modifier le Leader' : 'Nouveau Leader'}
+                            <h2 className={styles.sectionTitle}>
+                                {selectedReportType === 'attendance' ? 'Rapport de Présence' :
+                                    selectedReportType === 'growth' ? 'Croissance des Membres' :
+                                        selectedReportType === 'call_tracking' ? 'Suivi des Appels' :
+                                            selectedReportType === 'ministries' ? 'Rapport des Ministères' : 'Comptes rendus Bacenta'}
                             </h2>
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                                {editingItem ? 'Mettre à jour les informations du leader' : 'Ajouter un nouveau leader à votre zone'}
+                            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                {selectedReportType === 'attendance' ? 'Analyse filtrée par zone, leader et période' :
+                                    selectedReportType === 'growth' ? 'Analyse d\'évolution temporelle premium' :
+                                        selectedReportType === 'call_tracking' ? 'Membres contactés et non contactés par période' :
+                                            selectedReportType === 'ministries' ? 'Présences par ministère et par date' :
+                                                'Détails des réunions de partage et activités par zone'}
                             </p>
                         </div>
-                        <button
-                            className={styles.closeBtn}
-                            onClick={() => setShowLeaderModal(false)}
-                            disabled={modalLoading}
-                        >
-                            <X size={24} />
-                        </button>
                     </div>
 
-                    <form onSubmit={handleSaveLeader}>
-                        <div className={styles.modalBodyPremium}>
+                    <div className={styles.headerActions} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={() => {
+                                if (selectedReportType === 'attendance') generateAttendancePDF();
+                                else if (selectedReportType === 'bacenta_meetings') generateBacentaPDF();
+                                else if (selectedReportType === 'growth') generateGrowthPDF();
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem' }}
+                        >
+                            <Download size={18} />
+                            <span>Exporter PDF</span>
+                        </button>
+                        {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
+                            <>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Zone</label>
+                                    <select
+                                        className={styles.select}
+                                        style={{ padding: '0.4rem' }}
+                                        value={pendingFilters?.areaId || ''}
+                                        onChange={e => setPendingFilters({ ...pendingFilters, areaId: e.target.value, leaderId: '' })}
+                                    >
+                                        <option value="">Toutes les Zones</option>
+                                        {areas.map(area => (
+                                            <option key={area.id} value={area.id}>{area.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Leader</label>
+                                    <select
+                                        className={styles.select}
+                                        style={{ padding: '0.4rem' }}
+                                        value={pendingFilters?.leaderId || ''}
+                                        onChange={e => setPendingFilters({ ...pendingFilters, leaderId: e.target.value })}
+                                    >
+                                        <option value="">Tous les Leaders</option>
+                                        {leaders
+                                            .filter(l => !pendingFilters?.areaId || l.area_id === parseInt(pendingFilters.areaId))
+                                            .map(leader => (
+                                                <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
+                            </>
+                        )}
+                        {selectedReportType === 'ministries' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Ministère</label>
+                                <select
+                                    className={styles.select}
+                                    style={{ padding: '0.4rem', minWidth: '150px' }}
+                                    value={pendingFilters?.selectedMinistryForReport || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, selectedMinistryForReport: e.target.value })}
+                                >
+                                    <option value="">Sélectionner</option>
+                                    {ministries.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {(selectedReportType !== 'growth' || selectedReportType === 'ministries') && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>{selectedReportType === 'ministries' ? 'Date' : 'Début'}</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    style={{ padding: '0.4rem', width: 'auto' }}
+                                    value={pendingFilters?.startDate || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, startDate: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Fin</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    style={{ padding: '0.4rem', width: 'auto' }}
+                                    value={pendingFilters?.endDate || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, endDate: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        {selectedReportType === 'call_tracking' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Vue</label>
+                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
+                                    <button
+                                        onClick={() => setCallTrackingView('not_called')}
+                                        style={{
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: callTrackingView === 'not_called' ? '#DC2626' : 'transparent',
+                                            color: 'white',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Non Appelés
+                                    </button>
+                                    <button
+                                        onClick={() => setCallTrackingView('called')}
+                                        style={{
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: callTrackingView === 'called' ? '#10B981' : 'transparent',
+                                            color: 'white',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Appelés
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={handleApplyFilters}
+                            style={{ padding: '0.5rem 1rem', background: '#3b82f6', alignSelf: 'flex-end', height: '38px' }}
+                        >
+                            Filtrer
+                        </button>
+                    </div>
+                </div>
+
+                {selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
+                    <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => {
+                                setReportFilters({
+                                    ...reportFilters,
+                                    areaId: '',
+                                    leaderId: '',
+                                    attendanceViewType: 'area'
+                                });
+                                // also update pending
+                                setPendingFilters({
+                                    ...pendingFilters,
+                                    areaId: '',
+                                    leaderId: ''
+                                });
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center', gap: '0.5rem',
+                                background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
+                                padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem',
+                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}
+                        >
+                            <ArrowLeft size={16} /> Retour à la vue globale
+                        </button>
+                    </div>
+                )}
+
+                <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
+                    {selectedReportType === 'ministries' ? (
+                        renderMinistryReport()
+                    ) : selectedReportType === 'call_tracking' ? (
+                        <>
+                            <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
+                                    {callTrackingView === 'not_called'
+                                        ? `Membres sans appel (${callTrackingSummary?.count || 0})`
+                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
+                                    }
+                                </h3>
+                            </div>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Membre</th>
+                                        <th className={styles.th}>Téléphone</th>
+                                        <th className={styles.th}>Zone</th>
+                                        <th className={styles.th}>Leader</th>
+                                        {callTrackingView === 'not_called' ? (
+                                            <th className={styles.th}>Dernière Présence</th>
+                                        ) : (
+                                            <>
+                                                <th className={styles.th}>Date Appel</th>
+                                                <th className={styles.th}>Résultat</th>
+                                                <th className={styles.th}>Appelé par</th>
+                                            </>
+                                        )}
+                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {callTrackingData.length > 0 ? (
+                                        callTrackingData.map((item, idx) => {
+                                            const targetMember = item.member || item;
+                                            return (
+                                                <tr key={idx} className={styles.tr}>
+                                                    <td className={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <div style={{
+                                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                                background: 'rgba(255,255,255,0.1)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                color: 'white', fontSize: '0.8rem', overflow: 'hidden'
+                                                            }}>
+                                                                {targetMember.photo_url ? (
+                                                                    <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    targetMember.first_name?.[0] || 'M'
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ color: 'white', fontWeight: '500' }}>
+                                                                    {`${targetMember.first_name} ${targetMember.last_name}`}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className={styles.td} style={{ color: '#94a3b8' }}>
+                                                        {targetMember.phone_primary}
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                                                            {targetMember.area?.name || targetMember.Area?.name || '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
+                                                            targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
+                                                    </td>
+                                                    {callTrackingView === 'not_called' ? (
+                                                        <td className={styles.td} style={{ color: '#ef4444' }}>
+                                                            {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
+                                                        </td>
+                                                    ) : (
+                                                        <>
+                                                            <td className={styles.td}>
+                                                                {new Date(item.call_date).toLocaleDateString()}
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <span className={styles.badge} style={{
+                                                                    background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                                    color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
+                                                                }}>
+                                                                    {item.outcome}
+                                                                </span>
+                                                            </td>
+                                                            <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                                {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                    <td className={styles.td}>
+                                                        <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
+                                                            <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
+                                                                <Phone size={18} />
+                                                            </button>
+                                                            <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
+                                                                <ChevronRight size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                Aucune donnée trouvée pour cette période.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    ) : selectedReportType === 'bacenta_meetings' ? (
+                        <div className={styles.bacentaReportWrapper}>
+                            {renderBacentaStats()}
+                            <div className={styles.tableWrapper}>
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th className={styles.th}>Date</th>
+                                            <th className={styles.th}>Leader</th>
+                                            <th className={styles.th}>Zone</th>
+                                            <th className={styles.th}>Type</th>
+                                            <th className={styles.th}>Présents</th>
+                                            <th className={styles.th}>Offrande</th>
+                                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bacentaReportData.length > 0 ? (
+                                            bacentaReportData.map((meeting, idx) => (
+                                                <tr key={idx} className={styles.tr}>
+                                                    <td className={styles.td}>
+                                                        <div style={{ fontWeight: '600', color: 'white' }}>
+                                                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                            {new Date(meeting.meeting_date).getFullYear()}
+                                                        </div>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        {meeting.leader ? (
+                                                            <div className={styles.userCell}>
+                                                                <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
+                                                                    {meeting.leader?.photo_url ? (
+                                                                        <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    ) : (
+                                                                        <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
+                                                                    )}
+                                                                </div>
+                                                                <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
+                                                            </div>
+                                                        ) : 'N/A'}
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                            {meeting.area?.name || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
+                                                            {meeting.meeting_type?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
+                                                                {meeting.total_members_present}
+                                                            </strong>
+                                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                                / {meeting.expected_participants || '-'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className={styles.td}>
+                                                        <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
+                                                        <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
+                                                    </td>
+                                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                        <button
+                                                            className={styles.primaryBtn}
+                                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
+                                                            onClick={() => {
+                                                                setSelectedMeeting(meeting);
+                                                                setIsDetailsModalOpen(true);
+                                                            }}
+                                                        >
+                                                            Voir Détails
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                    <div className={styles.emptyState}>
+                                                        <p>Aucun compte rendu trouvé pour cette période.</p>
+                                                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                                            Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
+                                                            <br />
+                                                            <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
+                                                            {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : selectedReportType === 'attendance' ? (
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th className={styles.th}>
+                                        {attendanceReportType === 'area' ? 'Zone' :
+                                            attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
+                                    </th>
+                                    {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
+                                    {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
+                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
+                                    {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
+                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendanceReportData.length > 0 ? (
+                                    attendanceReportData.map((item, idx) => (
+                                        <tr
+                                            key={idx}
+                                            className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
+                                            onClick={() => {
+                                                if (attendanceReportType === 'area') {
+                                                    setReportFilters({
+                                                        ...reportFilters,
+                                                        areaId: item.area_id,
+                                                        attendanceViewType: 'member_detail'
+                                                    });
+                                                }
+                                            }}
+                                            style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
+                                        >
+                                            <td className={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    {attendanceReportType === 'area' && (
+                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
+                                                    )}
+                                                    <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
+                                                        {attendanceReportType === 'area' ? item.area_name :
+                                                            attendanceReportType === 'member_detail' ? item.member_name :
+                                                                (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
+                                                    </strong>
+                                                </div>
+                                            </td>
+                                            {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
+                                            {attendanceReportType === 'member_detail' && (
+                                                <td className={styles.td}>
+                                                    <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                        {item.status === 'active' ? 'Actif' : 'Inactif'}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            <td className={styles.td}>
+                                                {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
+                                            </td>
+                                            {attendanceReportType !== 'member_detail' && (
+                                                <td className={styles.td}>{item.attendance_count}</td>
+                                            )}
+                                            <td className={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                                                        <div
+                                                            className={styles.progressBar}
+                                                            style={{
+                                                                width: `${item.attendance_rate}%`,
+                                                                height: '100%',
+                                                                background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
+                                                                borderRadius: '4px'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                            <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
+                                            Aucune donnée disponible pour cette sélection.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div style={{ padding: '2rem' }}>
+                            {renderGrowthChart()}
+                            <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className={`${styles.container} notranslate`} translate="no">
+            <div className={styles.header}>
+                <h1 className={styles.title}>
+                    <span key="gov-title">Espace Gouverneur</span>
+                </h1>
+            </div>
+
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
+                    <Loader2 className="animate-spin" size={40} style={{ margin: '0 auto 1rem', display: 'block' }} />
+                    <span key="loading-text">Chargement des données administratives...</span>
+                </div>
+            ) : (
+                <>
+                    {selectedLeader ? (
+                        renderLeaderDetail()
+                    ) : (
+                        <>
+                            {activeTab === 'dashboard' && renderDashboard()}
+                            {activeTab === 'leaders' && renderLeaders()}
+                            {activeTab === 'zones' && renderZones()}
+                            {activeTab === 'ministries' && renderMinistries()}
+                            {activeTab === 'members' && renderMembers()}
+                            {activeTab === 'reports' && renderReports()}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* Leader Modal */}
+            {showLeaderModal && (
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowLeaderModal(false)}>
+                    <div className={`${styles.modalContent} ${styles.modalContentPremium}`} style={{ width: '100%', maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeaderPremium}>
+                            <div>
+                                <h2 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+                                    {editingItem ? 'Modifier le Leader' : 'Nouveau Leader'}
+                                </h2>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                    {editingItem ? 'Mettre à jour les informations du leader' : 'Ajouter un nouveau leader à votre zone'}
+                                </p>
+                            </div>
+                            <button
+                                className={styles.closeBtn}
+                                onClick={() => setShowLeaderModal(false)}
+                                disabled={modalLoading}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveLeader}>
+                            <div className={styles.modalBodyPremium}>
+                                {modalError && (
+                                    <div className={styles.errorBanner}>
+                                        <AlertCircle size={20} />
+                                        <span>{modalError}</span>
+                                    </div>
+                                )}
+
+                                {editingItem && (
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                                        <div
+                                            className={styles.avatarUploadWrapper}
+                                            onClick={() => document.getElementById('leader-photo-input').click()}
+                                            style={{
+                                                width: '100px',
+                                                height: '100px',
+                                                borderRadius: '50%',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                position: 'relative',
+                                                border: '2px dashed rgba(255,255,255,0.2)',
+                                                overflow: 'hidden'
+                                            }}
+                                        >
+                                            {leaderForm.photo_url ? (
+                                                <img src={getPhotoUrl(leaderForm.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <Camera size={32} style={{ opacity: 0.5 }} />
+                                            )}
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                background: 'rgba(0,0,0,0.5)',
+                                                padding: '4px',
+                                                textAlign: 'center',
+                                                fontSize: '0.7rem'
+                                            }}>
+                                                Changer
+                                            </div>
+                                        </div>
+                                        <input
+                                            id="leader-photo-input"
+                                            type="file"
+                                            style={{ display: 'none' }}
+                                            onChange={handleLeaderPhotoUpload}
+                                            accept="image/*"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className={styles.formGridPremium}>
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Prénom</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Jean"
+                                                value={leaderForm.first_name}
+                                                onChange={e => setLeaderForm({ ...leaderForm, first_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Nom de famille</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Dupont"
+                                                value={leaderForm.last_name}
+                                                onChange={e => setLeaderForm({ ...leaderForm, last_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
+                                        <label className={styles.label}>Adresse Email</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Mail className={styles.inputIcon} size={18} />
+                                            <input
+                                                type="email"
+                                                className={styles.inputPremium}
+                                                placeholder="leader@example.com"
+                                                value={leaderForm.email}
+                                                onChange={e => setLeaderForm({ ...leaderForm, email: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Téléphone</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Phone className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: 06 12 34 56 78"
+                                                value={leaderForm.phone}
+                                                onChange={e => setLeaderForm({ ...leaderForm, phone: e.target.value })}
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Zone Assignée</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <MapPin className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={leaderForm.area_id}
+                                                onChange={e => setLeaderForm({ ...leaderForm, area_id: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="">Sélectionner une zone</option>
+                                                {areas.map(area => (
+                                                    <option key={area.id} value={area.id}>{area.name} (N°{area.number})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {!editingItem && (
+                                        <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
+                                            <label className={styles.label}>Mot de passe initial</label>
+                                            <div className={styles.inputWrapperPremium}>
+                                                <Lock className={styles.inputIcon} size={18} />
+                                                <input
+                                                    type="password"
+                                                    className={styles.inputPremium}
+                                                    placeholder="Minimum 6 caractères"
+                                                    value={leaderForm.password}
+                                                    onChange={e => setLeaderForm({ ...leaderForm, password: e.target.value })}
+                                                    required
+                                                    disabled={modalLoading}
+                                                    minLength={6}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className={styles.modalFooterPremium}>
+                                <button
+                                    type="button"
+                                    className={styles.cancelBtn}
+                                    onClick={() => setShowLeaderModal(false)}
+                                    disabled={modalLoading}
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtnPremium}
+                                    disabled={modalLoading}
+                                >
+                                    {modalLoading ? (
+                                        <>
+                                            <div className={styles.spinnerSmall}></div>
+                                            <span>Enregistrement...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            <span>Enregistrer le Leader</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Area Modal */}
+            {showAreaModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowAreaModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h2 className={styles.modalTitle}>{editingItem ? 'Modifier Zone' : 'Nouvelle Zone'}</h2>
+                            <button className={styles.closeBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleSaveArea}>
                             {modalError && (
-                                <div className={styles.errorBanner}>
+                                <div className={styles.errorBanner} style={{ margin: '1rem' }}>
                                     <AlertCircle size={20} />
                                     <span>{modalError}</span>
                                 </div>
                             )}
-
-                            {editingItem && (
-                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                                    <div
-                                        className={styles.avatarUploadWrapper}
-                                        onClick={() => document.getElementById('leader-photo-input').click()}
-                                        style={{
-                                            width: '100px',
-                                            height: '100px',
-                                            borderRadius: '50%',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            position: 'relative',
-                                            border: '2px dashed rgba(255,255,255,0.2)',
-                                            overflow: 'hidden'
-                                        }}
-                                    >
-                                        {leaderForm.photo_url ? (
-                                            <img src={getPhotoUrl(leaderForm.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            <Camera size={32} style={{ opacity: 0.5 }} />
-                                        )}
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            background: 'rgba(0,0,0,0.5)',
-                                            padding: '4px',
-                                            textAlign: 'center',
-                                            fontSize: '0.7rem'
-                                        }}>
-                                            Changer
-                                        </div>
-                                    </div>
+                            <div className={styles.modalBody} style={{ padding: '0 1.5rem 1.5rem' }}>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Nom de la Zone</label>
                                     <input
-                                        id="leader-photo-input"
-                                        type="file"
-                                        style={{ display: 'none' }}
-                                        onChange={handleLeaderPhotoUpload}
-                                        accept="image/*"
+                                        className={styles.input}
+                                        value={areaForm.name}
+                                        onChange={e => setAreaForm({ ...areaForm, name: e.target.value })}
+                                        placeholder="Ex: Zone Nord"
+                                        required
                                     />
                                 </div>
-                            )}
-
-                            <div className={styles.formGridPremium}>
-                                <div className={styles.formGroupPremium}>
-                                    <label className={styles.label}>Prénom</label>
-                                    <div className={styles.inputWrapperPremium}>
-                                        <User className={styles.inputIcon} size={18} />
-                                        <input
-                                            className={styles.inputPremium}
-                                            placeholder="ex: Jean"
-                                            value={leaderForm.first_name}
-                                            onChange={e => setLeaderForm({ ...leaderForm, first_name: e.target.value })}
-                                            required
-                                            disabled={modalLoading}
-                                        />
-                                    </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Numéro de Zone</label>
+                                    <input
+                                        type="number"
+                                        className={styles.input}
+                                        value={areaForm.number}
+                                        onChange={e => setAreaForm({ ...areaForm, number: e.target.value })}
+                                        placeholder="Ex: 1"
+                                        required
+                                    />
                                 </div>
-
-                                <div className={styles.formGroupPremium}>
-                                    <label className={styles.label}>Nom de famille</label>
-                                    <div className={styles.inputWrapperPremium}>
-                                        <User className={styles.inputIcon} size={18} />
-                                        <input
-                                            className={styles.inputPremium}
-                                            placeholder="ex: Dupont"
-                                            value={leaderForm.last_name}
-                                            onChange={e => setLeaderForm({ ...leaderForm, last_name: e.target.value })}
-                                            required
-                                            disabled={modalLoading}
-                                        />
-                                    </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Région</label>
+                                    <select
+                                        className={styles.input}
+                                        value={areaForm.region_id}
+                                        onChange={e => setAreaForm({ ...areaForm, region_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner une région</option>
+                                        {regions.map(region => (
+                                            <option key={region.id} value={region.id}>{region.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
-
-                                <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
-                                    <label className={styles.label}>Adresse Email</label>
-                                    <div className={styles.inputWrapperPremium}>
-                                        <Mail className={styles.inputIcon} size={18} />
-                                        <input
-                                            type="email"
-                                            className={styles.inputPremium}
-                                            placeholder="leader@example.com"
-                                            value={leaderForm.email}
-                                            onChange={e => setLeaderForm({ ...leaderForm, email: e.target.value })}
-                                            required
-                                            disabled={modalLoading}
-                                        />
-                                    </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Responsable de Zone (Area Leader)</label>
+                                    <select
+                                        className={styles.input}
+                                        value={areaForm.leader_id}
+                                        onChange={e => setAreaForm({ ...areaForm, leader_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner un responsable</option>
+                                        {leaders.map(leader => (
+                                            <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                        ))}
+                                    </select>
                                 </div>
-
-                                <div className={styles.formGroupPremium}>
-                                    <label className={styles.label}>Téléphone</label>
-                                    <div className={styles.inputWrapperPremium}>
-                                        <Phone className={styles.inputIcon} size={18} />
-                                        <input
-                                            className={styles.inputPremium}
-                                            placeholder="ex: 06 12 34 56 78"
-                                            value={leaderForm.phone}
-                                            onChange={e => setLeaderForm({ ...leaderForm, phone: e.target.value })}
-                                            disabled={modalLoading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={styles.formGroupPremium}>
-                                    <label className={styles.label}>Zone Assignée</label>
-                                    <div className={styles.inputWrapperPremium}>
-                                        <MapPin className={styles.inputIcon} size={18} />
-                                        <select
-                                            className={styles.selectPremium}
-                                            value={leaderForm.area_id}
-                                            onChange={e => setLeaderForm({ ...leaderForm, area_id: e.target.value })}
-                                            required
-                                            disabled={modalLoading}
-                                        >
-                                            <option value="">Sélectionner une zone</option>
-                                            {areas.map(area => (
-                                                <option key={area.id} value={area.id}>{area.name} (N°{area.number})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {!editingItem && (
-                                    <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
-                                        <label className={styles.label}>Mot de passe initial</label>
-                                        <div className={styles.inputWrapperPremium}>
-                                            <Lock className={styles.inputIcon} size={18} />
-                                            <input
-                                                type="password"
-                                                className={styles.inputPremium}
-                                                placeholder="Minimum 6 caractères"
-                                                value={leaderForm.password}
-                                                onChange={e => setLeaderForm({ ...leaderForm, password: e.target.value })}
-                                                required
-                                                disabled={modalLoading}
-                                                minLength={6}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-
-                        <div className={styles.modalFooterPremium}>
-                            <button
-                                type="button"
-                                className={styles.cancelBtn}
-                                onClick={() => setShowLeaderModal(false)}
-                                disabled={modalLoading}
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                type="submit"
-                                className={styles.submitBtnPremium}
-                                disabled={modalLoading}
-                            >
-                                {modalLoading ? (
-                                    <>
-                                        <div className={styles.spinnerSmall}></div>
-                                        <span>Enregistrement...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save size={18} />
-                                        <span>Enregistrer le Leader</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )}
-
-        {/* Area Modal */}
-        {showAreaModal && (
-            <div className={styles.modalOverlay} onClick={() => setShowAreaModal(false)}>
-                <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                    <div className={styles.modalHeader}>
-                        <h2 className={styles.modalTitle}>{editingItem ? 'Modifier Zone' : 'Nouvelle Zone'}</h2>
-                        <button className={styles.closeBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}><X size={20} /></button>
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <form onSubmit={handleSaveArea}>
-                        {modalError && (
-                            <div className={styles.errorBanner} style={{ margin: '1rem' }}>
-                                <AlertCircle size={20} />
-                                <span>{modalError}</span>
-                            </div>
-                        )}
-                        <div className={styles.modalBody} style={{ padding: '0 1.5rem 1.5rem' }}>
+                </div>
+            )}
+
+            {showMinistryModal && (
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h2 className={styles.modalTitle}>
+                                {editingItem ? 'Modifier le Ministère' : 'Nouveau Ministère'}
+                            </h2>
+                            <button className={styles.closeBtn} onClick={() => setShowMinistryModal(false)}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveMinistry}>
                             <div className={styles.formGroup}>
-                                <label className={styles.label}>Nom de la Zone</label>
+                                <label className={styles.label}>Nom du Ministère</label>
                                 <input
                                     className={styles.input}
-                                    value={areaForm.name}
-                                    onChange={e => setAreaForm({ ...areaForm, name: e.target.value })}
-                                    placeholder="Ex: Zone Nord"
+                                    value={ministryForm.name}
+                                    onChange={e => setMinistryForm({ ...ministryForm, name: e.target.value })}
                                     required
+                                    placeholder="ex: Musique, Accueil..."
                                 />
                             </div>
                             <div className={styles.formGroup}>
-                                <label className={styles.label}>Numéro de Zone</label>
-                                <input
-                                    type="number"
+                                <label className={styles.label}>Description</label>
+                                <textarea
                                     className={styles.input}
-                                    value={areaForm.number}
-                                    onChange={e => setAreaForm({ ...areaForm, number: e.target.value })}
-                                    placeholder="Ex: 1"
-                                    required
+                                    value={ministryForm.description}
+                                    onChange={e => setMinistryForm({ ...ministryForm, description: e.target.value })}
+                                    placeholder="Brève description du ministère..."
+                                    rows={3}
+                                    style={{ resize: 'vertical' }}
                                 />
                             </div>
                             <div className={styles.formGroup}>
-                                <label className={styles.label}>Région</label>
+                                <label className={styles.label}>Responsable</label>
                                 <select
-                                    className={styles.input}
-                                    value={areaForm.region_id}
-                                    onChange={e => setAreaForm({ ...areaForm, region_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner une région</option>
-                                    {regions.map(region => (
-                                        <option key={region.id} value={region.id}>{region.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Responsable de Zone (Area Leader)</label>
-                                <select
-                                    className={styles.input}
-                                    value={areaForm.leader_id}
-                                    onChange={e => setAreaForm({ ...areaForm, leader_id: e.target.value })}
+                                    className={styles.select}
+                                    value={ministryForm.leader_id}
+                                    onChange={e => setMinistryForm({ ...ministryForm, leader_id: e.target.value })}
                                 >
                                     <option value="">Sélectionner un responsable</option>
                                     {leaders.map(leader => (
@@ -2675,184 +2734,126 @@ return (
                                     ))}
                                 </select>
                             </div>
-                        </div>
-                        <div className={styles.modalActions}>
-                            <button type="button" className={styles.cancelBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}>Annuler</button>
-                            <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
-                                {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )}
-
-        {showMinistryModal && (
-            <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryModal(false)}>
-                <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                    <div className={styles.modalHeader}>
-                        <h2 className={styles.modalTitle}>
-                            {editingItem ? 'Modifier le Ministère' : 'Nouveau Ministère'}
-                        </h2>
-                        <button className={styles.closeBtn} onClick={() => setShowMinistryModal(false)}>
-                            <X size={24} />
-                        </button>
-                    </div>
-                    <form onSubmit={handleSaveMinistry}>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Nom du Ministère</label>
-                            <input
-                                className={styles.input}
-                                value={ministryForm.name}
-                                onChange={e => setMinistryForm({ ...ministryForm, name: e.target.value })}
-                                required
-                                placeholder="ex: Musique, Accueil..."
-                            />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Description</label>
-                            <textarea
-                                className={styles.input}
-                                value={ministryForm.description}
-                                onChange={e => setMinistryForm({ ...ministryForm, description: e.target.value })}
-                                placeholder="Brève description du ministère..."
-                                rows={3}
-                                style={{ resize: 'vertical' }}
-                            />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Responsable</label>
-                            <select
-                                className={styles.select}
-                                value={ministryForm.leader_id}
-                                onChange={e => setMinistryForm({ ...ministryForm, leader_id: e.target.value })}
-                            >
-                                <option value="">Sélectionner un responsable</option>
-                                {leaders.map(leader => (
-                                    <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className={styles.modalActions}>
-                            <button type="button" className={styles.cancelBtn} onClick={() => setShowMinistryModal(false)}>Annuler</button>
-                            <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
-                                {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )
-        }
-
-        {
-            showMinistryAttendanceModal && (
-                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
-                    <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-                        <div className={styles.modalHeader}>
-                            <div>
-                                <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
-                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowMinistryModal(false)}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
                             </div>
-                            <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Date de réunion</label>
-                            <input
-                                type="date"
-                                className={styles.input}
-                                value={ministryAttendanceDate}
-                                onChange={e => setMinistryAttendanceDate(e.target.value)}
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                            <button
-                                className={styles.actionBtn}
-                                onClick={() => handleMarkAllAttendance(true)}
-                                style={{ flex: 1, padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}
-                            >
-                                Tout Présent
-                            </button>
-                            <button
-                                className={styles.actionBtn}
-                                onClick={() => handleMarkAllAttendance(false)}
-                                style={{ flex: 1, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem' }}
-                            >
-                                Tout Absent
-                            </button>
-                        </div>
-
-                        <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            {ministryAttendanceMembers.length > 0 ? (
-                                ministryAttendanceMembers.map(m => (
-                                    <div key={m.member_id} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '1rem',
-                                        borderBottom: '1px solid rgba(255,255,255,0.02)',
-                                        cursor: 'pointer'
-                                    }} onClick={() => handleToggleAttendance(m.member_id)}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                            <div style={{
-                                                width: '36px', height: '36px', borderRadius: '50%',
-                                                background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
-                                                color: m.present ? '#10b981' : '#64748b',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s'
-                                            }}>
-                                                <User size={18} />
-                                            </div>
-                                            <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
-                                                {m.name}
-                                            </span>
-                                        </div>
-                                        <div style={{
-                                            width: '24px', height: '24px', borderRadius: '6px',
-                                            border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
-                                            background: m.present ? '#DC2626' : 'transparent',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transition: 'all 0.2s'
-                                        }}>
-                                            {m.present && <CheckCircle size={14} color="white" />}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
-                            )}
-                        </div>
-
-                        <div className={styles.modalActions}>
-                            <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
-                            <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
-                                {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
-                        </div>
+                        </form>
                     </div>
                 </div>
             )
-        }
+            }
 
-        <ContactModal
-            isOpen={isContactModalOpen}
-            onClose={() => setIsContactModalOpen(false)}
-            member={selectedMemberForContact}
-            authUser={authUser}
-            onActionComplete={handleActionComplete}
-        />
+            {
+                showMinistryAttendanceModal && (
+                    <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
+                        <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+                            <div className={styles.modalHeader}>
+                                <div>
+                                    <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
+                                </div>
+                                <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
+                                    <X size={24} />
+                                </button>
+                            </div>
 
-        <MeetingDetailsModal
-            isOpen={isDetailsModalOpen}
-            onClose={() => setIsDetailsModalOpen(false)}
-            meeting={selectedMeeting}
-        />
-    </div >
-);
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Date de réunion</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    value={ministryAttendanceDate}
+                                    onChange={e => setMinistryAttendanceDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                                <button
+                                    className={styles.actionBtn}
+                                    onClick={() => handleMarkAllAttendance(true)}
+                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}
+                                >
+                                    Tout Présent
+                                </button>
+                                <button
+                                    className={styles.actionBtn}
+                                    onClick={() => handleMarkAllAttendance(false)}
+                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem' }}
+                                >
+                                    Tout Absent
+                                </button>
+                            </div>
+
+                            <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                {ministryAttendanceMembers.length > 0 ? (
+                                    ministryAttendanceMembers.map(m => (
+                                        <div key={m.member_id} style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '1rem',
+                                            borderBottom: '1px solid rgba(255,255,255,0.02)',
+                                            cursor: 'pointer'
+                                        }} onClick={() => handleToggleAttendance(m.member_id)}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                <div style={{
+                                                    width: '36px', height: '36px', borderRadius: '50%',
+                                                    background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
+                                                    color: m.present ? '#10b981' : '#64748b',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    transition: 'all 0.2s'
+                                                }}>
+                                                    <User size={18} />
+                                                </div>
+                                                <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
+                                                    {m.name}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                width: '24px', height: '24px', borderRadius: '6px',
+                                                border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
+                                                background: m.present ? '#DC2626' : 'transparent',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                transition: 'all 0.2s'
+                                            }}>
+                                                {m.present && <CheckCircle size={14} color="white" />}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
+                                )}
+                            </div>
+
+                            <div className={styles.modalActions}>
+                                <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
+                                <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            <ContactModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+                member={selectedMemberForContact}
+                authUser={authUser}
+                onActionComplete={handleActionComplete}
+            />
+
+            <MeetingDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                meeting={selectedMeeting}
+            />
+        </div >
+    );
 };
 
 const MeetingDetailsModal = ({ isOpen, onClose, meeting }) => {
