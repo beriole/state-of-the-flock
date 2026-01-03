@@ -34,7 +34,8 @@ module.exports = (sequelize) => {
       references: {
         model: 'users',
         key: 'id'
-      }
+      },
+      field: 'leader_id'
     },
     region_id: {
       type: DataTypes.UUID,

@@ -124,6 +124,7 @@ export const callLogAPI = {
 
 // Fonctions API pour les Gouverneurs
 export const governorAPI = {
+    getUsers: (params = {}) => api.get('/users', { params }),
     getBacentaLeaders: (params = {}) => api.get('/users', { params: { ...params, role: 'Bacenta_Leader' } }),
     createBacentaLeader: (data) => api.post('/users', { ...data, role: 'Bacenta_Leader' }),
     updateBacentaLeader: (id, data) => api.put(`/users/${id}`, data),

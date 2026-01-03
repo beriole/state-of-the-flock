@@ -166,7 +166,7 @@ const Governor = () => {
             } else if (activeTab === 'zones') {
                 const [areasRes, leadersRes, regionsRes] = await Promise.all([
                     areaAPI.getAreas(),
-                    governorAPI.getBacentaLeaders(),
+                    governorAPI.getUsers({ limit: 1000 }), // Fetch all users to have all potential leaders
                     regionAPI.getRegions()
                 ]);
                 setAreas(areasRes.data.areas || []);
@@ -624,8 +624,8 @@ const Governor = () => {
             setAreaForm({
                 name: area.name,
                 number: area.number,
-                leader_id: area.leader_id || '',
-                region_id: area.region_id || ''
+                leader_id: area.leader_id || area.leaderId || '',
+                region_id: area.region_id || area.regionId || ''
             });
         } else {
             setEditingItem(null);
@@ -1209,7 +1209,13 @@ const Governor = () => {
                                 </td>
                                 <td className={styles.td}>
                                     <span style={{ color: '#94a3b8' }}>
-                                        {area.leader_user ? `${area.leader_user.first_name} ${area.leader_user.last_name}` : 'Non assigné'}
+                                        {(() => {
+                                            const lu = area.leader_user || area.leaderUser;
+                                            if (lu) return `${lu.first_name} ${lu.last_name}`;
+                                            const l = leaders.find(ld => ld.id === area.leader_id);
+                                            if (l) return `${l.first_name} ${l.last_name}`;
+                                            return 'Non assigné';
+                                        })()}
                                     </span>
                                 </td>
                                 <td className={styles.td}>
