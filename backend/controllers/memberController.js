@@ -1,5 +1,5 @@
 // controllers/memberController.js
-const { Member, User, Area, Attendance, CallLog } = require('../models');
+const { Member, User, Area, Attendance, CallLog, Ministry } = require('../models');
 const { Op } = require('sequelize');
 
 const memberController = {
@@ -51,7 +51,8 @@ const memberController = {
         where: whereClause,
         include: [
           { model: Area, as: 'area' },
-          { model: User, as: 'leader' }
+          { model: User, as: 'leader' },
+          { model: Ministry, as: 'ministry_association' }
         ],
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -79,6 +80,7 @@ const memberController = {
         include: [
           { model: Area, as: 'area' },
           { model: User, as: 'leader' },
+          { model: Ministry, as: 'ministry_association' },
           {
             model: Attendance,
             as: 'attendances',
@@ -99,7 +101,8 @@ const memberController = {
         return res.status(404).json({ error: 'Membre non trouvé' });
       }
 
-      if (req.user.role === 'Bacenta_Leader' && member.leader_id !== req.user.userId) {
+      if (req.user.role === 'Bacenta_Leader' && member.leader_id.toString() !== req.user.userId.toString()) {
+        console.warn(`[FORBIDDEN] Leader ${req.user.userId} tried to access member ${member.id} belonging to leader ${member.leader_id}`);
         return res.status(403).json({ error: 'Accès non autorisé à ce membre' });
       }
 
@@ -166,7 +169,8 @@ const memberController = {
       const newMember = await Member.findByPk(member.id, {
         include: [
           { model: Area, as: 'area' },
-          { model: User, as: 'leader' }
+          { model: User, as: 'leader' },
+          { model: Ministry, as: 'ministry_association' }
         ]
       });
 
@@ -188,7 +192,8 @@ const memberController = {
         return res.status(404).json({ error: 'Membre non trouvé' });
       }
 
-      if (req.user.role === 'Bacenta_Leader' && member.leader_id !== req.user.userId) {
+      if (req.user.role === 'Bacenta_Leader' && member.leader_id.toString() !== req.user.userId.toString()) {
+        console.warn(`[FORBIDDEN] Leader ${req.user.userId} tried to update member ${member.id} belonging to leader ${member.leader_id}`);
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
@@ -197,7 +202,8 @@ const memberController = {
       const updatedMember = await Member.findByPk(memberId, {
         include: [
           { model: Area, as: 'area' },
-          { model: User, as: 'leader' }
+          { model: User, as: 'leader' },
+          { model: Ministry, as: 'ministry_association' }
         ]
       });
 

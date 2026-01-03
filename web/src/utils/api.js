@@ -157,4 +157,20 @@ export const dashboardAPI = {
     getGlobalStats: () => api.get('/dashboard'),
 };
 
+// Fonctions API pour les Ministères
+export const ministryAPI = {
+    getAllMinistries: () => api.get('/ministries'),
+    createMinistry: (data) => api.post('/ministries', data),
+    deleteMinistry: (id) => api.delete(`/ministries/${id}`),
+    getMembers: (id) => api.get(`/ministries/${id}/members`),
+    markAttendance: (id, data) => api.post(`/ministries/${id}/attendance`, data),
+    getAttendanceStats: (id, date) => api.get(`/ministries/${id}/attendance/stats`, { params: { date } }),
+};
+
+// Fonctions API pour les Régions
+export const regionAPI = {
+    getRegions: () => api.get('/regions'), // Note: need to ensure backend has this route or add it
+    createRegion: (data) => api.post('/regions', data),
+};
+
 export default api;

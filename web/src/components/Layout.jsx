@@ -13,7 +13,8 @@ import {
     X,
     Crown,
     Map,
-    FileBarChart
+    FileBarChart,
+    Library
 } from 'lucide-react';
 import styles from './Layout.module.css';
 import logo from '../assets/logo.png';
@@ -43,6 +44,7 @@ const Layout = () => {
                 { path: '/governor?tab=dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
                 { path: '/governor?tab=leaders', label: 'Leaders', icon: <Crown size={20} /> },
                 { path: '/governor?tab=zones', label: 'Zones', icon: <Map size={20} /> },
+                { path: '/governor?tab=ministries', label: 'Ministères', icon: <Library size={20} /> },
                 { path: '/governor?tab=members', label: 'Membres', icon: <Users size={20} /> },
                 { path: '/governor?tab=reports', label: 'Rapports', icon: <FileBarChart size={20} /> },
             ]

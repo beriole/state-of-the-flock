@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { memberAPI } from '../utils/api';
+import { memberAPI, ministryAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Save, Loader } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import styles from './MemberForm.module.css';
 
 const MemberForm = () => {
@@ -14,6 +14,7 @@ const MemberForm = () => {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const [error, setError] = useState('');
+    const [ministries, setMinistries] = useState([]);
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -23,22 +24,27 @@ const MemberForm = () => {
         phone_secondary: '',
         // Champs par défaut ou cachés
         state: 'Sheep',
-        is_active: true
+        is_active: true,
+        ministry_id: ''
     });
 
     useEffect(() => {
-        if (isEditMode) {
-            fetchMember();
-        }
+        fetchInitialData();
     }, [id]);
 
-    const fetchMember = async () => {
+    const fetchInitialData = async () => {
         try {
-            const response = await memberAPI.getMemberById(id);
-            setFormData(response.data);
+            const minRes = await ministryAPI.getAllMinistries();
+            setMinistries(minRes.data || []);
+
+            if (isEditMode) {
+                console.log('Fetching member with ID:', id);
+                const response = await memberAPI.getMemberById(id);
+                setFormData(response.data);
+            }
         } catch (err) {
-            console.error('Error fetching member:', err);
-            setError('Impossible de charger les informations du membre.');
+            console.error('Error fetching initial data:', err);
+            setError('Impossible de charger les données initiales.');
         } finally {
             setInitialLoading(false);
         }
@@ -94,7 +100,7 @@ const MemberForm = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <button className={styles.backButton} onClick={() => navigate('/members')}>
-                    <ArrowLeft size={24} />
+                    <span key="back-icon"><ArrowLeft size={24} /></span>
                 </button>
                 <h1 className={styles.title}>
                     {isEditMode ? 'Modifier le membre' : 'Ajouter un membre'}
@@ -171,6 +177,23 @@ const MemberForm = () => {
                                 placeholder="Optionnel"
                             />
                         </div>
+
+                        <h3 className={styles.sectionTitle}>Engagement</h3>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Ministère</label>
+                            <select
+                                name="ministry_id"
+                                value={formData.ministry_id || ''}
+                                onChange={handleChange}
+                                className={styles.select}
+                            >
+                                <option value="">Aucun ministère</option>
+                                {ministries.map(ministry => (
+                                    <option key={ministry.id} value={ministry.id}>{ministry.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className={styles.actions}>
@@ -186,7 +209,9 @@ const MemberForm = () => {
                             className={styles.submitButton}
                             disabled={loading}
                         >
-                            {loading ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
+                            <span className={styles.iconWrapper} key={loading ? 'loader' : 'save'}>
+                                {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            </span>
                             {isEditMode ? 'Mettre à jour' : 'Enregistrer'}
                         </button>
                     </div>

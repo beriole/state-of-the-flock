@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Download, Plus, Search, Phone, Edit2, Trash2 } from 'lucide-react';
 import { memberAPI, getPhotoUrl } from '../utils/api';
 import { generateProfessionalPDF } from '../utils/pdfGenerator';
 import { useNavigate } from 'react-router-dom';

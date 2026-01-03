@@ -6,7 +6,9 @@ import {
     reportAPI,
     memberAPI,
     bacentaAPI,
-    getPhotoUrl
+    getPhotoUrl,
+    ministryAPI,
+    regionAPI
 } from '../utils/api';
 import {
     LayoutDashboard,
@@ -35,7 +37,8 @@ import {
     Lock,
     Save,
     AlertCircle,
-    Camera
+    Camera,
+    Library
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -59,6 +62,8 @@ const Governor = () => {
     const [stats, setStats] = useState(null);
     const [leaders, setLeaders] = useState([]);
     const [areas, setAreas] = useState([]);
+    const [ministries, setMinistries] = useState([]);
+    const [regions, setRegions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [members, setMembers] = useState([]);
@@ -94,6 +99,8 @@ const Governor = () => {
     const [reportDebugInfo, setReportDebugInfo] = useState(null);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [ministryReportData, setMinistryReportData] = useState([]);
+    const [selectedMinistryForReport, setSelectedMinistryForReport] = useState('');
 
     // Contact Modal
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -102,9 +109,14 @@ const Governor = () => {
     // Modals
     const [showLeaderModal, setShowLeaderModal] = useState(false);
     const [showAreaModal, setShowAreaModal] = useState(false);
+    const [showMinistryModal, setShowMinistryModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalError, setModalError] = useState('');
+    const [showMinistryAttendanceModal, setShowMinistryAttendanceModal] = useState(false);
+    const [selectedMinistryForAttendance, setSelectedMinistryForAttendance] = useState(null);
+    const [ministryAttendanceMembers, setMinistryAttendanceMembers] = useState([]);
+    const [ministryAttendanceDate, setMinistryAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Forms
     const [leaderForm, setLeaderForm] = useState({
@@ -118,7 +130,15 @@ const Governor = () => {
 
     const [areaForm, setAreaForm] = useState({
         name: '',
-        number: ''
+        number: '',
+        leader_id: '',
+        region_id: ''
+    });
+
+    const [ministryForm, setMinistryForm] = useState({
+        name: '',
+        description: '',
+        leader_id: ''
     });
 
     useEffect(() => {
@@ -143,8 +163,21 @@ const Governor = () => {
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
             } else if (activeTab === 'zones') {
-                const res = await areaAPI.getAreas();
-                setAreas(res.data.areas || []);
+                const [areasRes, leadersRes, regionsRes] = await Promise.all([
+                    areaAPI.getAreas(),
+                    governorAPI.getBacentaLeaders(),
+                    regionAPI.getRegions()
+                ]);
+                setAreas(areasRes.data.areas || []);
+                setLeaders(leadersRes.data.users || []);
+                setRegions(regionsRes.data || []);
+            } else if (activeTab === 'ministries') {
+                const [ministriesRes, leadersRes] = await Promise.all([
+                    ministryAPI.getAllMinistries(),
+                    governorAPI.getBacentaLeaders()
+                ]);
+                setMinistries(ministriesRes.data || []);
+                setLeaders(leadersRes.data.users || []);
             } else if (activeTab === 'members') {
                 const [membersRes, leadersRes, areasRes] = await Promise.all([
                     memberAPI.getMembers({ ...memberFilters, search: searchQuery }),
@@ -281,6 +314,21 @@ const Governor = () => {
     };
 
     useEffect(() => {
+        if (showMinistryAttendanceModal && selectedMinistryForAttendance) {
+            fetchMinistryAttendance();
+        }
+    }, [ministryAttendanceDate]);
+
+    const fetchMinistryAttendance = async () => {
+        try {
+            const res = await ministryAPI.getAttendanceStats(selectedMinistryForAttendance.id, ministryAttendanceDate);
+            setMinistryAttendanceMembers(res.data.details || []);
+        } catch (error) {
+            console.error('Error fetching ministry attendance:', error);
+        }
+    };
+
+    useEffect(() => {
         if (activeTab === 'reports') {
             if (selectedReportType === 'attendance') {
                 fetchAttendanceData();
@@ -290,9 +338,24 @@ const Governor = () => {
                 fetchCallTrackingData();
             } else if (selectedReportType === 'bacenta_meetings') {
                 fetchBacentaReportData();
+            } else if (selectedReportType === 'ministries') {
+                fetchMinistryReportData();
             }
         }
-    }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
+    }, [reportFilters, selectedReportType, activeTab, callTrackingView, selectedMinistryForReport]);
+
+    const fetchMinistryReportData = async () => {
+        if (!selectedMinistryForReport) {
+            setMinistryReportData([]);
+            return;
+        }
+        try {
+            const res = await ministryAPI.getAttendanceStats(selectedMinistryForReport, reportFilters.startDate);
+            setMinistryReportData(res.data.details || []);
+        } catch (error) {
+            console.error('Error fetching ministry report:', error);
+        }
+    };
 
     const handleLeaderPhotoUpload = async (e) => {
         const file = e.target.files[0];
@@ -553,17 +616,181 @@ const Governor = () => {
             setEditingItem(area);
             setAreaForm({
                 name: area.name,
-                number: area.number
+                number: area.number,
+                leader_id: area.leader_id || '',
+                region_id: area.region_id || ''
             });
         } else {
             setEditingItem(null);
             setAreaForm({
                 name: '',
-                number: ''
+                number: '',
+                leader_id: '',
+                region_id: ''
             });
         }
         setShowAreaModal(true);
     };
+
+    const openMinistryModal = (ministry = null) => {
+        setModalError('');
+        setModalLoading(false);
+        if (ministry) {
+            setEditingItem(ministry);
+            setMinistryForm({
+                name: ministry.name,
+                description: ministry.description || '',
+                leader_id: ministry.leader_id || ''
+            });
+        } else {
+            setEditingItem(null);
+            setMinistryForm({
+                name: '',
+                description: '',
+                leader_id: ''
+            });
+        }
+        setShowMinistryModal(true);
+    };
+
+    const handleSaveMinistry = async (e) => {
+        e.preventDefault();
+        setModalLoading(true);
+        setModalError('');
+        try {
+            if (editingItem) {
+                await ministryAPI.createMinistry({ ...ministryForm, id: editingItem.id }); // Use create with ID for update or add update to API
+            } else {
+                await ministryAPI.createMinistry(ministryForm);
+            }
+            setShowMinistryModal(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error saving ministry:', error);
+            setModalError(error.response?.data?.error || 'Erreur lors de l\'enregistrement');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleDeleteMinistry = async (id) => {
+        if (window.confirm('Voulez-vous supprimer ce ministère ?')) {
+            try {
+                await ministryAPI.deleteMinistry(id);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting ministry:', error);
+            }
+        }
+    };
+
+    const openMinistryAttendance = async (ministry) => {
+        setLoading(true);
+        setSelectedMinistryForAttendance(ministry);
+        try {
+            // Ensure date is reset to today if opening fresh? Or keep last date.
+            const res = await ministryAPI.getAttendanceStats(ministry.id, ministryAttendanceDate);
+            setMinistryAttendanceMembers(res.data.details || []);
+            setShowMinistryAttendanceModal(true);
+        } catch (error) {
+            console.error('Error fetching ministry attendance:', error);
+            alert('Erreur lors du chargement des membres du ministère');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleAttendance = (memberId) => {
+        setMinistryAttendanceMembers(prev => prev.map(m =>
+            m.member_id === memberId ? { ...m, present: !m.present } : m
+        ));
+    };
+
+    const handleSaveMinistryAttendance = async () => {
+        if (!selectedMinistryForAttendance) return;
+        setModalLoading(true);
+        try {
+            await ministryAPI.markAttendance(selectedMinistryForAttendance.id, {
+                date: ministryAttendanceDate,
+                attendances: ministryAttendanceMembers.map(m => ({
+                    member_id: m.member_id,
+                    present: m.present
+                }))
+            });
+            setShowMinistryAttendanceModal(false);
+            alert('Présences enregistrées avec succès');
+        } catch (error) {
+            console.error('Error saving ministry attendance:', error);
+            alert('Erreur lors de l\'enregistrement des présences');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const renderMinistries = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Gestion des Ministères</h2>
+                <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
+                    <Plus size={20} /> Nouveau Ministère
+                </button>
+            </div>
+
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Ministère</th>
+                            <th className={styles.th}>Responsable</th>
+                            <th className={styles.th}>Description</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ministries.length > 0 ? (
+                            ministries.map(ministry => (
+                                <tr key={ministry.id} className={styles.tr}>
+                                    <td className={styles.td}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                            <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '8px' }}>
+                                                <Library size={18} />
+                                            </div>
+                                            <strong style={{ color: 'white' }}>{ministry.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td className={styles.td}>
+                                        {ministry.leader ? `${ministry.leader.first_name} ${ministry.leader.last_name}` : 'Non assigné'}
+                                    </td>
+                                    <td className={styles.td} style={{ maxWidth: '300px', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                        {ministry.description || '-'}
+                                    </td>
+                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                        <div className={styles.actions}>
+                                            <button className={styles.actionBtn} title="Présences" onClick={() => openMinistryAttendance(ministry)}>
+                                                <CheckCircle size={18} />
+                                            </button>
+                                            <button className={styles.actionBtn} onClick={() => openMinistryModal(ministry)}>
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteMinistry(ministry.id)}>
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                    Aucun ministère configuré.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 
     const filteredLeaders = leaders.filter(l =>
         `${l.first_name} ${l.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -893,6 +1120,53 @@ const Governor = () => {
         </div>
     );
 
+    const renderMinistryReport = () => (
+        <div style={{ width: '100%' }}>
+            {selectedMinistryForReport ? (
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Membre</th>
+                            <th className={styles.th}>Statut de Présence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ministryReportData.length > 0 ? (
+                            ministryReportData.map(m => (
+                                <tr key={m.member_id} className={styles.tr}>
+                                    <td className={styles.td}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <User size={16} />
+                                            </div>
+                                            {m.name}
+                                        </div>
+                                    </td>
+                                    <td className={styles.td}>
+                                        <span className={`${styles.badge} ${m.present ? styles.badgeActive : styles.badgeInactive}`}>
+                                            {m.present ? 'Présent' : 'Absent'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={2} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
+                                    Aucune donnée pour cette date.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                    <Library size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                    <p>Veuillez sélectionner un ministère pour voir le rapport.</p>
+                </div>
+            )}
+        </div>
+    );
+
     const renderZones = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -1210,6 +1484,20 @@ const Governor = () => {
                             <p className={styles.reportDesc}>Rapports détaillés des réunions hebdomadaires effectués par les leaders.</p>
                             <div className={styles.reportBadge} style={{ background: '#38bdf8' }}>Récent</div>
                         </div>
+                        <div
+                            className={styles.reportCard}
+                            onClick={() => {
+                                setSelectedReportType('ministries');
+                                setIsViewingReport(true);
+                            }}
+                        >
+                            <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
+                                <Library size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>Rapport des Ministères</h3>
+                            <p className={styles.reportDesc}>Suivi des présences et de l'engagement par ministère.</p>
+                            <div className={styles.reportBadge}>Nouveau</div>
+                        </div>
                     </div>
                 </div>
             );
@@ -1230,13 +1518,15 @@ const Governor = () => {
                             <h2 className={styles.sectionTitle}>
                                 {selectedReportType === 'attendance' ? 'Rapport de Présence' :
                                     selectedReportType === 'growth' ? 'Croissance des Membres' :
-                                        selectedReportType === 'call_tracking' ? 'Suivi des Appels' : 'Comptes rendus Bacenta'}
+                                        selectedReportType === 'call_tracking' ? 'Suivi des Appels' :
+                                            selectedReportType === 'ministries' ? 'Rapport des Ministères' : 'Comptes rendus Bacenta'}
                             </h2>
                             <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
                                 {selectedReportType === 'attendance' ? 'Analyse filtrée par zone, leader et période' :
                                     selectedReportType === 'growth' ? 'Analyse d\'évolution temporelle premium' :
                                         selectedReportType === 'call_tracking' ? 'Membres contactés et non contactés par période' :
-                                            'Détails des réunions de partage et activités par zone'}
+                                            selectedReportType === 'ministries' ? 'Présences par ministère et par date' :
+                                                'Détails des réunions de partage et activités par zone'}
                             </p>
                         </div>
                     </div>
@@ -1254,7 +1544,7 @@ const Governor = () => {
                             <Download size={18} />
                             <span>Exporter PDF</span>
                         </button>
-                        {selectedReportType !== 'growth' && (
+                        {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
                             <>
                                 <div className={styles.formGroup} style={{ marginBottom: 0 }}>
                                     <label className={styles.label} style={{ fontSize: '0.7rem' }}>Zone</label>
@@ -1302,27 +1592,47 @@ const Governor = () => {
                                         }
                                     </select>
                                 </div>
-                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Début</label>
-                                    <input
-                                        type="date"
-                                        className={styles.input}
-                                        style={{ padding: '0.4rem', width: 'auto' }}
-                                        value={reportFilters.startDate}
-                                        onChange={e => setReportFilters({ ...reportFilters, startDate: e.target.value })}
-                                    />
-                                </div>
-                                <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                                    <label className={styles.label} style={{ fontSize: '0.7rem' }}>Fin</label>
-                                    <input
-                                        type="date"
-                                        className={styles.input}
-                                        style={{ padding: '0.4rem', width: 'auto' }}
-                                        value={reportFilters.endDate}
-                                        onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
-                                    />
-                                </div>
                             </>
+                        )}
+                        {selectedReportType === 'ministries' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Ministère</label>
+                                <select
+                                    className={styles.select}
+                                    style={{ padding: '0.4rem', minWidth: '150px' }}
+                                    value={selectedMinistryForReport}
+                                    onChange={e => setSelectedMinistryForReport(e.target.value)}
+                                >
+                                    <option value="">Sélectionner</option>
+                                    {ministries.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {(selectedReportType !== 'growth' || selectedReportType === 'ministries') && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>{selectedReportType === 'ministries' ? 'Date' : 'Début'}</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    style={{ padding: '0.4rem', width: 'auto' }}
+                                    value={reportFilters.startDate}
+                                    onChange={e => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        {selectedReportType !== 'growth' && selectedReportType !== 'ministries' && (
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Fin</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    style={{ padding: '0.4rem', width: 'auto' }}
+                                    value={reportFilters.endDate}
+                                    onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                                />
+                            </div>
                         )}
                         {selectedReportType === 'call_tracking' && (
                             <div className={styles.formGroup} style={{ marginBottom: 0 }}>
@@ -1364,37 +1674,41 @@ const Governor = () => {
                     </div>
                 </div>
 
-                {selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
-                    <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
-                        <button
-                            className={styles.actionBtn}
-                            onClick={() => {
-                                setReportFilters({
-                                    ...reportFilters,
-                                    areaId: '',
-                                    leaderId: '',
-                                    attendanceViewType: 'area'
-                                });
-                            }}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                color: '#60a5fa',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                border: '1px solid rgba(59, 130, 246, 0.2)'
-                            }}
-                        >
-                            <ArrowLeft size={16} /> Retour à la vue globale
-                        </button>
-                    </div>
-                )}
+                {
+                    selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
+                        <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
+                            <button
+                                className={styles.actionBtn}
+                                onClick={() => {
+                                    setReportFilters({
+                                        ...reportFilters,
+                                        areaId: '',
+                                        leaderId: '',
+                                        attendanceViewType: 'area'
+                                    });
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#60a5fa',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                                }}
+                            >
+                                <ArrowLeft size={16} /> Retour à la vue globale
+                            </button>
+                        </div>
+                    )
+                }
 
                 <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
-                    {selectedReportType === 'call_tracking' ? (
+                    {selectedReportType === 'ministries' ? (
+                        renderMinistryReport()
+                    ) : selectedReportType === 'call_tracking' ? (
                         <>
                             <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
@@ -1722,6 +2036,7 @@ const Governor = () => {
                             {activeTab === 'dashboard' && renderDashboard()}
                             {activeTab === 'leaders' && renderLeaders()}
                             {activeTab === 'zones' && renderZones()}
+                            {activeTab === 'ministries' && renderMinistries()}
                             {activeTab === 'members' && renderMembers()}
                             {activeTab === 'reports' && renderReports()}
                         </>
@@ -1970,11 +2285,168 @@ const Governor = () => {
                                     required
                                 />
                             </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Région</label>
+                                <select
+                                    className={styles.input}
+                                    value={areaForm.region_id}
+                                    onChange={e => setAreaForm({ ...areaForm, region_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner une région</option>
+                                    {regions.map(region => (
+                                        <option key={region.id} value={region.id}>{region.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Responsable de Zone (Area Leader)</label>
+                                <select
+                                    className={styles.input}
+                                    value={areaForm.leader_id}
+                                    onChange={e => setAreaForm({ ...areaForm, leader_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner un responsable</option>
+                                    {leaders.map(leader => (
+                                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className={styles.modalActions}>
                                 <button type="button" className={styles.cancelBtn} onClick={() => setShowAreaModal(false)}>Annuler</button>
                                 <button type="submit" className={styles.submitBtn}>Enregistrer</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showMinistryModal && (
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h2 className={styles.modalTitle}>
+                                {editingItem ? 'Modifier le Ministère' : 'Nouveau Ministère'}
+                            </h2>
+                            <button className={styles.closeBtn} onClick={() => setShowMinistryModal(false)}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveMinistry}>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Nom du Ministère</label>
+                                <input
+                                    className={styles.input}
+                                    value={ministryForm.name}
+                                    onChange={e => setMinistryForm({ ...ministryForm, name: e.target.value })}
+                                    required
+                                    placeholder="ex: Musique, Accueil..."
+                                />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Description</label>
+                                <textarea
+                                    className={styles.input}
+                                    value={ministryForm.description}
+                                    onChange={e => setMinistryForm({ ...ministryForm, description: e.target.value })}
+                                    placeholder="Brève description du ministère..."
+                                    rows={3}
+                                    style={{ resize: 'vertical' }}
+                                />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Responsable</label>
+                                <select
+                                    className={styles.select}
+                                    value={ministryForm.leader_id}
+                                    onChange={e => setMinistryForm({ ...ministryForm, leader_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner un responsable</option>
+                                    {leaders.map(leader => (
+                                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowMinistryModal(false)}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showMinistryAttendanceModal && (
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
+                    <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <div>
+                                <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
+                            </div>
+                            <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Date de réunion</label>
+                            <input
+                                type="date"
+                                className={styles.input}
+                                value={ministryAttendanceDate}
+                                onChange={e => setMinistryAttendanceDate(e.target.value)}
+                            />
+                        </div>
+
+                        <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            {ministryAttendanceMembers.length > 0 ? (
+                                ministryAttendanceMembers.map(m => (
+                                    <div key={m.member_id} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '1rem',
+                                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                                        cursor: 'pointer'
+                                    }} onClick={() => handleToggleAttendance(m.member_id)}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                            <div style={{
+                                                width: '36px', height: '36px', borderRadius: '50%',
+                                                background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
+                                                color: m.present ? '#10b981' : '#64748b',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                transition: 'all 0.2s'
+                                            }}>
+                                                <User size={18} />
+                                            </div>
+                                            <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
+                                                {m.name}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            width: '24px', height: '24px', borderRadius: '6px',
+                                            border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
+                                            background: m.present ? '#DC2626' : 'transparent',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            {m.present && <CheckCircle size={14} color="white" />}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
+                            )}
+                        </div>
+
+                        <div className={styles.modalActions}>
+                            <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
+                            <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
+                                {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

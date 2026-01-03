@@ -249,7 +249,7 @@ const MemberDetail = () => {
                             </div>
                             <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Ministère</span>
-                                <span className={styles.infoValue}>{member.ministry || 'N/A'}</span>
+                                <span className={styles.infoValue}>{member.ministry_association?.name || member.ministry || 'N/A'}</span>
                             </div>
                             <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Bacenta</span>
