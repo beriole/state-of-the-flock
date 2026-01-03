@@ -48,9 +48,8 @@ import { useAuth } from '../context/AuthContext';
 import { ContactModal } from '../components/ContactModals';
 import styles from './Governor.module.css';
 import { callLogAPI } from '../utils/api';
-import { callLogAPI } from '../utils/api';
 import { generateProfessionalPDF } from '../utils/pdfGenerator';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Governor = () => {
     const navigate = useNavigate();
@@ -114,6 +113,19 @@ const Governor = () => {
         startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
+    // Local state for inputs to prevent refresh while typing
+    const [localEvolutionDateRange, setLocalEvolutionDateRange] = useState({
+        startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+    });
+
+    // Debounce effect to update evolutionDateRange when local changes
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setEvolutionDateRange(localEvolutionDateRange);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [localEvolutionDateRange]);
     const [showEvolutionChart, setShowEvolutionChart] = useState(false);
 
     // Contact Modal
@@ -1379,50 +1391,170 @@ const Governor = () => {
             );
         }
 
-        const renderEvolutionChart = () => (
-            <div className={styles.section} style={{ marginTop: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 className={styles.sectionTitle} style={{ fontSize: '1.2rem' }}>Évolution des Statistiques</h3>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <input
-                            type="date"
-                            className={styles.input}
-                            style={{ padding: '0.4rem' }}
-                            value={evolutionDateRange.startDate}
-                            onChange={e => setEvolutionDateRange({ ...evolutionDateRange, startDate: e.target.value })}
-                        />
-                        <span style={{ color: '#94a3b8' }}>à</span>
-                        <input
-                            type="date"
-                            className={styles.input}
-                            style={{ padding: '0.4rem' }}
-                            value={evolutionDateRange.endDate}
-                            onChange={e => setEvolutionDateRange({ ...evolutionDateRange, endDate: e.target.value })}
-                        />
+        const renderEvolutionChart = () => {
+            const hasData = evolutionData.some(d => d.total_members > 0 || d.attendance > 0);
+
+            const CustomTooltip = ({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                    return (
+                        <div style={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem', backdropFilter: 'blur(8px)' }}>
+                            <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                                {new Date(label).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {payload.map((entry, index) => (
+                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: entry.color }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color }}></div>
+                                        <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>{entry.name}: {entry.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                }
+                return null;
+            };
+
+            const handleDateRangePreset = (months) => {
+                const end = new Date();
+                const start = new Date();
+                start.setMonth(start.getMonth() - months);
+                const newRange = {
+                    startDate: start.toISOString().split('T')[0],
+                    endDate: end.toISOString().split('T')[0]
+                };
+                setLocalEvolutionDateRange(newRange);
+                setEvolutionDateRange(newRange); // Immediate update for presets
+            };
+
+            return (
+                <div className={styles.section} style={{ marginTop: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 className={styles.sectionTitle} style={{ fontSize: '1.2rem', margin: 0 }}>Évolution des Statistiques</h3>
+                            <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px' }}>
+                                {[
+                                    { label: '1M', months: 1 },
+                                    { label: '3M', months: 3 },
+                                    { label: '6M', months: 6 },
+                                    { label: '1A', months: 12 }
+                                ].map(preset => (
+                                    <button
+                                        key={preset.label}
+                                        onClick={() => handleDateRangePreset(preset.months)}
+                                        style={{
+                                            padding: '0.3rem 0.8rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            color: '#94a3b8',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            fontWeight: '500'
+                                        }}
+                                        onMouseOver={e => e.target.style.color = 'white'}
+                                        onMouseOut={e => e.target.style.color = '#94a3b8'}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', padding: '0.8rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <Calendar size={18} style={{ color: '#64748b' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <label style={{ position: 'absolute', top: '-8px', left: '8px', background: '#0f172a', padding: '0 4px', fontSize: '0.7rem', color: '#64748b' }}>Du</label>
+                                    <input
+                                        type="date"
+                                        className={styles.input}
+                                        style={{ padding: '0.6rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.9rem', cursor: 'pointer' }}
+                                        value={localEvolutionDateRange.startDate}
+                                        onChange={e => setLocalEvolutionDateRange({ ...localEvolutionDateRange, startDate: e.target.value })}
+                                        onKeyDown={(e) => e.preventDefault()}
+                                        onClick={(e) => e.currentTarget.showPicker()}
+                                    />
+                                </div>
+                                <span style={{ color: '#64748b' }}>→</span>
+                                <div style={{ position: 'relative' }}>
+                                    <label style={{ position: 'absolute', top: '-8px', left: '8px', background: '#0f172a', padding: '0 4px', fontSize: '0.7rem', color: '#64748b' }}>Au</label>
+                                    <input
+                                        type="date"
+                                        className={styles.input}
+                                        style={{ padding: '0.6rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.9rem', cursor: 'pointer' }}
+                                        value={localEvolutionDateRange.endDate}
+                                        onChange={e => setLocalEvolutionDateRange({ ...localEvolutionDateRange, endDate: e.target.value })}
+                                        onKeyDown={(e) => e.preventDefault()}
+                                        onClick={(e) => e.currentTarget.showPicker()}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ height: '400px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem', position: 'relative' }}>
+                        {!hasData && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                                    <FileBarChart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                                    <p>Aucune donnée disponible pour cette période</p>
+                                </div>
+                            </div>
+                        )}
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="#64748b"
+                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                />
+                                <YAxis
+                                    stroke="#64748b"
+                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                                <Area
+                                    type="monotone"
+                                    dataKey="total_members"
+                                    name="Total Membres"
+                                    stroke="#3b82f6"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorTotal)"
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="attendance"
+                                    name="Présents"
+                                    stroke="#10b981"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorAttendance)"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
-                <div style={{ height: '400px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={evolutionData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                            <XAxis
-                                dataKey="date"
-                                stroke="#94a3b8"
-                                tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                            />
-                            <YAxis stroke="#94a3b8" />
-                            <Tooltip
-                                contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }}
-                                labelStyle={{ color: '#e2e8f0' }}
-                            />
-                            <Legend />
-                            <Line type="monotone" dataKey="total_members" name="Total Membres" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="attendance" name="Présents" stroke="#10b981" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-        );
+            );
+        };
 
         return (
             <div style={{ width: '100%' }}>
