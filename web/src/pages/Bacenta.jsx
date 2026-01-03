@@ -16,7 +16,8 @@ import {
     Layout,
     Camera,
     Upload,
-    Trash2
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import styles from './Bacenta.module.css';
 
@@ -272,9 +273,11 @@ const Bacenta = () => {
     };
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
-                <h1 className={styles.title}>Réunions Bacenta</h1>
+                <h1 className={styles.title}>
+                    <span key="title">Réunions Bacenta</span>
+                </h1>
                 <button className={styles.addButton} onClick={() => setShowCreateModal(true)}>
                     <Plus size={20} />
                     Nouvelle Réunion
@@ -288,8 +291,8 @@ const Bacenta = () => {
                         <Layout size={28} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.total}</span>
-                        <span className={styles.statLabel}>Total Réunions</span>
+                        <span className={styles.statValue} key={`total-${stats.total}`}>{stats.total}</span>
+                        <span className={styles.statLabel} key="lbl-total">Total Réunions</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -297,8 +300,8 @@ const Bacenta = () => {
                         <Calendar size={28} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.upcoming}</span>
-                        <span className={styles.statLabel}>À venir</span>
+                        <span className={styles.statValue} key={`upcoming-${stats.upcoming}`}>{stats.upcoming}</span>
+                        <span className={styles.statLabel} key="lbl-upcoming">À venir</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -306,8 +309,8 @@ const Bacenta = () => {
                         <CheckCircle size={28} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.completed}</span>
-                        <span className={styles.statLabel}>Terminées</span>
+                        <span className={styles.statValue} key={`completed-${stats.completed}`}>{stats.completed}</span>
+                        <span className={styles.statLabel} key="lbl-completed">Terminées</span>
                     </div>
                 </div>
             </div>
@@ -330,7 +333,10 @@ const Bacenta = () => {
 
             {/* List */}
             {loading ? (
-                <div className={styles.loading}>Chargement des réunions...</div>
+                <div className={styles.loading}>
+                    <Loader2 className="animate-spin" size={24} />
+                    <span key="loading-text" style={{ marginLeft: '10px' }}>Chargement des réunions...</span>
+                </div>
             ) : filteredMeetings.length === 0 ? (
                 <div className={styles.empty}>Aucune réunion trouvée pour cette catégorie.</div>
             ) : (
@@ -341,7 +347,9 @@ const Bacenta = () => {
                             <div key={meeting.id} className={styles.meetingCard}>
                                 <div className={styles.meetingHeader}>
                                     <div>
-                                        <h3 className={styles.meetingTitle}>{meeting.title}</h3>
+                                        <h3 className={styles.meetingTitle}>
+                                            <span key={`meeting-title-${meeting.id}`}>{meeting.title}</span>
+                                        </h3>
                                         <span className={styles.meetingType}>
                                             {meeting.type === 'weekly' ? 'Hebdomadaire' :
                                                 meeting.type === 'midweek' ? 'Mi-semaine' : 'Spéciale'}

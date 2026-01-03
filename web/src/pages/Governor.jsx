@@ -38,7 +38,8 @@ import {
     Save,
     AlertCircle,
     Camera,
-    Library
+    Library,
+    Loader2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -401,6 +402,8 @@ const Governor = () => {
     const handleSaveArea = async (e) => {
         e.preventDefault();
         try {
+            setModalLoading(true);
+            setModalError('');
             if (editingItem) {
                 await areaAPI.updateArea(editingItem.id, areaForm);
             } else {
@@ -410,6 +413,9 @@ const Governor = () => {
             fetchData();
         } catch (error) {
             console.error('Error saving area:', error);
+            setModalError(error.response?.data?.error || 'Erreur lors de l\'enregistrement de la zone');
+        } finally {
+            setModalLoading(false);
         }
     };
 
@@ -612,6 +618,7 @@ const Governor = () => {
     };
 
     const openAreaModal = (area = null) => {
+        setModalError('');
         if (area) {
             setEditingItem(area);
             setAreaForm({
@@ -730,7 +737,9 @@ const Governor = () => {
     const renderMinistries = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Gestion des Ministères</h2>
+                <h2 className={styles.sectionTitle}>
+                    <span key="ministry-title">Gestion des Ministères</span>
+                </h2>
                 <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
                     <Plus size={20} /> Nouveau Ministère
                 </button>
@@ -1182,6 +1191,7 @@ const Governor = () => {
                         <tr>
                             <th className={styles.th}>Nom de la Zone</th>
                             <th className={styles.th}>Numéro</th>
+                            <th className={styles.th}>Responsable</th>
                             <th className={styles.th}>Leaders Assignés</th>
                             <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
@@ -1195,6 +1205,11 @@ const Governor = () => {
                                 <td className={styles.td}>
                                     <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>
                                         N° {area.number}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>
+                                    <span style={{ color: '#94a3b8' }}>
+                                        {area.leader_user ? `${area.leader_user.first_name} ${area.leader_user.last_name}` : 'Non assigné'}
                                     </span>
                                 </td>
                                 <td className={styles.td}>
@@ -2020,13 +2035,18 @@ const Governor = () => {
     };
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
-                <h1 className={styles.title}>Espace Gouverneur</h1>
+                <h1 className={styles.title}>
+                    <span key="gov-title">Espace Gouverneur</span>
+                </h1>
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>Chargement des données...</div>
+                <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
+                    <Loader2 className="animate-spin" size={40} style={{ margin: '0 auto 1rem', display: 'block' }} />
+                    <span key="loading-text">Chargement des données administratives...</span>
+                </div>
             ) : (
                 <>
                     {selectedLeader ? (
@@ -2261,59 +2281,69 @@ const Governor = () => {
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
                             <h2 className={styles.modalTitle}>{editingItem ? 'Modifier Zone' : 'Nouvelle Zone'}</h2>
-                            <button className={styles.closeBtn} onClick={() => setShowAreaModal(false)}><X size={20} /></button>
+                            <button className={styles.closeBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}><X size={20} /></button>
                         </div>
                         <form onSubmit={handleSaveArea}>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Nom de la Zone</label>
-                                <input
-                                    className={styles.input}
-                                    value={areaForm.name}
-                                    onChange={e => setAreaForm({ ...areaForm, name: e.target.value })}
-                                    placeholder="Ex: Zone Nord"
-                                    required
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Numéro de Zone</label>
-                                <input
-                                    type="number"
-                                    className={styles.input}
-                                    value={areaForm.number}
-                                    onChange={e => setAreaForm({ ...areaForm, number: e.target.value })}
-                                    placeholder="Ex: 1"
-                                    required
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Région</label>
-                                <select
-                                    className={styles.input}
-                                    value={areaForm.region_id}
-                                    onChange={e => setAreaForm({ ...areaForm, region_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner une région</option>
-                                    {regions.map(region => (
-                                        <option key={region.id} value={region.id}>{region.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Responsable de Zone (Area Leader)</label>
-                                <select
-                                    className={styles.input}
-                                    value={areaForm.leader_id}
-                                    onChange={e => setAreaForm({ ...areaForm, leader_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner un responsable</option>
-                                    {leaders.map(leader => (
-                                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                                    ))}
-                                </select>
+                            {modalError && (
+                                <div className={styles.errorBanner} style={{ margin: '1rem' }}>
+                                    <AlertCircle size={20} />
+                                    <span>{modalError}</span>
+                                </div>
+                            )}
+                            <div className={styles.modalBody} style={{ padding: '0 1.5rem 1.5rem' }}>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Nom de la Zone</label>
+                                    <input
+                                        className={styles.input}
+                                        value={areaForm.name}
+                                        onChange={e => setAreaForm({ ...areaForm, name: e.target.value })}
+                                        placeholder="Ex: Zone Nord"
+                                        required
+                                    />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Numéro de Zone</label>
+                                    <input
+                                        type="number"
+                                        className={styles.input}
+                                        value={areaForm.number}
+                                        onChange={e => setAreaForm({ ...areaForm, number: e.target.value })}
+                                        placeholder="Ex: 1"
+                                        required
+                                    />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Région</label>
+                                    <select
+                                        className={styles.input}
+                                        value={areaForm.region_id}
+                                        onChange={e => setAreaForm({ ...areaForm, region_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner une région</option>
+                                        {regions.map(region => (
+                                            <option key={region.id} value={region.id}>{region.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Responsable de Zone (Area Leader)</label>
+                                    <select
+                                        className={styles.input}
+                                        value={areaForm.leader_id}
+                                        onChange={e => setAreaForm({ ...areaForm, leader_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner un responsable</option>
+                                        {leaders.map(leader => (
+                                            <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                             <div className={styles.modalActions}>
-                                <button type="button" className={styles.cancelBtn} onClick={() => setShowAreaModal(false)}>Annuler</button>
-                                <button type="submit" className={styles.submitBtn}>Enregistrer</button>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowAreaModal(false)} disabled={modalLoading}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -2375,81 +2405,84 @@ const Governor = () => {
                         </form>
                     </div>
                 </div>
-            )}
+            )
+            }
 
-            {showMinistryAttendanceModal && (
-                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
-                    <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-                        <div className={styles.modalHeader}>
-                            <div>
-                                <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
-                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
+            {
+                showMinistryAttendanceModal && (
+                    <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
+                        <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+                            <div className={styles.modalHeader}>
+                                <div>
+                                    <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
+                                </div>
+                                <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
+                                    <X size={24} />
+                                </button>
                             </div>
-                            <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
-                                <X size={24} />
-                            </button>
-                        </div>
 
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Date de réunion</label>
-                            <input
-                                type="date"
-                                className={styles.input}
-                                value={ministryAttendanceDate}
-                                onChange={e => setMinistryAttendanceDate(e.target.value)}
-                            />
-                        </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Date de réunion</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    value={ministryAttendanceDate}
+                                    onChange={e => setMinistryAttendanceDate(e.target.value)}
+                                />
+                            </div>
 
-                        <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            {ministryAttendanceMembers.length > 0 ? (
-                                ministryAttendanceMembers.map(m => (
-                                    <div key={m.member_id} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '1rem',
-                                        borderBottom: '1px solid rgba(255,255,255,0.02)',
-                                        cursor: 'pointer'
-                                    }} onClick={() => handleToggleAttendance(m.member_id)}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                            <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                {ministryAttendanceMembers.length > 0 ? (
+                                    ministryAttendanceMembers.map(m => (
+                                        <div key={m.member_id} style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '1rem',
+                                            borderBottom: '1px solid rgba(255,255,255,0.02)',
+                                            cursor: 'pointer'
+                                        }} onClick={() => handleToggleAttendance(m.member_id)}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                <div style={{
+                                                    width: '36px', height: '36px', borderRadius: '50%',
+                                                    background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
+                                                    color: m.present ? '#10b981' : '#64748b',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    transition: 'all 0.2s'
+                                                }}>
+                                                    <User size={18} />
+                                                </div>
+                                                <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
+                                                    {m.name}
+                                                </span>
+                                            </div>
                                             <div style={{
-                                                width: '36px', height: '36px', borderRadius: '50%',
-                                                background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
-                                                color: m.present ? '#10b981' : '#64748b',
+                                                width: '24px', height: '24px', borderRadius: '6px',
+                                                border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
+                                                background: m.present ? '#DC2626' : 'transparent',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 transition: 'all 0.2s'
                                             }}>
-                                                <User size={18} />
+                                                {m.present && <CheckCircle size={14} color="white" />}
                                             </div>
-                                            <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
-                                                {m.name}
-                                            </span>
                                         </div>
-                                        <div style={{
-                                            width: '24px', height: '24px', borderRadius: '6px',
-                                            border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
-                                            background: m.present ? '#DC2626' : 'transparent',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transition: 'all 0.2s'
-                                        }}>
-                                            {m.present && <CheckCircle size={14} color="white" />}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
-                            )}
-                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
+                                )}
+                            </div>
 
-                        <div className={styles.modalActions}>
-                            <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
-                            <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
-                                {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
+                            <div className={styles.modalActions}>
+                                <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
+                                <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <ContactModal
                 isOpen={isContactModalOpen}
@@ -2464,7 +2497,7 @@ const Governor = () => {
                 onClose={() => setIsDetailsModalOpen(false)}
                 meeting={selectedMeeting}
             />
-        </div>
+        </div >
     );
 };
 

@@ -21,7 +21,8 @@ const areaController = {
       const areas = await Area.findAndCountAll({
         where: whereClause,
         include: [
-          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] }
+          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] },
+          { model: User, as: 'leader_user', attributes: ['id', 'first_name', 'last_name', 'email'] }
         ],
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -47,7 +48,8 @@ const areaController = {
 
       const area = await Area.findByPk(areaId, {
         include: [
-          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] }
+          { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] },
+          { model: User, as: 'leader_user', attributes: ['id', 'first_name', 'last_name', 'email'] }
         ]
       });
 
@@ -71,6 +73,11 @@ const areaController = {
         return res.status(400).json({ error: 'Le nom et le numéro sont obligatoires' });
       }
 
+      // Sanitization
+      const finalRegionId = region_id === "" ? null : region_id;
+      const finalLeaderId = leader_id === "" ? null : leader_id;
+      const finalOverseerId = overseer_id === "" ? null : overseer_id;
+
       // Vérifier que le numéro est unique
       const existingArea = await Area.findOne({ where: { number } });
       if (existingArea) {
@@ -80,9 +87,9 @@ const areaController = {
       const area = await Area.create({
         name,
         number,
-        overseer_id,
-        leader_id,
-        region_id,
+        overseer_id: finalOverseerId,
+        leader_id: finalLeaderId,
+        region_id: finalRegionId,
         description
       });
 
@@ -121,7 +128,13 @@ const areaController = {
         }
       }
 
-      await area.update(updateData);
+      // Sanitization for updates
+      const finalUpdateData = { ...updateData };
+      if (finalUpdateData.region_id === "") finalUpdateData.region_id = null;
+      if (finalUpdateData.leader_id === "") finalUpdateData.leader_id = null;
+      if (finalUpdateData.overseer_id === "") finalUpdateData.overseer_id = null;
+
+      await area.update(finalUpdateData);
 
       const updatedArea = await Area.findByPk(areaId, {
         include: [

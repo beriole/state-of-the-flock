@@ -11,7 +11,8 @@ import {
     Plus,
     Calendar,
     TrendingUp,
-    Bell
+    Bell,
+    Loader2
 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
@@ -81,21 +82,23 @@ const Dashboard = () => {
 
     if (loading) {
         return (
-            <div className={styles.loading}>
-                <div className={styles.spinner}></div>
-                <p>Chargement de votre ministère...</p>
+            <div className={`${styles.loading} notranslate`} translate="no">
+                <Loader2 className="animate-spin" size={40} style={{ marginBottom: '1rem', color: '#DC2626' }} />
+                <p key="loading-msg">Chargement de votre ministère...</p>
             </div>
         );
     }
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             {/* Hero Section */}
             <div className={styles.hero}>
                 <div className={styles.heroContent}>
-                    <h2 className={styles.welcomeTitle}>Bonjour, {user?.first_name} 👋</h2>
+                    <h2 className={styles.welcomeTitle}>
+                        <span key="welcome">Bonjour, {user?.first_name} 👋</span>
+                    </h2>
                     <p className={styles.welcomeSubtitle}>
-                        Gérez votre ministère avec excellence. Voici le point sur votre Bacenta.
+                        <span key="subtitle">Gérez votre ministère avec excellence. Voici le point sur votre Bacenta.</span>
                     </p>
                 </div>
                 <div className={styles.heroChart}>
@@ -142,8 +145,12 @@ const Dashboard = () => {
                             </span>
                         </div>
                         <div className={styles.statInfo}>
-                            <div className={styles.statValue}>{stat.value}</div>
-                            <div className={styles.statLabel}>{stat.label}</div>
+                            <div className={styles.statValue} key={`stat-val-${index}`}>
+                                <span key={`val-${index}`}>{stat.value}</span>
+                            </div>
+                            <div className={styles.statLabel} key={`stat-lbl-${index}`}>
+                                <span key={`lbl-${index}`}>{stat.label}</span>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -173,10 +180,10 @@ const Dashboard = () => {
                                         )}
                                     </div>
                                     <div className={styles.memberInfo}>
-                                        <span className={styles.memberName}>
+                                        <span className={styles.memberName} key={`name-${member.id}`}>
                                             {member.first_name} {member.last_name}
                                         </span>
-                                        <span className={styles.memberMeta}>
+                                        <span className={styles.memberMeta} key={`meta-${member.id}`}>
                                             {member.phone_primary || 'Pas de numéro'} • {new Date(member.created_at).toLocaleDateString()}
                                         </span>
                                     </div>

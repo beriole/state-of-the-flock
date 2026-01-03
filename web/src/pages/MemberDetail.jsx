@@ -149,12 +149,14 @@ const MemberDetail = () => {
     if (!member) return <div className={styles.error}>Membre introuvable</div>;
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <header className={styles.header}>
                 <button className={styles.backBtn} onClick={() => navigate('/members')}>
                     <ArrowLeft size={18} />
                 </button>
-                <h1 className={styles.title}>Fiche Membre</h1>
+                <h1 className={styles.title}>
+                    <span key="title">Fiche Membre</span>
+                </h1>
             </header>
 
             <div className={styles.mainGrid}>
@@ -184,7 +186,9 @@ const MemberDetail = () => {
                             accept="image/*"
                         />
 
-                        <h2 className={styles.memberName}>{member.first_name} {member.last_name}</h2>
+                        <h2 className={styles.memberName}>
+                            <span key="member-name">{member.first_name} {member.last_name}</span>
+                        </h2>
                         <div className={styles.badge}>{member.state || 'Membre'}</div>
 
                         <div className={styles.actions}>
@@ -211,8 +215,8 @@ const MemberDetail = () => {
                         <div className={`${styles.card} ${styles.statItem}`}>
                             <div className={styles.statIcon} style={{ color: '#60a5fa' }}><Phone size={18} /></div>
                             <div>
-                                <span className={styles.statValue}>{stats.totalCalls}</span>
-                                <span className={styles.statLabel}>Appels</span>
+                                <span className={styles.statValue} key={`stat-total-${stats.totalCalls}`}>{stats.totalCalls}</span>
+                                <span className={styles.statLabel} key="lbl-calls">Appels</span>
                             </div>
                         </div>
                         <div className={`${styles.card} ${styles.statItem}`}>

@@ -10,7 +10,8 @@ import {
     Search,
     Filter,
     Plus,
-    X
+    X,
+    Loader2
 } from 'lucide-react';
 import styles from './CallCenter.module.css';
 
@@ -92,7 +93,7 @@ const CallCenter = () => {
     const stats = getStats();
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
                 <h1 className={styles.title}>Centre d'Appels</h1>
                 <div className={styles.actions}>
@@ -107,8 +108,8 @@ const CallCenter = () => {
                         <Phone size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.todayCalls}</span>
-                        <span className={styles.statLabel}>Appels aujourd'hui</span>
+                        <span className={styles.statValue} key={`today-${stats.todayCalls}`}>{stats.todayCalls}</span>
+                        <span className={styles.statLabel} key="lbl-today">Appels aujourd'hui</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -116,8 +117,8 @@ const CallCenter = () => {
                         <CheckCircle size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.reached}</span>
-                        <span className={styles.statLabel}>Joignables</span>
+                        <span className={styles.statValue} key={`reached-${stats.reached}`}>{stats.reached}</span>
+                        <span className={styles.statLabel} key="lbl-reached">Joignables</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -125,8 +126,8 @@ const CallCenter = () => {
                         <Clock size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.totalCalls}</span>
-                        <span className={styles.statLabel}>Total Appels</span>
+                        <span className={styles.statValue} key={`total-${stats.totalCalls}`}>{stats.totalCalls}</span>
+                        <span className={styles.statLabel} key="lbl-total">Total Appels</span>
                     </div>
                 </div>
             </div>
@@ -138,7 +139,10 @@ const CallCenter = () => {
                         <User size={20} /> Membres à contacter
                     </h2>
                     {loading ? (
-                        <div className={styles.loading}>Chargement...</div>
+                        <div className={styles.loading}>
+                            <Loader2 className="animate-spin" size={24} />
+                            <span key="loading-text" style={{ marginLeft: '10px' }}>Chargement...</span>
+                        </div>
                     ) : (
                         <div className={styles.callList}>
                             {(Array.isArray(members) ? members : []).slice(0, 10).map(member => (
@@ -148,8 +152,8 @@ const CallCenter = () => {
                                             {member.first_name?.charAt(0)}
                                         </div>
                                         <div className={styles.info}>
-                                            <span className={styles.name}>{member.first_name} {member.last_name}</span>
-                                            <span className={styles.details}>
+                                            <span className={styles.name} key={`name-${member.id}`}>{member.first_name} {member.last_name}</span>
+                                            <span className={styles.details} key={`details-${member.id}`}>
                                                 <Phone size={14} /> {member.phone_primary || member.phone}
                                             </span>
                                         </div>
@@ -184,10 +188,10 @@ const CallCenter = () => {
                         {(Array.isArray(callLogs) ? callLogs : []).slice(0, 10).map(log => (
                             <div key={log.id} className={`${styles.historyItem} ${styles[log.contact_method?.toLowerCase()]}`}>
                                 <div className={styles.historyHeader}>
-                                    <span style={{ fontWeight: 600, color: 'white' }}>
+                                    <span style={{ fontWeight: 600, color: 'white' }} key={`log-name-${log.id}`}>
                                         {log.member?.first_name || 'Membre'}
                                     </span>
-                                    <span>{new Date(log.call_date).toLocaleDateString()}</span>
+                                    <span key={`log-date-${log.id}`}>{new Date(log.call_date).toLocaleDateString()}</span>
                                 </div>
                                 <div className={styles.historyContent}>
                                     {log.notes}

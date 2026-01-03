@@ -10,8 +10,10 @@ import {
     ChevronLeft,
     ChevronRight,
     History,
-    Search
+    Search,
+    Loader2
 } from 'lucide-react';
+import styles from './Attendance.module.css';
 
 const Attendance = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -30,7 +32,9 @@ const Attendance = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            const dateKey = selectedDate instanceof Date && !isNaN(selectedDate)
+                ? selectedDate.toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
 
             const [membersRes, attendanceRes, historyRes] = await Promise.all([
                 memberAPI.getMembers().catch(e => ({ data: { members: [] } })),
@@ -72,7 +76,9 @@ const Attendance = () => {
 
     const toggleAttendance = async (memberId) => {
         try {
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            const dateKey = selectedDate instanceof Date && !isNaN(selectedDate)
+                ? selectedDate.toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
             const currentStatus = attendance[memberId];
             let newStatus;
 
@@ -104,7 +110,9 @@ const Attendance = () => {
     const markAll = async (status) => {
         try {
             setSaving(true);
-            const dateKey = selectedDate.toISOString().split('T')[0];
+            const dateKey = selectedDate instanceof Date && !isNaN(selectedDate)
+                ? selectedDate.toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
             const attendanceData = filteredMembers.map(m => ({
                 member_id: m.id,
                 present: status === 'present',
@@ -169,7 +177,7 @@ const Attendance = () => {
             subtitle: dateStr.charAt(0).toUpperCase() + dateStr.slice(1),
             columns,
             rows,
-            fileName: `Presence_${selectedDate.toISOString().split('T')[0]}`,
+            fileName: `Presence_${selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate.toISOString().split('T')[0] : 'export'}`,
             stats: [
                 { label: "Présents", value: statsData.present, color: [34, 197, 94] },
                 { label: "Absents", value: statsData.absent, color: [239, 68, 68] },
@@ -181,9 +189,11 @@ const Attendance = () => {
     const stats = getStats();
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
-                <h1 className={styles.title}>Suivi des Présences</h1>
+                <h1 className={styles.title}>
+                    <span key="title">Suivi des Présences</span>
+                </h1>
                 <div className={styles.controls}>
                     <div className={styles.dateControl}>
                         <button className={styles.dateBtn} onClick={() => handleDateChange(-7)}>
@@ -192,16 +202,19 @@ const Attendance = () => {
                         <input
                             type="date"
                             className={styles.dateInput}
-                            value={selectedDate.toISOString().split('T')[0]}
-                            onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                            value={selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate.toISOString().split('T')[0] : ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedDate(val ? new Date(val) : new Date());
+                            }}
                         />
                         <button className={styles.dateBtn} onClick={() => handleDateChange(7)}>
                             <ChevronRight size={20} />
                         </button>
                     </div>
                     <button className={styles.pdfBtn} onClick={generatePDF}>
-                        <Download size={20} />
-                        <span>PDF</span>
+                        <span key="pdf-icon"><Download size={20} /></span>
+                        <span key="pdf-text">PDF</span>
                     </button>
                 </div>
             </div>
@@ -212,8 +225,8 @@ const Attendance = () => {
                         <CheckCircle size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.present}</span>
-                        <span className={styles.statLabel}>Présents</span>
+                        <span className={styles.statValue} key={`present-${stats.present}`}>{stats.present}</span>
+                        <span className={styles.statLabel} key="lbl-present">Présents</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -221,8 +234,8 @@ const Attendance = () => {
                         <X size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.absent}</span>
-                        <span className={styles.statLabel}>Absents</span>
+                        <span className={styles.statValue} key={`absent-${stats.absent}`}>{stats.absent}</span>
+                        <span className={styles.statLabel} key="lbl-absent">Absents</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
@@ -230,8 +243,8 @@ const Attendance = () => {
                         <Users size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.total}</span>
-                        <span className={styles.statLabel}>Total Membres</span>
+                        <span className={styles.statValue} key={`total-${stats.total}`}>{stats.total}</span>
+                        <span className={styles.statLabel} key="lbl-total">Total Membres</span>
                     </div>
                 </div>
             </div>
@@ -253,7 +266,7 @@ const Attendance = () => {
                             className={`${styles.groupFilter} ${selectedGroup === group ? styles.active : ''}`}
                             onClick={() => setSelectedGroup(group)}
                         >
-                            {group}
+                            <span key={`grp-${group}`}>{group}</span>
                         </button>
                     ))}
                 </div>
@@ -265,24 +278,30 @@ const Attendance = () => {
                     onClick={() => markAll('present')}
                     disabled={saving}
                 >
-                    <CheckCircle size={18} /> Tout marquer présent
+                    <span key="icon-all-present"><CheckCircle size={18} /></span>
+                    <span key="lbl-all-present"> Tout marquer présent</span>
                 </button>
                 <button
                     className={styles.quickActionBtn}
                     onClick={() => markAll('absent')}
                     disabled={saving}
                 >
-                    <X size={18} /> Tout marquer absent
+                    <span key="icon-all-absent"><X size={18} /></span>
+                    <span key="lbl-all-absent"> Tout marquer absent</span>
                 </button>
             </div>
 
             <div className={styles.contentGrid}>
                 <div className={styles.mainSection}>
                     <h2 className={styles.sectionTitle}>
-                        <Users size={20} /> Liste des membres ({filteredMembers.length})
+                        <span key="icon-members"><Users size={20} /></span>
+                        <span key="lbl-members"> Liste des membres ({filteredMembers.length})</span>
                     </h2>
                     {loading ? (
-                        <div className={styles.loading}>Chargement...</div>
+                        <div className={styles.loading}>
+                            <Loader2 className="animate-spin" size={24} />
+                            <span key="loading-text" style={{ marginLeft: '10px' }}>Chargement...</span>
+                        </div>
                     ) : (
                         <div className={styles.attendanceList}>
                             {filteredMembers.map(member => (
@@ -292,10 +311,10 @@ const Attendance = () => {
                                             {member.first_name?.charAt(0)}
                                         </div>
                                         <div className={styles.memberDetails}>
-                                            <span className={styles.name}>
+                                            <span className={styles.name} key={`name-${member.id}`}>
                                                 {member.first_name} {member.last_name}
                                             </span>
-                                            <span className={styles.area}>{member.area?.name || 'Non assigné'}</span>
+                                            <span className={styles.area} key={`area-${member.id}`}>{member.area?.name || 'Non assigné'}</span>
                                         </div>
                                     </div>
                                     <div className={styles.attendanceStatus}>
@@ -314,12 +333,15 @@ const Attendance = () => {
 
                 <div className={styles.historySection}>
                     <h2 className={styles.sectionTitle}>
-                        <History size={20} /> Historique (30 jours)
+                        <span key="icon-history"><History size={20} /></span>
+                        <span key="lbl-history"> Historique (30 jours)</span>
                     </h2>
                     <div className={styles.historyList}>
                         {/* Mock history if API empty */}
                         {history.length === 0 && !loading && (
-                            <div className={styles.empty}>Aucun historique récent</div>
+                            <div className={styles.empty}>
+                                <span key="empty-history">Aucun historique récent</span>
+                            </div>
                         )}
                         {history.map((item, index) => (
                             <div key={index} className={styles.historyItem}>
