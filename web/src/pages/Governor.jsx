@@ -1399,7 +1399,7 @@ const Governor = () => {
                     return (
                         <div style={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem', backdropFilter: 'blur(8px)' }}>
                             <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                                {new Date(label).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                {new Date(label).toLocaleDateString("fr-FR", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {payload.map((entry, index) => (
@@ -1521,7 +1521,7 @@ const Governor = () => {
                                     tick={{ fill: '#64748b', fontSize: 12 }}
                                     tickLine={false}
                                     axisLine={false}
-                                    tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                    tickFormatter={(str) => new Date(str).toLocaleDateString("fr-FR", { day: 'numeric', month: 'short' })}
                                 />
                                 <YAxis
                                     stroke="#64748b"
