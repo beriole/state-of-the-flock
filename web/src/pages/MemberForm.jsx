@@ -97,18 +97,24 @@ const MemberForm = () => {
     }
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
                 <button className={styles.backButton} onClick={() => navigate('/members')}>
                     <span key="back-icon"><ArrowLeft size={24} /></span>
                 </button>
                 <h1 className={styles.title}>
-                    {isEditMode ? 'Modifier le membre' : 'Ajouter un membre'}
+                    <span key={isEditMode ? 'edit-title' : 'new-title'}>
+                        {isEditMode ? 'Modifier le membre' : 'Ajouter un membre'}
+                    </span>
                 </h1>
             </div>
 
             <div className={styles.formCard}>
-                {error && <div className={styles.error} style={{ marginBottom: '1rem' }}>{error}</div>}
+                {error && (
+                    <div className={styles.error} style={{ marginBottom: '1rem' }}>
+                        <span key="error-msg">{error}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGrid}>
@@ -212,7 +218,9 @@ const MemberForm = () => {
                             <span className={styles.iconWrapper} key={loading ? 'loader' : 'save'}>
                                 {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             </span>
-                            {isEditMode ? 'Mettre à jour' : 'Enregistrer'}
+                            <span key={isEditMode ? 'text-update' : 'text-save'}>
+                                {isEditMode ? 'Mettre à jour' : 'Enregistrer'}
+                            </span>
                         </button>
                     </div>
                 </form>

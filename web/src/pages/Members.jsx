@@ -82,17 +82,19 @@ const Members = () => {
     });
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} notranslate`} translate="no">
             <div className={styles.header}>
-                <h1 className={styles.title}>Gestion des Membres</h1>
+                <h1 className={styles.title}>
+                    <span key="title-text">Gestion des Membres</span>
+                </h1>
                 <div className={styles.headerActions}>
                     <button className={styles.exportButton} onClick={handleExportPDF}>
                         <Download size={18} />
-                        Exporter PDF
+                        <span key="export-text">Exporter PDF</span>
                     </button>
                     <button className={styles.addButton} onClick={() => navigate('/members/new')}>
                         <Plus size={18} />
-                        Ajouter un membre
+                        <span key="add-text">Ajouter un membre</span>
                     </button>
                 </div>
             </div>
@@ -153,10 +155,10 @@ const Members = () => {
                                             </div>
                                             <div>
                                                 <div className={styles.memberName}>
-                                                    {member.first_name} {member.last_name}
+                                                    <span key={`name-${member.id}`}>{member.first_name} {member.last_name}</span>
                                                 </div>
                                                 <div className={styles.memberEmail}>
-                                                    {member.email}
+                                                    <span key={`email-${member.id}`}>{member.email}</span>
                                                 </div>
                                             </div>
                                         </div>
