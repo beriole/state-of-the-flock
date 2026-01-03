@@ -52,10 +52,20 @@ const MemberForm = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+
+        if (name === 'ministry_id') {
+            const selectedMinistry = ministries.find(m => m.id === value);
+            setFormData(prev => ({
+                ...prev,
+                ministry_id: value,
+                ministry: selectedMinistry ? selectedMinistry.name : null
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -66,6 +76,8 @@ const MemberForm = () => {
         try {
             const dataToSend = {
                 ...formData,
+                // Sanitize ministry_id: empty string to null to allow database to clear the field
+                ministry_id: formData.ministry_id === '' ? null : formData.ministry_id,
                 // Valeurs par défaut pour la création si non définies
                 state: formData.state || 'Sheep',
                 is_active: formData.is_active !== undefined ? formData.is_active : true,

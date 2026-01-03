@@ -145,7 +145,11 @@ const memberController = {
         }
       }
 
-      if (!finalAreaId) {
+      // Sanitisation des chaînes vides
+      const sanitizedMinistryId = ministry_id === '' ? null : ministry_id;
+      const sanitizedAreaId = finalAreaId === '' ? null : finalAreaId;
+
+      if (!sanitizedAreaId) {
         return res.status(400).json({ error: 'Zone non définie. Le leader doit avoir une zone assignée.' });
       }
 
@@ -157,10 +161,10 @@ const memberController = {
         gender,
         is_registered: is_registered || false,
         state: state || 'Sheep',
-        area_id: finalAreaId,
+        area_id: sanitizedAreaId,
         leader_id,
         ministry,
-        ministry_id,
+        ministry_id: sanitizedMinistryId,
         profession,
         notes,
         is_active: true
@@ -196,6 +200,11 @@ const memberController = {
         console.warn(`[FORBIDDEN] Leader ${req.user.userId} tried to update member ${member.id} belonging to leader ${member.leader_id}`);
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
+
+      // Sanitisation des chaînes vides envoyées comme IDs (clés étrangères)
+      if (updateData.ministry_id === '') updateData.ministry_id = null;
+      if (updateData.area_id === '') updateData.area_id = null;
+      if (updateData.leader_id === '') updateData.leader_id = null;
 
       await member.update(updateData);
 
