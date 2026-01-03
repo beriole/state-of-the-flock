@@ -168,6 +168,7 @@ export const ministryAPI = {
     getAttendanceStats: (id, date) => api.get(`/ministries/${id}/attendance/stats`, { params: { date } }),
     getAttendanceOverview: (date) => api.get('/ministries/overview', { params: { date } }),
     saveHeadcounts: (data) => api.post('/ministries/headcounts', data),
+    getMinistryEvolution: (id, startDate, endDate) => api.get(`/ministries/${id}/evolution?start_date=${startDate}&end_date=${endDate}`)
 };
 
 // Fonctions API pour les Régions
