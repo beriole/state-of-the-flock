@@ -109,7 +109,7 @@ const MemberForm = () => {
     }
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             <div className={styles.header}>
                 <button className={styles.backButton} onClick={() => navigate('/members')}>
                     <span key="back-icon"><ArrowLeft size={24} /></span>

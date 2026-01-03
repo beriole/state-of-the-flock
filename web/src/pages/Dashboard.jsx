@@ -82,7 +82,7 @@ const Dashboard = () => {
 
     if (loading) {
         return (
-            <div className={`${styles.loading} notranslate`} translate="no">
+            <div className={styles.loading}>
                 <Loader2 className="animate-spin" size={40} style={{ marginBottom: '1rem', color: '#DC2626' }} />
                 <p key="loading-msg">Chargement de votre ministère...</p>
             </div>
@@ -90,7 +90,7 @@ const Dashboard = () => {
     }
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             {/* Hero Section */}
             <div className={styles.hero}>
                 <div className={styles.heroContent}>

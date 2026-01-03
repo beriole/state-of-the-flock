@@ -189,7 +189,7 @@ const Attendance = () => {
     const stats = getStats();
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}>
                     <span key="title">Suivi des Présences</span>

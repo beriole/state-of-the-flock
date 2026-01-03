@@ -93,7 +93,7 @@ const CallCenter = () => {
     const stats = getStats();
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}>Centre d'Appels</h1>
                 <div className={styles.actions}>

@@ -6,7 +6,7 @@ import styles from './Home.module.css';
 
 const Home = () => {
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             {/* Navbar */}
             <nav className={styles.navbar}>
                 <div className={styles.logoContainer}>

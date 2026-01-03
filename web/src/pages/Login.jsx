@@ -47,7 +47,7 @@ const Login = () => {
     };
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             {/* Background Elements */}
             <div className={styles.bgCircle1}></div>
             <div className={styles.bgCircle2}></div>

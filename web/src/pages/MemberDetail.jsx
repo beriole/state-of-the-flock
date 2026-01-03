@@ -149,7 +149,7 @@ const MemberDetail = () => {
     if (!member) return <div className={styles.error}>Membre introuvable</div>;
 
     return (
-        <div className={`${styles.container} notranslate`} translate="no">
+        <div className={styles.container}>
             <header className={styles.header}>
                 <button className={styles.backBtn} onClick={() => navigate('/members')}>
                     <ArrowLeft size={18} />
