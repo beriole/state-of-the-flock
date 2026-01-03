@@ -1671,68 +1671,145 @@ const Governor = () => {
         );
     };
 
-    const renderZones = () => (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Gestion des Zones</h2>
-                <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
-                    <Plus size={20} /> Nouvelle Zone
-                </button>
-            </div>
+    const renderZones = () => {
+        // Group areas by region
+        const zonesByRegion = regions.map(region => ({
+            ...region,
+            zones: areas.filter(a => a.region_id === region.id)
+        }));
 
-            <div className={styles.tableContainer}>
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>Nom de la Zone</th>
-                            <th className={styles.th}>Numéro</th>
-                            <th className={styles.th}>Responsable</th>
-                            <th className={styles.th}>Leaders Assignés</th>
-                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {areas.map(area => (
-                            <tr key={area.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <span className={styles.userName}>{area.name}</span>
-                                </td>
-                                <td className={styles.td}>
-                                    <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: 'white' }}>
-                                        N° {area.number}
-                                    </span>
-                                </td>
-                                <td className={styles.td}>
-                                    <span style={{ color: '#94a3b8' }}>
-                                        {(() => {
-                                            const lu = area.leader_user || area.leaderUser;
-                                            if (lu) return `${lu.first_name} ${lu.last_name}`;
-                                            const l = leaders.find(ld => ld.id === area.leader_id);
-                                            if (l) return `${l.first_name} ${l.last_name}`;
-                                            return 'Non assigné';
-                                        })()}
-                                    </span>
-                                </td>
-                                <td className={styles.td}>
-                                    {leaders.filter(l => l.area_id === area.id).length} Leaders
-                                </td>
-                                <td className={styles.td}>
-                                    <div className={styles.actions}>
-                                        <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        const unassignedZones = areas.filter(a => !a.region_id);
+
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>Gestion des Zones</h2>
+                    <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
+                        <Plus size={20} /> Nouvelle Zone
+                    </button>
+                </div>
+
+                {zonesByRegion.map(region => (
+                    <div key={region.id} style={{ marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                            <MapPin size={18} style={{ color: '#3b82f6' }} />
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white' }}>{region.name}</h3>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({region.zones.length} zones)</span>
+                        </div>
+
+                        <div className={styles.tableContainer} style={{ background: 'transparent', padding: 0, border: 'none', boxShadow: 'none' }}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Nom de la Zone</th>
+                                        <th className={styles.th}>Responsable</th>
+                                        <th className={styles.th}>Leaders Assignés</th>
+                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {region.zones.length > 0 ? (
+                                        region.zones.map(area => (
+                                            <tr key={area.id} className={styles.tr}>
+                                                <td className={styles.td}>
+                                                    <span className={styles.userName}>{area.name}</span>
+                                                </td>
+                                                <td className={styles.td}>
+                                                    <span style={{ color: '#94a3b8' }}>
+                                                        {(() => {
+                                                            const lu = area.leader_user || area.leaderUser;
+                                                            if (lu) return `${lu.first_name} ${lu.last_name}`;
+                                                            const l = leaders.find(ld => ld.id === area.leader_id);
+                                                            if (l) return `${l.first_name} ${l.last_name}`;
+                                                            return 'Non assigné';
+                                                        })()}
+                                                    </span>
+                                                </td>
+                                                <td className={styles.td}>
+                                                    {leaders.filter(l => l.area_id === area.id).length} Leaders
+                                                </td>
+                                                <td className={styles.td}>
+                                                    <div className={styles.actions}>
+                                                        <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
+                                                            <Pencil size={18} />
+                                                        </button>
+                                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className={styles.td} style={{ textAlign: 'center', color: '#64748b', fontStyle: 'italic', padding: '1.5rem' }}>
+                                                Aucune zone dans cette région
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ))}
+
+                {unassignedZones.length > 0 && (
+                    <div style={{ marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                            <MapPin size={18} style={{ color: '#94a3b8' }} />
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white' }}>Zones sans région</h3>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({unassignedZones.length} zones)</span>
+                        </div>
+                        <div className={styles.tableContainer} style={{ background: 'transparent', padding: 0, border: 'none', boxShadow: 'none' }}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Nom de la Zone</th>
+                                        <th className={styles.th}>Responsable</th>
+                                        <th className={styles.th}>Leaders Assignés</th>
+                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {unassignedZones.map(area => (
+                                        <tr key={area.id} className={styles.tr}>
+                                            <td className={styles.td}>
+                                                <span className={styles.userName}>{area.name}</span>
+                                            </td>
+                                            <td className={styles.td}>
+                                                <span style={{ color: '#94a3b8' }}>
+                                                    {(() => {
+                                                        const lu = area.leader_user || area.leaderUser;
+                                                        if (lu) return `${lu.first_name} ${lu.last_name}`;
+                                                        const l = leaders.find(ld => ld.id === area.leader_id);
+                                                        if (l) return `${l.first_name} ${l.last_name}`;
+                                                        return 'Non assigné';
+                                                    })()}
+                                                </span>
+                                            </td>
+                                            <td className={styles.td}>
+                                                {leaders.filter(l => l.area_id === area.id).length} Leaders
+                                            </td>
+                                            <td className={styles.td}>
+                                                <div className={styles.actions}>
+                                                    <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderMembers = () => (
         <div className={styles.section}>
@@ -2726,7 +2803,7 @@ const Governor = () => {
                                             >
                                                 <option value="">Sélectionner une zone</option>
                                                 {areas.map(area => (
-                                                    <option key={area.id} value={area.id}>{area.name} (N°{area.number})</option>
+                                                    <option key={area.id} value={area.id}>{area.name}</option>
                                                 ))}
                                             </select>
                                         </div>
