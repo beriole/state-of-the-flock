@@ -1393,6 +1393,7 @@ const Governor = () => {
 
         const renderEvolutionChart = () => {
             const hasData = evolutionData.some(d => d.total_members > 0 || d.attendance > 0);
+            const diag = evolutionData.length > 0 ? evolutionData[0].diagnostic : null;
 
             const CustomTooltip = ({ active, payload, label }) => {
                 if (active && payload && payload.length) {
@@ -1493,64 +1494,103 @@ const Governor = () => {
                             </div>
                         </div>
                     </div>
-                    <div style={{ height: '400px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem', position: 'relative' }}>
-                        {!hasData && (
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-                                <div style={{ textAlign: 'center', color: '#64748b' }}>
-                                    <FileBarChart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                                    <p>Aucune donnée disponible pour cette période</p>
-                                </div>
+                    <div style={{ height: '350px', width: '100%', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden', padding: '1rem' }}>
+                        {loading ? (
+                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                                <Loader2 className="animate-spin" size={32} style={{ marginBottom: '1rem' }} />
+                                <span>Chargement...</span>
                             </div>
+                        ) : !selectedMinistryForReport ? (
+                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                                <Library size={48} style={{ color: '#1e293b', marginBottom: '1.5rem' }} />
+                                <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Aucun ministère sélectionné</h4>
+                                <p style={{ color: '#64748b', maxWidth: '300px' }}>Sélectionnez un ministère pour voir son évolution.</p>
+                            </div>
+                        ) : !hasData ? (
+                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                                <TrendingUp size={48} style={{ color: '#1e293b', marginBottom: '1.5rem' }} />
+                                <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Aucune donnée disponible</h4>
+                                <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Aucun enregistrement trouvé sur cette période.</p>
+                                {diag && (
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem', textAlign: 'left', maxWidth: '300px' }}>
+                                        <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>Diagnostic :</div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.25rem' }}>
+                                            <span>Membres :</span> <span style={{ color: diag.members > 0 ? '#10b981' : '#ef4444' }}>{diag.members}</span>
+                                            <span>Effectifs :</span> <span style={{ color: diag.headcounts > 0 ? '#10b981' : '#64748b' }}>{diag.headcounts}</span>
+                                            <span>Présences :</span> <span style={{ color: diag.attendances > 0 ? '#10b981' : '#64748b' }}>{diag.attendances}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={evolutionData}>
+                                    <defs>
+                                        <linearGradient id="colorMembers" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="#64748b"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(str) => {
+                                            const d = new Date(str);
+                                            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                                        }}
+                                        minTickGap={30}
+                                    />
+                                    <YAxis
+                                        stroke="#64748b"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend
+                                        verticalAlign="top"
+                                        align="right"
+                                        iconType="circle"
+                                        content={({ payload }) => (
+                                            <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                                                {payload.map((entry, index) => (
+                                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color }}></div>
+                                                        <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{entry.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    />
+                                    <Area
+                                        name="Total Membres"
+                                        type="monotone"
+                                        dataKey="total_members"
+                                        stroke="#3b82f6"
+                                        strokeWidth={3}
+                                        fillOpacity={1}
+                                        fill="url(#colorMembers)"
+                                    />
+                                    <Area
+                                        name="Présents"
+                                        type="monotone"
+                                        dataKey="attendance"
+                                        stroke="#10b981"
+                                        strokeWidth={3}
+                                        fillOpacity={1}
+                                        fill="url(#colorAttendance)"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         )}
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="#64748b"
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickFormatter={(str) => new Date(str).toLocaleDateString("fr-FR", { day: 'numeric', month: 'short' })}
-                                />
-                                <YAxis
-                                    stroke="#64748b"
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend />
-                                <Area
-                                    type="monotone"
-                                    dataKey="total_members"
-                                    name="Total Membres"
-                                    stroke="#3b82f6"
-                                    strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#colorTotal)"
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="attendance"
-                                    name="Présents"
-                                    stroke="#10b981"
-                                    strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#colorAttendance)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
                     </div>
                 </div>
             );

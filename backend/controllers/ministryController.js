@@ -1,6 +1,15 @@
-// controllers/ministryController.js
 const { Ministry, Member, User, MinistryAttendance, MinistryHeadcount } = require('../models');
 const { Op } = require('sequelize');
+
+const formatDateSafe = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const ministryController = {
     // 1. Lister tous les ministères
@@ -256,6 +265,8 @@ const ministryController = {
             const { id } = req.params;
             const { start_date, end_date } = req.query;
 
+            console.log(`[MinistryEvolution] ID: ${id}, Period: ${start_date} to ${end_date}`);
+
             if (!start_date || !end_date) {
                 return res.status(400).json({ error: 'Dates de début et de fin requises' });
             }
@@ -283,58 +294,67 @@ const ministryController = {
             });
 
             // 3. Récupérer tous les membres actuels avec leur date de création
-            // On utilise created_at pour estimer l'historique de l'effectif total
             const members = await Member.findAll({
                 where: { ministry_id: id },
                 attributes: ['id', 'created_at']
             });
 
+            // Diagnostic info
+            const diagnostic = {
+                headcounts: headcounts.length,
+                attendances: attendances.length,
+                members: members.length,
+                id: id
+            };
+            console.log(`[MinistryEvolution] Found: ${headcounts.length} headcounts, ${attendances.length} attendances, ${members.length} members`);
+
             // 4. Générer la chronologie (Timeline)
             const timeline = [];
-            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                timeline.push(new Date(d).toISOString().split('T')[0]);
+            const tempDate = new Date(startDate);
+            while (tempDate <= endDate) {
+                timeline.push(formatDateSafe(tempDate));
+                tempDate.setDate(tempDate.getDate() + 1);
             }
 
             // 5. Construire les données du graphique
-            const evolutionData = timeline.map(dateStr => {
+            const evolutionData = timeline.map((dateStr, index) => {
                 // a. Calcul de l'effectif total à cette date (Estimation)
-                // Membres créés AVANT ou À cette date
                 const totalMembersAtDate = members.filter(m => {
-                    const createdDate = new Date(m.created_at).toISOString().split('T')[0];
-                    return createdDate <= dateStr;
+                    if (!m.created_at) return false;
+                    const createdDateStr = formatDateSafe(m.created_at);
+                    return createdDateStr <= dateStr;
                 }).length;
 
                 // b. Calcul des présences
-                // Option 1: Headcount manuel
-                const manualEntry = headcounts.find(h => h.date === dateStr);
+                // Normalisation des dates de la DB en strings pour comparaison fiable
+                const manualEntry = headcounts.find(h => {
+                    return formatDateSafe(h.date) === dateStr;
+                });
                 const manualCount = manualEntry ? manualEntry.headcount : 0;
 
-                // Option 2: Nominatif
-                // On compte uniquement ceux marqués comme 'present' = true
                 const nominativeCount = attendances
-                    .filter(a => a.date === dateStr && a.present)
+                    .filter(a => {
+                        return formatDateSafe(a.date) === dateStr && a.present;
+                    })
                     .length;
 
-                // Priorité au manuel s'il existe (hypthèse: le manuel surcharge le nominatif partiel)
-                // OU Max des deux ? 
-                // "getMinistriesAttendanceOverview" utilisait une logique similaire.
-                // Ici on garde la même logique: si manuel existe, on prend manuel. Sinon nominatif.
-                // MAIS si nominatif > manuel, c'est bizarre. Prenons le MAX pour le graphique pour être gentil.
                 const attendanceCount = Math.max(manualCount, nominativeCount);
 
-                return {
+                const dataItem = {
                     date: dateStr,
                     total_members: totalMembersAtDate,
                     attendance: attendanceCount,
                     rate: totalMembersAtDate > 0 ? Math.round((attendanceCount / totalMembersAtDate) * 100) : 0,
                     is_manual: !!manualEntry
                 };
-            });
 
-            // Pour réduire le bruit, on peut filtrer les jours où il y a 0 activité ?
-            // Mais pour une courbe continue, il vaut mieux garder tous les jours ou filtrer côté frontend.
-            // On renvoie tout, le frontend décidera (ex: afficher seulement les dimanches ou les jours avec event).
-            // Pour l'instant on renvoie tout.
+                // Inclure le diagnostic dans le premier item pour le frontend
+                if (index === 0) {
+                    dataItem.diagnostic = diagnostic;
+                }
+
+                return dataItem;
+            });
 
             res.json(evolutionData);
 
