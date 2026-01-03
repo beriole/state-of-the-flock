@@ -93,6 +93,10 @@ const Governor = () => {
 
     const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
     const [isViewingReport, setIsViewingReport] = useState(false);
+    const [pendingFilters, setPendingFilters] = useState(null); // For "Apply" logic
+    const [ministryTab, setMinistryTab] = useState('list'); // 'list' or 'entries'
+    const [manualHeadcounts, setManualHeadcounts] = useState({}); // For bulk entry
+    const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
     const [callTrackingData, setCallTrackingData] = useState([]);
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
@@ -345,6 +349,12 @@ const Governor = () => {
             }
         }
     }, [reportFilters, selectedReportType, activeTab, callTrackingView, selectedMinistryForReport]);
+
+    useEffect(() => {
+        if (activeTab === 'ministries' && ministryTab === 'entries') {
+            fetchManualHeadcounts(entryDate);
+        }
+    }, [ministryTab, entryDate, activeTab]);
 
     const fetchMinistryReportData = async () => {
         setLoading(true);
@@ -746,70 +756,196 @@ const Governor = () => {
         }
     };
 
+    const fetchManualHeadcounts = async (date) => {
+        setLoading(true);
+        try {
+            const res = await ministryAPI.getAttendanceOverview(date);
+            const counts = {};
+            res.data.forEach(m => {
+                counts[m.id] = m.manual_count || m.nominative_count || 0;
+            });
+            setManualHeadcounts(counts);
+        } catch (error) {
+            console.error('Error fetching headcounts:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleHeadcountChange = (ministryId, value) => {
+        setManualHeadcounts(prev => ({
+            ...prev,
+            [ministryId]: parseInt(value) || 0
+        }));
+    };
+
+    const handleSaveHeadcounts = async () => {
+        setModalLoading(true);
+        try {
+            const data = {
+                date: entryDate,
+                headcounts: Object.entries(manualHeadcounts).map(([id, count]) => ({
+                    ministry_id: id,
+                    headcount: count
+                }))
+            };
+            await ministryAPI.saveHeadcounts(data);
+            alert('Effectifs enregistrés avec succès');
+            if (activeTab === 'reports') fetchMinistryReportData();
+        } catch (error) {
+            console.error('Error saving headcounts:', error);
+            alert('Erreur lors de l\'enregistrement');
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (ministryTab === 'entries' && activeTab === 'ministries') {
+            fetchManualHeadcounts(entryDate);
+        }
+    }, [entryDate, ministryTab, activeTab]);
+
     const renderMinistries = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                    <span key="ministry-title">Gestion des Ministères</span>
+                    <span key="ministry-title">Ministères</span>
                 </h2>
-                <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
-                    <Plus size={20} /> Nouveau Ministère
-                </button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '4px' }}>
+                        <button
+                            className={ministryTab === 'list' ? styles.activeTabBtn : styles.tabBtn}
+                            onClick={() => setMinistryTab('list')}
+                            style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: ministryTab === 'list' ? 'rgba(220, 38, 38, 0.1)' : 'transparent', color: ministryTab === 'list' ? '#DC2626' : '#94a3b8', cursor: 'pointer', fontWeight: '600' }}
+                        >
+                            Gérer
+                        </button>
+                        <button
+                            className={ministryTab === 'entries' ? styles.activeTabBtn : styles.tabBtn}
+                            onClick={() => setMinistryTab('entries')}
+                            style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: ministryTab === 'entries' ? 'rgba(220, 38, 38, 0.1)' : 'transparent', color: ministryTab === 'entries' ? '#DC2626' : '#94a3b8', cursor: 'pointer', fontWeight: '600' }}
+                        >
+                            Saisie Rapide
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div className={styles.tableContainer}>
-                <table className={styles.table}>
-                    <thead>
-                        <tr>
-                            <th className={styles.th}>Ministère</th>
-                            <th className={styles.th}>Responsable</th>
-                            <th className={styles.th}>Description</th>
-                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {ministries.length > 0 ? (
-                            ministries.map(ministry => (
-                                <tr key={ministry.id} className={styles.tr}>
-                                    <td className={styles.td}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                            <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '8px' }}>
-                                                <Library size={18} />
-                                            </div>
-                                            <strong style={{ color: 'white' }}>{ministry.name}</strong>
-                                        </div>
-                                    </td>
-                                    <td className={styles.td}>
-                                        {ministry.leader ? `${ministry.leader.first_name} ${ministry.leader.last_name}` : 'Non assigné'}
-                                    </td>
-                                    <td className={styles.td} style={{ maxWidth: '300px', fontSize: '0.85rem', color: '#94a3b8' }}>
-                                        {ministry.description || '-'}
-                                    </td>
-                                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                                        <div className={styles.actions}>
-                                            <button className={styles.actionBtn} title="Présences" onClick={() => openMinistryAttendance(ministry)}>
-                                                <CheckCircle size={18} />
-                                            </button>
-                                            <button className={styles.actionBtn} onClick={() => openMinistryModal(ministry)}>
-                                                <Pencil size={18} />
-                                            </button>
-                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteMinistry(ministry.id)}>
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
+            {ministryTab === 'list' ? (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                        <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
+                            <Plus size={20} /> Nouveau Ministère
+                        </button>
+                    </div>
+                    <div className={styles.tableContainer}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th className={styles.th}>Ministère</th>
+                                    <th className={styles.th}>Responsable</th>
+                                    <th className={styles.th}>Description</th>
+                                    <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                    Aucun ministère configuré.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            </thead>
+                            <tbody>
+                                {ministries.length > 0 ? (
+                                    ministries.map(ministry => (
+                                        <tr key={ministry.id} className={styles.tr}>
+                                            <td className={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '8px' }}>
+                                                        <Library size={18} />
+                                                    </div>
+                                                    <strong style={{ color: 'white' }}>{ministry.name}</strong>
+                                                </div>
+                                            </td>
+                                            <td className={styles.td}>
+                                                {ministry.leader ? `${ministry.leader.first_name} ${ministry.leader.last_name}` : 'Non assigné'}
+                                            </td>
+                                            <td className={styles.td} style={{ maxWidth: '300px', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                                {ministry.description || '-'}
+                                            </td>
+                                            <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                <div className={styles.actions}>
+                                                    <button className={styles.actionBtn} title="Présences nominatives" onClick={() => openMinistryAttendance(ministry)}>
+                                                        <CheckCircle size={18} />
+                                                    </button>
+                                                    <button className={styles.actionBtn} onClick={() => openMinistryModal(ministry)}>
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteMinistry(ministry.id)}>
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                            Aucun ministère configuré.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            ) : (
+                <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <div>
+                                <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Saisie des Effectifs</h3>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Entrez le nombre total de participants par ministère pour une date précise.</p>
+                            </div>
+                            <div className={styles.formGroup} style={{ marginBottom: 0, width: 'auto' }}>
+                                <label className={styles.label}>Date de réunion</label>
+                                <input
+                                    type="date"
+                                    className={styles.input}
+                                    style={{ width: '200px' }}
+                                    value={entryDate}
+                                    onChange={e => setEntryDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                            {ministries.map(m => (
+                                <div key={m.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ color: 'white', fontWeight: '600' }}>{m.name}</div>
+                                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total membres: {m.member_count}</div>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        className={styles.input}
+                                        style={{ width: '80px', textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold' }}
+                                        value={manualHeadcounts[m.id] || ''}
+                                        placeholder="0"
+                                        onChange={e => handleHeadcountChange(m.id, e.target.value)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                className={styles.primaryBtn}
+                                style={{ padding: '0.8rem 2.5rem', fontSize: '1rem' }}
+                                onClick={handleSaveHeadcounts}
+                                disabled={modalLoading}
+                            >
+                                {modalLoading ? <Loader2 className={styles.spin} /> : <Save size={20} style={{ marginRight: '0.5rem' }} />}
+                                Enregistrer tous les effectifs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 
@@ -1545,6 +1681,19 @@ const Governor = () => {
     };
 
     const renderReports = () => {
+        const handleApplyFilters = () => {
+            if (pendingFilters) {
+                setReportFilters({
+                    ...reportFilters,
+                    startDate: pendingFilters.startDate,
+                    endDate: pendingFilters.endDate,
+                    areaId: pendingFilters.areaId,
+                    leaderId: pendingFilters.leaderId
+                });
+                setSelectedMinistryForReport(pendingFilters.selectedMinistryForReport);
+            }
+        };
+
         if (!isViewingReport) {
             return (
                 <div className={styles.section}>
@@ -1557,6 +1706,7 @@ const Governor = () => {
                             onClick={() => {
                                 setSelectedReportType('attendance');
                                 setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
                             }}
                         >
                             <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
@@ -1571,6 +1721,7 @@ const Governor = () => {
                             onClick={() => {
                                 setSelectedReportType('growth');
                                 setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
                             }}
                         >
                             <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
@@ -1585,6 +1736,7 @@ const Governor = () => {
                             onClick={() => {
                                 setSelectedReportType('bacenta_meetings');
                                 setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters });
                             }}
                         >
                             <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
@@ -1599,6 +1751,7 @@ const Governor = () => {
                             onClick={() => {
                                 setSelectedReportType('ministries');
                                 setIsViewingReport(true);
+                                setPendingFilters({ ...reportFilters, selectedMinistryForReport });
                             }}
                         >
                             <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
@@ -1661,16 +1814,8 @@ const Governor = () => {
                                     <select
                                         className={styles.select}
                                         style={{ padding: '0.4rem' }}
-                                        value={reportFilters.areaId}
-                                        onChange={e => {
-                                            const newAreaId = e.target.value;
-                                            setReportFilters({
-                                                ...reportFilters,
-                                                areaId: newAreaId,
-                                                leaderId: '',
-                                                attendanceViewType: newAreaId ? 'member_detail' : 'area'
-                                            });
-                                        }}
+                                        value={pendingFilters?.areaId || ''}
+                                        onChange={e => setPendingFilters({ ...pendingFilters, areaId: e.target.value, leaderId: '' })}
                                     >
                                         <option value="">Toutes les Zones</option>
                                         {areas.map(area => (
@@ -1683,19 +1828,12 @@ const Governor = () => {
                                     <select
                                         className={styles.select}
                                         style={{ padding: '0.4rem' }}
-                                        value={reportFilters.leaderId}
-                                        onChange={e => {
-                                            const newLeaderId = e.target.value;
-                                            setReportFilters({
-                                                ...reportFilters,
-                                                leaderId: newLeaderId,
-                                                attendanceViewType: newLeaderId ? 'member_detail' : (reportFilters.areaId ? 'member_detail' : 'area')
-                                            });
-                                        }}
+                                        value={pendingFilters?.leaderId || ''}
+                                        onChange={e => setPendingFilters({ ...pendingFilters, leaderId: e.target.value })}
                                     >
                                         <option value="">Tous les Leaders</option>
                                         {leaders
-                                            .filter(l => !reportFilters.areaId || l.area_id === parseInt(reportFilters.areaId))
+                                            .filter(l => !pendingFilters?.areaId || l.area_id === parseInt(pendingFilters.areaId))
                                             .map(leader => (
                                                 <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
                                             ))
@@ -1710,8 +1848,8 @@ const Governor = () => {
                                 <select
                                     className={styles.select}
                                     style={{ padding: '0.4rem', minWidth: '150px' }}
-                                    value={selectedMinistryForReport}
-                                    onChange={e => setSelectedMinistryForReport(e.target.value)}
+                                    value={pendingFilters?.selectedMinistryForReport || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, selectedMinistryForReport: e.target.value })}
                                 >
                                     <option value="">Sélectionner</option>
                                     {ministries.map(m => (
@@ -1727,8 +1865,8 @@ const Governor = () => {
                                     type="date"
                                     className={styles.input}
                                     style={{ padding: '0.4rem', width: 'auto' }}
-                                    value={reportFilters.startDate}
-                                    onChange={e => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                                    value={pendingFilters?.startDate || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, startDate: e.target.value })}
                                 />
                             </div>
                         )}
@@ -1739,8 +1877,8 @@ const Governor = () => {
                                     type="date"
                                     className={styles.input}
                                     style={{ padding: '0.4rem', width: 'auto' }}
-                                    value={reportFilters.endDate}
-                                    onChange={e => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                                    value={pendingFilters?.endDate || ''}
+                                    onChange={e => setPendingFilters({ ...pendingFilters, endDate: e.target.value })}
                                 />
                             </div>
                         )}
@@ -1781,39 +1919,46 @@ const Governor = () => {
                                 </div>
                             </div>
                         )}
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={handleApplyFilters}
+                            style={{ padding: '0.5rem 1rem', background: '#3b82f6', alignSelf: 'flex-end', height: '38px' }}
+                        >
+                            Filtrer
+                        </button>
                     </div>
                 </div>
 
-                {
-                    selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
-                        <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
-                            <button
-                                className={styles.actionBtn}
-                                onClick={() => {
-                                    setReportFilters({
-                                        ...reportFilters,
-                                        areaId: '',
-                                        leaderId: '',
-                                        attendanceViewType: 'area'
-                                    });
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    background: 'rgba(59, 130, 246, 0.1)',
-                                    color: '#60a5fa',
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '8px',
-                                    fontSize: '0.9rem',
-                                    border: '1px solid rgba(59, 130, 246, 0.2)'
-                                }}
-                            >
-                                <ArrowLeft size={16} /> Retour à la vue globale
-                            </button>
-                        </div>
-                    )
-                }
+                {selectedReportType === 'attendance' && (reportFilters.areaId || reportFilters.leaderId) && (
+                    <div style={{ padding: '0 2rem 1rem', display: 'flex' }}>
+                        <button
+                            className={styles.actionBtn}
+                            onClick={() => {
+                                setReportFilters({
+                                    ...reportFilters,
+                                    areaId: '',
+                                    leaderId: '',
+                                    attendanceViewType: 'area'
+                                });
+                                // also update pending
+                                setPendingFilters({
+                                    ...pendingFilters,
+                                    areaId: '',
+                                    leaderId: ''
+                                });
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center', gap: '0.5rem',
+                                background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
+                                padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem',
+                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}
+                        >
+                            <ArrowLeft size={16} /> Retour à la vue globale
+                        </button>
+                    </div>
+                )}
 
                 <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
                     {selectedReportType === 'ministries' ? (
@@ -1824,7 +1969,7 @@ const Governor = () => {
                                 <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
                                     {callTrackingView === 'not_called'
                                         ? `Membres sans appel (${callTrackingSummary?.count || 0})`
-                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'}) [V:${callTrackingSummary?.backend_version || '?'}]`
+                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
                                     }
                                 </h3>
                             </div>
@@ -2125,7 +2270,7 @@ const Governor = () => {
                         </div>
                     )}
                 </div>
-            </div >
+            </div>
         );
     };
 

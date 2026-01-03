@@ -167,6 +167,7 @@ export const ministryAPI = {
     markAttendance: (id, data) => api.post(`/ministries/${id}/attendance`, data),
     getAttendanceStats: (id, date) => api.get(`/ministries/${id}/attendance/stats`, { params: { date } }),
     getAttendanceOverview: (date) => api.get('/ministries/overview', { params: { date } }),
+    saveHeadcounts: (data) => api.post('/ministries/headcounts', data),
 };
 
 // Fonctions API pour les Régions

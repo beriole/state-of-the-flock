@@ -1,5 +1,5 @@
 // controllers/ministryController.js
-const { Ministry, Member, User, MinistryAttendance } = require('../models');
+const { Ministry, Member, User, MinistryAttendance, MinistryHeadcount } = require('../models');
 const { Op } = require('sequelize');
 
 const ministryController = {
@@ -184,20 +184,36 @@ const ministryController = {
                 ]
             });
 
-            // Récupérer toutes les présences pour cette date
+            // Récupérer toutes les présences nominatives pour cette date
             const attendances = await MinistryAttendance.findAll({
+                where: { date: date }
+            });
+
+            // Récupérer les effectifs manuels pour cette date
+            const headcounts = await MinistryHeadcount.findAll({
                 where: { date: date }
             });
 
             const overview = ministries.map(m => {
                 const ministryAttendances = attendances.filter(a => a.ministry_id === m.id);
-                const presentCount = ministryAttendances.filter(a => a.present).length;
+                const nominativeCount = ministryAttendances.filter(a => a.present).length;
+
+                const manualRecord = headcounts.find(h => h.ministry_id === m.id);
+                const manualCount = manualRecord ? manualRecord.headcount : 0;
+
+                // On utilise le plus grand des deux ou on favorise le manuel s'il existe ?
+                // Le manuel est souvent plus précis s'il est saisi globalement.
+                const finalCount = manualRecord ? manualCount : nominativeCount;
+
                 return {
                     id: m.id,
                     name: m.name,
                     total_members: m.members.length,
-                    present_count: presentCount,
-                    attendance_rate: m.members.length > 0 ? Math.round((presentCount / m.members.length) * 100) : 0
+                    present_count: finalCount,
+                    nominative_count: nominativeCount,
+                    manual_count: manualCount,
+                    has_manual: !!manualRecord,
+                    attendance_rate: m.members.length > 0 ? Math.round((finalCount / m.members.length) * 100) : 0
                 };
             });
 
@@ -205,6 +221,32 @@ const ministryController = {
         } catch (error) {
             console.error('Get ministries overview error:', error);
             res.status(500).json({ error: 'Erreur lors de la récupération de la vue d\'ensemble' });
+        }
+    },
+
+    // 8. Sauvegarder les effectifs (Bulk Headcount)
+    saveHeadcounts: async (req, res) => {
+        try {
+            const { date, headcounts } = req.body; // headcounts: [{ ministry_id, headcount }]
+            if (!date || !Array.isArray(headcounts)) {
+                return res.status(400).json({ error: 'Date et tableau d\'effectifs requis' });
+            }
+
+            for (const h of headcounts) {
+                if (h.ministry_id) {
+                    await MinistryHeadcount.upsert({
+                        ministry_id: h.ministry_id,
+                        date: date,
+                        headcount: h.headcount || 0,
+                        marked_by_user_id: req.user.userId
+                    });
+                }
+            }
+
+            res.json({ message: 'Effectifs enregistrés avec succès' });
+        } catch (error) {
+            console.error('Save headcounts error:', error);
+            res.status(500).json({ error: 'Erreur lors de l\'enregistrement des effectifs' });
         }
     }
 };

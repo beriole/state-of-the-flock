@@ -11,6 +11,7 @@ const BacentaMeetingModel = require('./BacentaMeeting');
 const BacentaAttendanceModel = require('./BacentaAttendance');
 const BacentaOfferingModel = require('./BacentaOffering');
 const NotificationModel = require('./Notification');
+const MinistryHeadcountModel = require('./MinistryHeadcount');
 
 let sequelize;
 
@@ -85,6 +86,7 @@ const BacentaMeeting = BacentaMeetingModel(sequelize);
 const BacentaAttendance = BacentaAttendanceModel(sequelize);
 const BacentaOffering = BacentaOfferingModel(sequelize);
 const Notification = NotificationModel(sequelize);
+const MinistryHeadcount = MinistryHeadcountModel(sequelize);
 
 // Associations
 function setupAssociations() {
@@ -167,6 +169,11 @@ function setupAssociations() {
   MinistryAttendance.belongsTo(User, { foreignKey: 'marked_by_user_id', as: 'marked_by' });
 
   User.hasOne(Ministry, { foreignKey: 'leader_id', as: 'led_ministry' });
+
+  // MinistryHeadcount
+  MinistryHeadcount.belongsTo(Ministry, { foreignKey: 'ministry_id', as: 'ministry' });
+  MinistryHeadcount.belongsTo(User, { foreignKey: 'marked_by_user_id', as: 'marked_by' });
+  Ministry.hasMany(MinistryHeadcount, { foreignKey: 'ministry_id', as: 'headcounts' });
 }
 
 module.exports = {
@@ -183,5 +190,6 @@ module.exports = {
   BacentaAttendance,
   BacentaOffering,
   Notification,
+  MinistryHeadcount,
   setupAssociations
 };

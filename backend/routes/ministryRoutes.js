@@ -17,5 +17,6 @@ router.get('/:id/members', ministryController.getMinistryMembers);
 router.get('/overview', ministryController.getMinistriesAttendanceOverview);
 router.post('/:id/attendance', ministryController.markAttendance);
 router.get('/:id/attendance/stats', ministryController.getMinistryAttendanceStats);
+router.post('/headcounts', ministryController.saveHeadcounts);
 
 module.exports = router;
