@@ -1,20 +1,26 @@
 .container {
-    padding: 2rem;
+    padding: 1.5rem;
     color: white;
     max-width: 1400px;
     margin: 0 auto;
     min-height: 100vh;
 }
 
+@media (max-width: 480px) {
+    .container {
+        padding: 1rem;
+    }
+}
+
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 
 .title {
-    font-size: 2.5rem;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
     font-weight: 800;
     margin: 0;
     background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
@@ -47,9 +53,9 @@
 /* Stats Row */
 .statsRow {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
 }
 
 .statCard {
@@ -130,8 +136,8 @@
 /* Meetings Grid */
 .meetingsGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    gap: 1.5rem;
 }
 
 .meetingCard {
