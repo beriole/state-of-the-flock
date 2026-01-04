@@ -113,6 +113,15 @@ const Governor = () => {
         startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    // Debounce searchQuery
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     // Local state for inputs to prevent refresh while typing
     const [localEvolutionDateRange, setLocalEvolutionDateRange] = useState({
         startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
@@ -171,6 +180,25 @@ const Governor = () => {
         fetchData();
     }, [activeTab]);
 
+    // Secondary effect for member-specific filtering to avoid reloading everything
+    useEffect(() => {
+        if (activeTab === 'members') {
+            fetchMembers();
+        }
+    }, [memberFilters, debouncedSearchQuery, activeTab]);
+
+    const fetchMembers = async () => {
+        setLoading(true);
+        try {
+            const membersRes = await memberAPI.getMembers({ ...memberFilters, search: debouncedSearchQuery });
+            setMembers(membersRes.data.members || []);
+        } catch (error) {
+            console.error('Error fetching members:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -205,14 +233,15 @@ const Governor = () => {
                 setMinistries(ministriesRes.data || []);
                 setLeaders(leadersRes.data.users || []);
             } else if (activeTab === 'members') {
-                const [membersRes, leadersRes, areasRes] = await Promise.all([
-                    memberAPI.getMembers({ ...memberFilters, search: searchQuery }),
+                const [leadersRes, areasRes] = await Promise.all([
                     governorAPI.getBacentaLeaders(),
                     areaAPI.getAreas()
                 ]);
-                setMembers(membersRes.data.members || []);
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
+                // fetchMembers() call will be implicitly handled by the useEffect above
+                // but we can call it here for the initial load if we want to be explicit
+                await fetchMembers();
             } else if (activeTab === 'reports') {
                 const [leadersRes, areasRes] = await Promise.all([
                     governorAPI.getBacentaLeaders(),
@@ -1834,9 +1863,11 @@ const Governor = () => {
                         onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value })}
                     >
                         <option value="">Tous les Leaders</option>
-                        {leaders.map(leader => (
-                            <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                        ))}
+                        {leaders
+                            .filter(leader => !memberFilters.area_id || leader.area_id === parseInt(memberFilters.area_id))
+                            .map(leader => (
+                                <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                            ))}
                     </select>
                 </div>
             </div>
