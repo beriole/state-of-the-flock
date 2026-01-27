@@ -250,12 +250,14 @@ const Governor = () => {
                 setMinistries(ministriesRes.data || []);
                 setLeaders(leadersRes.data.users || []);
             } else if (activeTab === 'members') {
-                const [leadersRes, areasRes] = await Promise.all([
+                const [leadersRes, areasRes, ministriesRes] = await Promise.all([
                     governorAPI.getBacentaLeaders(),
-                    areaAPI.getAreas()
+                    areaAPI.getAreas(),
+                    ministryAPI.getAllMinistries()
                 ]);
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
+                setMinistries(ministriesRes.data || []);
                 // fetchMembers() call will be implicitly handled by the useEffect above
                 // but we can call it here for the initial load if we want to be explicit
                 await fetchMembers();
@@ -769,7 +771,7 @@ const Governor = () => {
                 phone_secondary: '',
                 gender: 'M',
                 leader_id: '',
-                area_id: '',
+                area_id: authUser?.role === 'Governor' ? authUser.area_id : '',
                 ministry_id: '',
                 is_active: true
             });
@@ -2059,8 +2061,8 @@ const Governor = () => {
                                 <tr key={member.id} className={styles.tr}>
                                     <td className={styles.td}>{member.first_name} {member.last_name}</td>
                                     <td className={styles.td}>
-                                        <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                            {member.status === 'active' ? 'Actif' : 'Inactif'}
+                                        <span className={`${styles.badge} ${member.is_active ? styles.badgeActive : styles.badgeInactive}`}>
+                                            {member.is_active ? 'Actif' : 'Inactif'}
                                         </span>
                                     </td>
                                 </tr>
@@ -2285,7 +2287,7 @@ const Governor = () => {
                                     >
                                         <option value="">Tous les Leaders</option>
                                         {leaders
-                                            .filter(l => !pendingFilters?.areaId || l.area_id === parseInt(pendingFilters.areaId))
+                                            .filter(l => !pendingFilters?.areaId || String(l.area_id) === String(pendingFilters.areaId))
                                             .map(leader => (
                                                 <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
                                             ))
@@ -3143,7 +3145,11 @@ const Governor = () => {
                                             >
                                                 <option value="">Sélectionner un leader</option>
                                                 {leaders
-                                                    .filter(l => l.area_id === memberForm.area_id || l.area_id === parseInt(memberForm.area_id))
+                                                    .filter(l => {
+                                                        if (!memberForm.area_id) return false;
+                                                        // Handle both UUID strings and potential number IDs
+                                                        return String(l.area_id) === String(memberForm.area_id);
+                                                    })
                                                     .map(leader => (
                                                         <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
                                                     ))
