@@ -39,7 +39,8 @@ import {
     AlertCircle,
     Camera,
     Library,
-    Loader2
+    Loader2,
+    Shield
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -149,9 +150,23 @@ const Governor = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [modalError, setModalError] = useState('');
     const [showMinistryAttendanceModal, setShowMinistryAttendanceModal] = useState(false);
+    const [showMemberModal, setShowMemberModal] = useState(false);
     const [selectedMinistryForAttendance, setSelectedMinistryForAttendance] = useState(null);
     const [ministryAttendanceMembers, setMinistryAttendanceMembers] = useState([]);
     const [ministryAttendanceDate, setMinistryAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // Member Form
+    const [memberForm, setMemberForm] = useState({
+        first_name: '',
+        last_name: '',
+        phone_primary: '',
+        phone_secondary: '',
+        gender: 'M',
+        leader_id: '',
+        area_id: '',
+        ministry_id: '',
+        is_active: true
+    });
 
     // Forms
     const [leaderForm, setLeaderForm] = useState({
@@ -160,7 +175,8 @@ const Governor = () => {
         email: '',
         phone: '',
         password: '',
-        area_id: ''
+        area_id: '',
+        role: 'Bacenta_Leader'
     });
 
     const [areaForm, setAreaForm] = useState({
@@ -210,8 +226,9 @@ const Governor = () => {
                 setStats(statsRes.data);
                 setGrowthData(growthRes.data);
             } else if (activeTab === 'leaders') {
+                const isBishop = authUser?.role === 'Bishop';
                 const [leadersRes, areasRes] = await Promise.all([
-                    governorAPI.getBacentaLeaders(),
+                    isBishop ? governorAPI.getUsers({ role: ['Bacenta_Leader', 'Governor'] }) : governorAPI.getBacentaLeaders(),
                     areaAPI.getAreas()
                 ]);
                 setLeaders(leadersRes.data.users || []);
@@ -473,9 +490,9 @@ const Governor = () => {
         setModalError('');
         try {
             if (editingItem) {
-                await governorAPI.updateBacentaLeader(editingItem.id, leaderForm);
+                await governorAPI.updateUser(editingItem.id, leaderForm);
             } else {
-                await governorAPI.createBacentaLeader(leaderForm);
+                await governorAPI.createUser(leaderForm);
             }
             setShowLeaderModal(false);
             fetchData();
@@ -483,6 +500,26 @@ const Governor = () => {
             console.error('Error saving leader:', error);
             const message = error.response?.data?.error || 'Une erreur est survenue lors de l\'enregistrement';
             setModalError(message);
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleSaveMember = async (e) => {
+        e.preventDefault();
+        setModalLoading(true);
+        setModalError('');
+        try {
+            if (editingItem && editingItem.id) {
+                await memberAPI.updateMember(editingItem.id, memberForm);
+            } else {
+                await memberAPI.createMember(memberForm);
+            }
+            setShowMemberModal(false);
+            fetchMembers();
+        } catch (error) {
+            console.error('Error saving member:', error);
+            setModalError(error.response?.data?.error || 'Erreur lors de l\'enregistrement');
         } finally {
             setModalLoading(false);
         }
@@ -690,7 +727,7 @@ const Governor = () => {
                 phone: leader.phone || '',
                 password: '',
                 area_id: leader?.area_id || '',
-                photo_url: leader?.photo_url || ''
+                role: leader?.role || 'Bacenta_Leader'
             });
         } else {
             setEditingItem(null);
@@ -700,10 +737,44 @@ const Governor = () => {
                 email: '',
                 phone: '',
                 password: '',
-                area_id: ''
+                area_id: '',
+                role: 'Bacenta_Leader'
             });
         }
         setShowLeaderModal(true);
+    };
+
+    const openMemberModal = (member = null) => {
+        setModalError('');
+        setModalLoading(false);
+        if (member) {
+            setEditingItem(member);
+            setMemberForm({
+                first_name: member.first_name,
+                last_name: member.last_name,
+                phone_primary: member.phone_primary,
+                phone_secondary: member.phone_secondary || '',
+                gender: member.gender,
+                leader_id: member.leader_id,
+                area_id: member.area_id,
+                ministry_id: member.ministry_id || '',
+                is_active: member.is_active
+            });
+        } else {
+            setEditingItem(null);
+            setMemberForm({
+                first_name: '',
+                last_name: '',
+                phone_primary: '',
+                phone_secondary: '',
+                gender: 'M',
+                leader_id: '',
+                area_id: '',
+                ministry_id: '',
+                is_active: true
+            });
+        }
+        setShowMemberModal(true);
     };
 
     const openAreaModal = (area = null) => {
@@ -1845,6 +1916,9 @@ const Governor = () => {
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Membres de l'Église</h2>
                 <div className={styles.headerActions}>
+                    <button className={styles.primaryBtn} onClick={() => openMemberModal()} style={{ marginRight: '1rem' }}>
+                        <Plus size={20} /> Nouveau Membre
+                    </button>
                     <select
                         className={styles.select}
                         style={{ width: 'auto', marginRight: '1rem' }}
@@ -1922,8 +1996,8 @@ const Governor = () => {
                                     {member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}
                                 </td>
                                 <td className={styles.td}>
-                                    <span className={`${styles.badge} ${member.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                        {member.status === 'active' ? 'Actif' : 'Inactif'}
+                                    <span className={`${styles.badge} ${member.is_active ? styles.badgeActive : styles.badgeInactive}`}>
+                                        {member.is_active ? 'Actif' : 'Inactif'}
                                     </span>
                                 </td>
                                 <td className={styles.td}>
@@ -2840,6 +2914,25 @@ const Governor = () => {
                                         </div>
                                     </div>
 
+                                    {authUser?.role === 'Bishop' && (
+                                        <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
+                                            <label className={styles.label}>Rôle</label>
+                                            <div className={styles.inputWrapperPremium}>
+                                                <Shield className={styles.inputIcon} size={18} />
+                                                <select
+                                                    className={styles.selectPremium}
+                                                    value={leaderForm.role}
+                                                    onChange={e => setLeaderForm({ ...leaderForm, role: e.target.value })}
+                                                    required
+                                                    disabled={modalLoading}
+                                                >
+                                                    <option value="Bacenta_Leader">Bacenta Leader</option>
+                                                    <option value="Governor">Gouverneur</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {!editingItem && (
                                         <div className={`${styles.formGroupPremium} ${styles.fullWidth}`}>
                                             <label className={styles.label}>Mot de passe initial</label>
@@ -2884,6 +2977,223 @@ const Governor = () => {
                                         <>
                                             <Save size={18} />
                                             <span>Enregistrer le Leader</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Member Modal */}
+            {showMemberModal && (
+                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMemberModal(false)}>
+                    <div className={`${styles.modalContent} ${styles.modalContentPremium}`} style={{ width: '100%', maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeaderPremium}>
+                            <div>
+                                <h2 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+                                    {editingItem ? 'Modifier le Membre' : 'Nouveau Membre'}
+                                </h2>
+                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                    {editingItem ? 'Mettre à jour les informations du membre' : 'Ajouter un nouveau membre'}
+                                </p>
+                            </div>
+                            <button className={styles.closeBtn} onClick={() => setShowMemberModal(false)} disabled={modalLoading}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveMember}>
+                            <div className={styles.modalBodyPremium}>
+                                {modalError && (
+                                    <div className={styles.errorBanner}>
+                                        <AlertCircle size={20} />
+                                        <span>{modalError}</span>
+                                    </div>
+                                )}
+
+                                <div className={styles.formGridPremium}>
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Prénom</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Jean"
+                                                value={memberForm.first_name}
+                                                onChange={e => setMemberForm({ ...memberForm, first_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Nom de famille</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <User className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: Dupont"
+                                                value={memberForm.last_name}
+                                                onChange={e => setMemberForm({ ...memberForm, last_name: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Genre</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Users className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={memberForm.gender}
+                                                onChange={e => setMemberForm({ ...memberForm, gender: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="M">Homme</option>
+                                                <option value="F">Femme</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Téléphone Principal</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Phone className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: 06 12 34 56 78"
+                                                value={memberForm.phone_primary}
+                                                onChange={e => setMemberForm({ ...memberForm, phone_primary: e.target.value })}
+                                                required
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Téléphone Secondaire (Optionnel)</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Phone className={styles.inputIcon} size={18} />
+                                            <input
+                                                className={styles.inputPremium}
+                                                placeholder="ex: 06 12 34 56 78"
+                                                value={memberForm.phone_secondary}
+                                                onChange={e => setMemberForm({ ...memberForm, phone_secondary: e.target.value })}
+                                                disabled={modalLoading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Ministère (Optionnel)</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Library className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={memberForm.ministry_id}
+                                                onChange={e => setMemberForm({ ...memberForm, ministry_id: e.target.value })}
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="">Aucun ministère</option>
+                                                {ministries.map(min => (
+                                                    <option key={min.id} value={min.id}>{min.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Zone Assignée</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <MapPin className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={memberForm.area_id}
+                                                onChange={e => {
+                                                    const areaId = e.target.value;
+                                                    setMemberForm({ ...memberForm, area_id: areaId, leader_id: '' });
+                                                }}
+                                                required
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="">Sélectionner une zone</option>
+                                                {areas.map(area => (
+                                                    <option key={area.id} value={area.id}>{area.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Leader Assigné</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <Crown className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={memberForm.leader_id}
+                                                onChange={e => setMemberForm({ ...memberForm, leader_id: e.target.value })}
+                                                required
+                                                disabled={modalLoading || !memberForm.area_id}
+                                            >
+                                                <option value="">Sélectionner un leader</option>
+                                                {leaders
+                                                    .filter(l => l.area_id === memberForm.area_id || l.area_id === parseInt(memberForm.area_id))
+                                                    .map(leader => (
+                                                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroupPremium}>
+                                        <label className={styles.label}>Statut</label>
+                                        <div className={styles.inputWrapperPremium}>
+                                            <CheckCircle className={styles.inputIcon} size={18} />
+                                            <select
+                                                className={styles.selectPremium}
+                                                value={memberForm.is_active ? 'true' : 'false'}
+                                                onChange={e => setMemberForm({ ...memberForm, is_active: e.target.value === 'true' })}
+                                                required
+                                                disabled={modalLoading}
+                                            >
+                                                <option value="true">Actif</option>
+                                                <option value="false">Inactif</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={styles.modalFooterPremium}>
+                                <button
+                                    type="button"
+                                    className={styles.cancelBtn}
+                                    onClick={() => setShowMemberModal(false)}
+                                    disabled={modalLoading}
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtnPremium}
+                                    disabled={modalLoading}
+                                >
+                                    {modalLoading ? (
+                                        <>
+                                            <div className={styles.spinnerSmall}></div>
+                                            <span>Enregistrement...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            <span>Enregistrer le Membre</span>
                                         </>
                                     )}
                                 </button>

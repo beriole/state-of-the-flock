@@ -129,6 +129,8 @@ export const governorAPI = {
     createBacentaLeader: (data) => api.post('/users', { ...data, role: 'Bacenta_Leader' }),
     updateBacentaLeader: (id, data) => api.put(`/users/${id}`, data),
     deleteBacentaLeader: (id) => api.delete(`/users/${id}`),
+    createUser: (data) => api.post('/users', data),
+    updateUser: (id, data) => api.put(`/users/${id}`, data),
     uploadUserPhoto: (id, formData) => api.post(`/users/${id}/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),

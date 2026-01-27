@@ -90,7 +90,7 @@ const userController = {
         first_name,
         last_name,
         role,
-        area_id,
+        area_id: area_id === '' ? null : area_id,
         phone,
         is_active: true
       });
@@ -130,7 +130,7 @@ const userController = {
         first_name,
         last_name,
         role: canChangeRole ? role : user.role,
-        area_id,
+        area_id: area_id === '' ? null : area_id,
         phone,
         is_active: canChangeRole ? is_active : user.is_active
       });
