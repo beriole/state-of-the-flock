@@ -29,6 +29,7 @@ const reportController = {
           memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
       }
+      // Note: Bishop has no restriction (global access)
       if (area_id) {
         // Validation pour Gouverneur
         if (req.user.role === 'Governor') {
@@ -155,6 +156,7 @@ const reportController = {
           leaderWhereClause.area_id = area_id;
         }
       }
+      // Note: Bishop has no restriction (global access)
 
       if (leader_id) whereClause.leader_id = leader_id;
 
@@ -421,7 +423,17 @@ const reportController = {
       const whereClause = {};
       if (req.user.role === 'Bacenta_Leader') {
         whereClause.leader_id = req.user.userId;
-      } else if (req.user.area_id) {
+      } else if (req.user.role === 'Governor') {
+        const { Region, Area } = require('../models');
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+        if (areaIds.length > 0) {
+          whereClause.area_id = { [Op.in]: areaIds };
+        }
+      } else if (req.user.role !== 'Bishop' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
       }
 

@@ -20,6 +20,7 @@ const dashboardController = {
             if (!governorRegion) return res.status(404).json({ error: 'Région introuvable pour ce gouverneur' });
             areaIds = governorRegion.areas.map(a => a.id);
           }
+          // Note: Bishop and Assisting_Overseer (global) leave areaIds as null
 
           const memberWhere = areaIds ? { area_id: { [Op.in]: areaIds } } : {};
           const userWhere = { role: 'Bacenta_Leader', is_active: true };
@@ -289,6 +290,7 @@ const dashboardController = {
           return res.status(403).json({ error: 'Accès interdit à ce leader' });
         }
       }
+      // Note: Bishop has no restriction (global access)
       // Statistiques du leader
       const totalMembers = await Member.count({
         where: { leader_id, is_active: true }
@@ -457,6 +459,7 @@ const dashboardController = {
         const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
         userWhere.area_id = { [Op.in]: areaIds };
       }
+      // Note: Bishop has no restriction (global access)
 
       // 1. Top Leaders (Croissance Membres ce mois)
       // Note: Une métrique simple est le nombre de NOUVEAUX membres ajoutés ce mois-ci

@@ -232,6 +232,7 @@ const bacentaController = {
           return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
         }
       }
+      // Note: Bishop has no restriction (global access)
       res.json(meeting);
     } catch (error) {
       console.error('Get bacenta meeting error:', error);

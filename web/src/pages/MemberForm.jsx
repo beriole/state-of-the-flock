@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { memberAPI, ministryAPI } from '../utils/api';
+import { memberAPI, ministryAPI, regionAPI, areaAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import styles from './MemberForm.module.css';
@@ -15,6 +15,8 @@ const MemberForm = () => {
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const [error, setError] = useState('');
     const [ministries, setMinistries] = useState([]);
+    const [regions, setRegions] = useState([]);
+    const [areas, setAreas] = useState([]);
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -25,22 +27,33 @@ const MemberForm = () => {
         // Champs par défaut ou cachés
         state: 'Sheep',
         is_active: true,
-        ministry_id: ''
+        ministry_id: '',
+        area_id: '',
+        leader_id: '',
+        region_id: ''
     });
 
-    useEffect(() => {
-        fetchInitialData();
-    }, [id]);
-
-    const fetchInitialData = async () => {
+    const fetchInitialData = useCallback(async () => {
         try {
-            const minRes = await ministryAPI.getAllMinistries();
+            const [minRes, regRes] = await Promise.all([
+                ministryAPI.getAllMinistries(),
+                regionAPI.getRegions()
+            ]);
             setMinistries(minRes.data || []);
+            setRegions(regRes.data || []);
 
             if (isEditMode) {
-                console.log('Fetching member with ID:', id);
                 const response = await memberAPI.getMemberById(id);
-                setFormData(response.data);
+                const memberData = response.data;
+                setFormData({
+                    ...memberData,
+                    region_id: memberData.area?.region_id || ''
+                });
+
+                if (memberData.area?.region_id) {
+                    const areasRes = await areaAPI.getAreas({ region_id: memberData.area.region_id });
+                    setAreas(areasRes.data || []);
+                }
             }
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -48,9 +61,13 @@ const MemberForm = () => {
         } finally {
             setInitialLoading(false);
         }
-    };
+    }, [id, isEditMode]);
 
-    const handleChange = (e) => {
+    useEffect(() => {
+        fetchInitialData();
+    }, [fetchInitialData]);
+
+    const handleChange = async (e) => {
         const { name, value } = e.target;
 
         if (name === 'ministry_id') {
@@ -60,6 +77,18 @@ const MemberForm = () => {
                 ministry_id: value,
                 ministry: selectedMinistry ? selectedMinistry.name : null
             }));
+        } else if (name === 'region_id') {
+            setFormData(prev => ({ ...prev, region_id: value, area_id: '' }));
+            if (value) {
+                try {
+                    const areasRes = await areaAPI.getAreas({ region_id: value });
+                    setAreas(areasRes.data || []);
+                } catch (err) {
+                    console.error("Error fetching areas:", err);
+                }
+            } else {
+                setAreas([]);
+            }
         } else {
             setFormData(prev => ({
                 ...prev,
@@ -87,15 +116,15 @@ const MemberForm = () => {
             if (isEditMode) {
                 await memberAPI.updateMember(id, dataToSend);
             } else {
-                // Ajouter les IDs du leader et de la zone pour la création
+                // Pour le Bishop, on utilise les IDs sélectionnés, sinon ceux de l'admin
                 const finalData = {
                     ...dataToSend,
-                    leader_id: user?.id,
-                    area_id: user?.area_id
+                    leader_id: formData.leader_id || user?.id,
+                    area_id: formData.area_id || user?.area_id
                 };
                 await memberAPI.createMember(finalData);
             }
-            navigate('/members');
+            navigate(user.role === 'Bishop' ? '/bishop?tab=members' : '/members');
         } catch (err) {
             console.error('Error saving member:', err);
             setError(err.response?.data?.error || 'Une erreur est survenue lors de l\'enregistrement.');
@@ -195,6 +224,39 @@ const MemberForm = () => {
                                 placeholder="Optionnel"
                             />
                         </div>
+
+                        {user?.role === 'Bishop' && (
+                            <>
+                                <h3 className={styles.sectionTitle}>Affectation (Superviseur)</h3>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Région *</label>
+                                    <select
+                                        name="region_id"
+                                        value={formData.region_id || ''}
+                                        onChange={handleChange}
+                                        className={styles.select}
+                                        required={user?.role === 'Bishop'}
+                                    >
+                                        <option value="">Sélectionner une région</option>
+                                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Zone (Area) *</label>
+                                    <select
+                                        name="area_id"
+                                        value={formData.area_id || ''}
+                                        onChange={handleChange}
+                                        className={styles.select}
+                                        required={user?.role === 'Bishop'}
+                                        disabled={!formData.region_id}
+                                    >
+                                        <option value="">Sélectionner une zone</option>
+                                        {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        )}
 
                         <h3 className={styles.sectionTitle}>Engagement</h3>
 

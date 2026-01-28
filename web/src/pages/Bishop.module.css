@@ -130,17 +130,237 @@
 }
 
 /* Dashboard Layout */
-.dashboardContent {
+.dashboardLayout {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 600px), 1fr));
+    grid-template-columns: 1fr 350px;
     gap: 2rem;
     margin-top: 2rem;
 }
 
 @media (max-width: 1200px) {
-    .dashboardContent {
+    .dashboardLayout {
         grid-template-columns: 1fr;
     }
+}
+
+.mainColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.sideColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Rankings */
+.rankingsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .rankingsGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rankingCard {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+}
+
+.rankingTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+.rankingList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rankingItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 1rem;
+    transition: all 0.2s;
+}
+
+.rankingRank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.rankingInfo {
+    flex: 1;
+}
+
+.rankingName {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.rankingMeta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.rankingValue {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #DC2626;
+}
+
+/* Activity Card */
+.activityCard {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+}
+
+.activityTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.activityItem {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+}
+
+.activityMarker {
+    width: 2px;
+    background: rgba(220, 38, 38, 0.2);
+    position: relative;
+}
+
+.activityMarker::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background: #DC2626;
+    border-radius: 50%;
+}
+
+.activityContent {
+    flex: 1;
+}
+
+.activityText {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.activityMeta {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+/* Members View Enhancements */
+.headerActions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    width: 300px;
+}
+
+.searchBox input {
+    background: transparent;
+    border: none;
+    color: white;
+    outline: none;
+    width: 100%;
+}
+
+.filtersBar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.regionTag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #DC2626;
+    margin-bottom: 0.25rem;
+}
+
+.areaTag {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.statusActive {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.statusInactive {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.growthBadge {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
 }
 
 /* Chart Styles */

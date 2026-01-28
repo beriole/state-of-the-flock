@@ -42,6 +42,7 @@ const memberController = {
           whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
       }
+      // Note: Bishop has no restriction (global access)
 
       // Filtres supplémentaires
       if (area_id) whereClause.area_id = area_id;
