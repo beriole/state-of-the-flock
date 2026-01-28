@@ -22,53 +22,51 @@ export const generateProfessionalPDF = ({
 
         // --- Design Tokens (Modern Palette) ---
         const colors = {
-            primary: [185, 28, 28],     // Deep Red (Church Brand - Tailwind Red-700)
-            accent: [220, 38, 38],      // Brighter Red (Tailwind Red-600)
-            secondary: [15, 23, 42],    // Deep Navy for contrast (Slate 900)
-            gold: [180, 83, 9],        // Warm Gold
+            primary: [185, 28, 28],     // Deep Red (Church Brand)
+            accent: [220, 38, 38],      // Brighter Red
+            secondary: [15, 23, 42],    // Slate 900
             slate: [71, 85, 105],      // Slate 600
-            light: [254, 242, 242],     // Red-50 (Extremely light red for backgrounds)
-            border: [254, 226, 226],    // Red-100 (Light border)
+            light: [250, 250, 250],     // Subtle Gray
+            border: [230, 230, 230],    // Light Gray
             white: [255, 255, 255]
         };
 
         // --- Background & Header ---
-        // Top Ribbon
-        doc.setFillColor(...colors.primary);
-        doc.rect(0, 0, pageWidth, 50, 'F');
-
-        // Accent bar
-        doc.setFillColor(...colors.accent);
-        doc.rect(0, 50, pageWidth, 2, 'F');
+        // Clean Header (White Background)
+        doc.setFillColor(...colors.white);
+        doc.rect(0, 0, pageWidth, 60, 'F');
 
         // Branding & Logo
+        const logoSize = 18;
+        const logoX = (pageWidth - logoSize) / 2;
         try {
             // Using a standard public path that should be accessible in the browser
-            doc.addImage('/church_logo.png', 'PNG', margin, 12, 12, 12);
+            doc.addImage('/church_logo.png', 'PNG', logoX, 10, logoSize, logoSize);
         } catch (e) {
             console.warn("Logo not found at /church_logo.png, skipping image.");
         }
 
-        doc.setTextColor(...colors.white);
+        doc.setTextColor(...colors.primary);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
-        doc.text(branding, margin + 15, 23);
+        doc.setFontSize(18);
+        doc.text(branding, pageWidth / 2, 35, { align: 'center' });
 
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(200, 200, 200);
-        doc.text('LOYALTY HOUSE INTERNATIONAL', margin + 15, 30);
+        // Decorative Accent Line
+        doc.setDrawColor(...colors.primary);
+        doc.setLineWidth(0.5);
+        doc.line(margin, 38, pageWidth - margin, 38);
 
         // Report Title & Meta
-        doc.setTextColor(...colors.white);
-        doc.setFontSize(16);
+        doc.setTextColor(...colors.secondary);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text(title.toUpperCase(), pageWidth - margin, 23, { align: 'right' });
+        doc.text(title.toUpperCase(), pageWidth / 2, 48, { align: 'center' });
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.slate);
         if (subtitle) {
-            doc.text(subtitle, pageWidth - margin, 31, { align: 'right' });
+            doc.text(subtitle, pageWidth / 2, 54, { align: 'center' });
         }
 
         // --- Dashboard / Stats Section ---
