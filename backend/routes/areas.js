@@ -29,4 +29,7 @@ router.delete('/:id', requireRole(areaRoles), areaController.deleteArea);
 // POST /api/areas/assign
 router.post('/assign', requireRole(areaRoles), areaController.assignAreaToUser);
 
+// GET /api/areas/:id/leaders
+router.get('/:id/leaders', requireRole(areaRoles), areaController.getAreaLeaders);
+
 module.exports = router;

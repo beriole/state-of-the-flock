@@ -107,6 +107,35 @@ const reportController = {
           leader: stat.leader,
           total_members: parseInt(stat.total_members)
         })),
+        by_area: await (async () => {
+          const areas = await Area.findAll({
+            attributes: ['id', 'name'],
+            include: [{
+              model: Member,
+              as: 'members',
+              attributes: ['id'],
+              include: [{
+                model: Attendance,
+                as: 'attendances',
+                where: whereClause,
+                required: false
+              }]
+            }]
+          });
+          return areas.map(a => {
+            const totalMembers = a.members.length;
+            const records = a.members.flatMap(m => m.attendances || []);
+            const totalRecords = records.length;
+            const totalPresent = records.filter(r => r.present).length;
+            return {
+              name: a.name,
+              total: totalMembers,
+              records: totalRecords,
+              present: totalPresent,
+              percentage: totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0
+            };
+          });
+        })(),
         members_needing_follow_up: consecutiveAbsences.map(member => ({
           id: member.id,
           first_name: member.first_name,

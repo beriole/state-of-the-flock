@@ -63,8 +63,24 @@ const Bishop = () => {
     const [memberFilters, setMemberFilters] = useState({
         region_id: '',
         area_id: '',
+        governor_id: '',
+        leader_id: '',
         search: ''
     });
+    const [areaFilters, setAreaFilters] = useState({
+        region_id: '',
+        search: ''
+    });
+
+    const [selectedMinistry, setSelectedMinistry] = useState(null);
+    const [ministryMembers, setMinistryMembers] = useState([]);
+    const [ministryStats, setMinistryStats] = useState(null);
+
+    const [selectedAreaDetails, setSelectedAreaDetails] = useState(null);
+    const [areaLeaders, setAreaLeaders] = useState([]);
+
+    const [selectedReport, setSelectedReport] = useState(null);
+    const [reportData, setReportData] = useState(null);
 
     // Modals
     const [showGovernorModal, setShowGovernorModal] = useState(false);
@@ -103,6 +119,57 @@ const Bishop = () => {
         leader_id: ''
     });
 
+    const fetchMinistryDetails = async (id) => {
+        setLoading(true);
+        try {
+            const [membersRes, statsRes] = await Promise.all([
+                ministryAPI.getMinistryMembers(id),
+                ministryAPI.getMinistryStats(id, { date: new Date().toISOString().split('T')[0] })
+            ]);
+            setMinistryMembers(membersRes.data || []);
+            setMinistryStats(statsRes.data || null);
+            setSelectedMinistry(ministries.find(m => m.id === id));
+        } catch (error) {
+            console.error("Error fetching ministry details:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAreaDetails = async (id) => {
+        setLoading(true);
+        try {
+            const leadersRes = await areaAPI.getAreaLeaders(id);
+            setAreaLeaders(leadersRes.data || []);
+            setSelectedAreaDetails(areas.find(a => a.id === id));
+        } catch (error) {
+            console.error("Error fetching area details:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchReportDetail = async (type) => {
+        setLoading(true);
+        try {
+            setSelectedReport(type);
+            if (type === 'offerings') {
+                const res = await dashboardAPI.getFinancialStats();
+                setReportData(res.data);
+            } else if (type === 'presence') {
+                const res = await reportAPI.getAttendanceReport();
+                setReportData(res.data);
+            } else if (type === 'calls') {
+                const res = await callLogAPI.getCallLogs({ limit: 50 });
+                setReportData(res.data.logs || []);
+            }
+        } catch (error) {
+            console.error("Error fetching report detail:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = React.useCallback(async () => {
         setLoading(true);
         try {
@@ -129,23 +196,27 @@ const Bishop = () => {
                 setGovernors(governorsRes.data.users || []); // Need governors for dropdown
             } else if (activeTab === 'areas') {
                 const [areasRes, regionsRes, governorsRes] = await Promise.all([
-                    areaAPI.getAreas(),
+                    areaAPI.getAreas(areaFilters),
                     regionAPI.getRegions(),
                     governorAPI.getUsers({ role: 'Area_Pastor' })
                 ]);
-                setAreas(areasRes.data || []);
+                setAreas(areasRes.data.areas || []);
                 setRegions(regionsRes.data || []);
                 setGovernors(governorsRes.data.users || []); // Shared state for leaders
             } else if (activeTab === 'ministries') {
                 const ministriesRes = await ministryAPI.getAllMinistries();
                 setMinistries(ministriesRes.data || []);
             } else if (activeTab === 'members') {
-                const [membersRes, regionsRes] = await Promise.all([
+                const [membersRes, regionsRes, areasRes, governorsRes] = await Promise.all([
                     memberAPI.getMembers({ ...memberFilters, limit: 100 }),
-                    regionAPI.getRegions()
+                    regionAPI.getRegions(),
+                    areaAPI.getAreas(),
+                    governorAPI.getUsers({ role: 'Governor' }) // Fetch governors for member filters
                 ]);
                 setMembers(membersRes.data.members || []);
                 setRegions(regionsRes.data || []);
+                setAreas(areasRes.data.areas || []);
+                setGovernors(governorsRes.data.users || []);
             } else if (activeTab === 'bacenta') {
                 const meetingsRes = await bacentaAPI.getMeetings({ limit: 50 });
                 setBacentaMeetings(meetingsRes.data.meetings || []);
@@ -155,7 +226,7 @@ const Bishop = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab, memberFilters]);
+    }, [activeTab, memberFilters, areaFilters]);
 
     useEffect(() => {
         fetchData();
@@ -609,42 +680,42 @@ const Bishop = () => {
         </div>
     );
 
-    const renderAreas = () => (
+    const renderAreaDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Gestion des Zones (Areas)</h2>
-                <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
-                    <Plus size={20} /> Nouvelle Zone
+                <button className={styles.actionBtn} onClick={() => setSelectedAreaDetails(null)} style={{ marginRight: '1rem' }}>
+                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> Retour
                 </button>
+                <h2 className={styles.sectionTitle}>Détails de la Zone: {selectedAreaDetails?.name}</h2>
             </div>
+
+            <div className={styles.detailGrid}>
+                <div className={styles.detailCard}>
+                    <h3>Pasteur de Zone</h3>
+                    <p>{selectedAreaDetails?.leader_user ? `${selectedAreaDetails.leader_user.first_name} ${selectedAreaDetails.leader_user.last_name}` : 'Non assigné'}</p>
+                </div>
+                <div className={styles.detailCard}>
+                    <h3>Région</h3>
+                    <p>{selectedAreaDetails?.region?.name || 'Inconnu'}</p>
+                </div>
+            </div>
+
+            <h3 className={styles.subTitle}>Bacenta Leaders dans cette zone</h3>
             <div className={styles.tableContainer}>
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th className={styles.th}>Nom de la Zone</th>
-                            <th className={styles.th}>Région</th>
-                            <th className={styles.th}>Pasteur de Zone</th>
-                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                            <th className={styles.th}>Nom</th>
+                            <th className={styles.th}>Email</th>
+                            <th className={styles.th}>Role</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {areas.map(area => (
-                            <tr key={area.id} className={styles.tr}>
-                                <td className={styles.td}>{area.name}</td>
-                                <td className={styles.td}>{area.region?.name || 'Sans Région'}</td>
-                                <td className={styles.td}>
-                                    {area.area_pastor ? `${area.area_pastor.first_name} ${area.area_pastor.last_name}` : <span className={styles.badgeInactive}>Non assigné</span>}
-                                </td>
-                                <td className={styles.td} style={{ textAlign: 'right' }}>
-                                    <div className={styles.actions}>
-                                        <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </td>
+                        {areaLeaders.map(leader => (
+                            <tr key={leader.id} className={styles.tr}>
+                                <td className={styles.td}>{leader.first_name} {leader.last_name}</td>
+                                <td className={styles.td}>{leader.email}</td>
+                                <td className={styles.td}>{leader.role}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -653,28 +724,143 @@ const Bishop = () => {
         </div>
     );
 
-    const renderMinistries = () => (
+    const renderAreas = () => {
+        if (selectedAreaDetails) return renderAreaDetail();
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>Gestion des Zones (Areas)</h2>
+                    <div className={styles.headerActions}>
+                        <div className={styles.searchBox}>
+                            <Search size={18} />
+                            <input
+                                placeholder="Rechercher une zone..."
+                                value={areaFilters.search}
+                                onChange={e => setAreaFilters({ ...areaFilters, search: e.target.value })}
+                            />
+                        </div>
+                        <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
+                            <Plus size={20} /> Nouvelle Zone
+                        </button>
+                    </div>
+                </div>
+                <div className={styles.filtersBar}>
+                    <select
+                        className={styles.select}
+                        value={areaFilters.region_id}
+                        onChange={e => setAreaFilters({ ...areaFilters, region_id: e.target.value })}
+                    >
+                        <option value="">Toutes les Régions</option>
+                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                </div>
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Nom de la Zone</th>
+                                <th className={styles.th}>Région</th>
+                                <th className={styles.th}>Pasteur de Zone</th>
+                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {areas.map(area => (
+                                <tr key={area.id} className={styles.tr}>
+                                    <td className={styles.td}>{area.name}</td>
+                                    <td className={styles.td}>{area.region?.name || 'Sans Région'}</td>
+                                    <td className={styles.td}>
+                                        {area.leader_user ? `${area.leader_user.first_name} ${area.leader_user.last_name}` : <span className={styles.badgeInactive}>Non assigné</span>}
+                                    </td>
+                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                        <div className={styles.actions}>
+                                            <button className={styles.actionBtn} onClick={() => fetchAreaDetails(area.id)} title="Détails">
+                                                <Search size={18} />
+                                            </button>
+                                            <button className={styles.actionBtn} onClick={() => openAreaModal(area)}>
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteArea(area.id)}>
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
+    const renderMinistryDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Ministères Globaux</h2>
-                <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
-                    <Plus size={20} /> Nouveau Ministère
+                <button className={styles.actionBtn} onClick={() => setSelectedMinistry(null)} style={{ marginRight: '1rem' }}>
+                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> Retour
                 </button>
+                <h2 className={styles.sectionTitle}>Ministère: {selectedMinistry?.name}</h2>
             </div>
-            <div className={styles.reportsGrid}>
-                {ministries.map(ministry => (
-                    <div key={ministry.id} className={styles.reportCard}>
-                        <div className={styles.reportIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                            <Library size={32} />
-                        </div>
-                        <h3 className={styles.reportTitle}>{ministry.name}</h3>
-                        <p className={styles.reportDesc}>{ministry.description || 'Aucune description'}</p>
-                        <div className={styles.badge}>{ministry.member_count} Membres</div>
-                    </div>
-                ))}
+
+            <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                    <h3 className={styles.statValue}>{ministryMembers.length}</h3>
+                    <p className={styles.statLabel}>Membres Actifs</p>
+                </div>
+                <div className={styles.statCard}>
+                    <h3 className={styles.statValue}>{ministryStats?.total_present || 0}</h3>
+                    <p className={styles.statLabel}>Présents (Aujourd'hui)</p>
+                </div>
+            </div>
+
+            <h3 className={styles.subTitle}>Liste des Membres</h3>
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Nom</th>
+                            <th className={styles.th}>Leader Bacenta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ministryMembers.map(member => (
+                            <tr key={member.id} className={styles.tr}>
+                                <td className={styles.td}>{member.first_name} {member.last_name}</td>
+                                <td className={styles.td}>{member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'Aucun'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
+
+    const renderMinistries = () => {
+        if (selectedMinistry) return renderMinistryDetail();
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>Ministères Globaux</h2>
+                    <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
+                        <Plus size={20} /> Nouveau Ministère
+                    </button>
+                </div>
+                <div className={styles.reportsGrid}>
+                    {ministries.map(ministry => (
+                        <div key={ministry.id} className={styles.reportCard} onClick={() => fetchMinistryDetails(ministry.id)} style={{ cursor: 'pointer' }}>
+                            <div className={styles.reportIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                                <Library size={32} />
+                            </div>
+                            <h3 className={styles.reportTitle}>{ministry.name}</h3>
+                            <p className={styles.reportDesc}>{ministry.description || 'Aucune description'}</p>
+                            <div className={styles.badge}>{ministry.member_count} Membres</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     const renderMembers = () => (
         <div className={styles.section}>
@@ -704,7 +890,30 @@ const Bishop = () => {
                     <option value="">Toutes les Régions</option>
                     {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
-                {/* Could add area filter here too if needed */}
+                <select
+                    className={styles.select}
+                    value={memberFilters.area_id}
+                    onChange={e => setMemberFilters({ ...memberFilters, area_id: e.target.value })}
+                >
+                    <option value="">Toutes les Zones</option>
+                    {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+                <select
+                    className={styles.select}
+                    value={memberFilters.governor_id}
+                    onChange={e => setMemberFilters({ ...memberFilters, governor_id: e.target.value })}
+                >
+                    <option value="">Tous les Gouverneurs</option>
+                    {governors.map(g => <option key={g.id} value={g.id}>{g.first_name} {g.last_name}</option>)}
+                </select>
+                <select
+                    className={styles.select}
+                    value={memberFilters.leader_id}
+                    onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value })}
+                >
+                    <option value="">Tous les Leaders</option>
+                    {governors.filter(g => g.role === 'Area_Pastor' || g.role === 'Bacenta_Leader').map(l => <option key={l.id} value={l.id}>{l.first_name} {l.last_name}</option>)}
+                </select>
             </div>
 
             <div className={styles.tableContainer}>
@@ -815,39 +1024,127 @@ const Bishop = () => {
         </div>
     );
 
-    const renderReports = () => (
+    const renderReportDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Rapports de Supervision</h2>
+                <button className={styles.actionBtn} onClick={() => setSelectedReport(null)} style={{ marginRight: '1rem' }}>
+                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> Retour
+                </button>
+                <h2 className={styles.sectionTitle}>
+                    {selectedReport === 'presence' ? 'Détails Présence Globale' :
+                        selectedReport === 'offerings' ? 'Détails Offrandes & Finances' : 'Détails Appels'}
+                </h2>
             </div>
-            <div className={styles.reportsGrid}>
-                <div className={styles.reportCard}>
-                    <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
-                        <Users size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Présence Globale</h3>
-                    <p className={styles.reportDesc}>Évolution de la présence aux cultes sur toute l'église.</p>
-                    <button className={styles.badge} onClick={() => navigate('/reports')}>Consulter</button>
+
+            {selectedReport === 'offerings' && reportData && (
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Zone</th>
+                                <th className={styles.th}>Total Offrandes</th>
+                                <th className={styles.th}>Nombre de Réunions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reportData.by_zone?.map((item, idx) => (
+                                <tr key={idx} className={styles.tr}>
+                                    <td className={styles.td}>{item.name}</td>
+                                    <td className={styles.td}>{item.total.toLocaleString()} CFA</td>
+                                    <td className={styles.td}>{item.meeting_count}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-                <div className={styles.reportCard}>
-                    <div className={styles.reportIcon} style={{ background: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
-                        <DollarSign size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Offrandes & Finances</h3>
-                    <p className={styles.reportDesc}>Suivi des offrandes collectées globalement et par région.</p>
-                    <button className={styles.badge}>Consulter</button>
+            )}
+
+            {selectedReport === 'presence' && reportData && (
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Zone</th>
+                                <th className={styles.th}>Taux de Présence</th>
+                                <th className={styles.th}>Membres Présents</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reportData.by_area?.map((item, idx) => (
+                                <tr key={idx} className={styles.tr}>
+                                    <td className={styles.td}>{item.name}</td>
+                                    <td className={styles.td}>{item.percentage}%</td>
+                                    <td className={styles.td}>{item.present} / {item.total}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-                <div className={styles.reportCard}>
-                    <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
-                        <PhoneCall size={32} />
-                    </div>
-                    <h3 className={styles.reportTitle}>Suivi des Appels</h3>
-                    <p className={styles.reportDesc}>Statistiques de contact et fidélisation des membres.</p>
-                    <button className={styles.badge}>Consulter</button>
+            )}
+
+            {selectedReport === 'calls' && reportData && (
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>Membre</th>
+                                <th className={styles.th}>Date</th>
+                                <th className={styles.th}>Type</th>
+                                <th className={styles.th}>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reportData.map?.((log, idx) => (
+                                <tr key={idx} className={styles.tr}>
+                                    <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
+                                    <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>
+                                    <td className={styles.td}>{log.log_type}</td>
+                                    <td className={styles.td}>{log.status}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            )}
         </div>
     );
+
+    const renderReports = () => {
+        if (selectedReport) return renderReportDetail();
+        return (
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>Rapports de Supervision</h2>
+                </div>
+                <div className={styles.reportsGrid}>
+                    <div className={styles.reportCard}>
+                        <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
+                            <Users size={32} />
+                        </div>
+                        <h3 className={styles.reportTitle}>Présence Globale</h3>
+                        <p className={styles.reportDesc}>Évolution de la présence aux cultes sur toute l'église.</p>
+                        <button className={styles.badge} onClick={() => fetchReportDetail('presence')}>Consulter</button>
+                    </div>
+                    <div className={styles.reportCard}>
+                        <div className={styles.reportIcon} style={{ background: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
+                            <DollarSign size={32} />
+                        </div>
+                        <h3 className={styles.reportTitle}>Offrandes & Finances</h3>
+                        <p className={styles.reportDesc}>Suivi des offrandes collectées globalement et par région.</p>
+                        <button className={styles.badge} onClick={() => fetchReportDetail('offerings')}>Consulter</button>
+                    </div>
+                    <div className={styles.reportCard}>
+                        <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
+                            <PhoneCall size={32} />
+                        </div>
+                        <h3 className={styles.reportTitle}>Suivi des Appels</h3>
+                        <p className={styles.reportDesc}>Statistiques de contact et fidélisation des membres.</p>
+                        <button className={styles.badge} onClick={() => fetchReportDetail('calls')}>Consulter</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const renderHeader = () => (
         <header className={styles.header}>

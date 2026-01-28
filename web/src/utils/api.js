@@ -154,6 +154,7 @@ export const areaAPI = {
     updateArea: (id, data) => api.put(`/areas/${id}`, data),
     deleteArea: (id) => api.delete(`/areas/${id}`),
     assignAreaToUser: (data) => api.post('/areas/assign', data),
+    getAreaLeaders: (id) => api.get(`/areas/${id}/leaders`),
 };
 
 export const dashboardAPI = {
@@ -169,9 +170,10 @@ export const ministryAPI = {
     getAllMinistries: () => api.get('/ministries'),
     createMinistry: (data) => api.post('/ministries', data),
     deleteMinistry: (id) => api.delete(`/ministries/${id}`),
-    getMembers: (id) => api.get(`/ministries/${id}/members`),
+    getMinistryMembers: (id) => api.get(`/ministries/${id}/members`),
     markAttendance: (id, data) => api.post(`/ministries/${id}/attendance`, data),
-    getAttendanceStats: (id, date) => api.get(`/ministries/${id}/attendance/stats`, { params: { date } }),
+    getAttendanceStats: (id, params) => api.get(`/ministries/${id}/attendance/stats`, { params }),
+    getMinistryStats: (id, params) => api.get(`/ministries/${id}/attendance/stats`, { params }),
     getAttendanceOverview: (date) => api.get('/ministries/overview', { params: { date } }),
     saveHeadcounts: (data) => api.post('/ministries/headcounts', data),
     getMinistryEvolution: (id, startDate, endDate) => api.get(`/ministries/${id}/evolution?start_date=${startDate}&end_date=${endDate}`)

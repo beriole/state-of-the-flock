@@ -35,6 +35,7 @@ const areaController = {
       const areas = await Area.findAndCountAll({
         where: whereClause,
         include: [
+          { model: require('../models').Region, as: 'region', attributes: ['id', 'name'] },
           { model: User, as: 'overseer', attributes: ['id', 'first_name', 'last_name', 'email'] },
           { model: User, as: 'leader_user', attributes: ['id', 'first_name', 'last_name', 'email'] }
         ],
@@ -207,6 +208,28 @@ const areaController = {
     } catch (error) {
       console.error('Assign area error:', error);
       res.status(500).json({ error: 'Erreur lors de l\'assignation de la zone' });
+    }
+  },
+
+  // 6. Obtenir les leaders d'une zone
+  getAreaLeaders: async (req, res) => {
+    try {
+      const areaId = req.params.id;
+      const leaders = await require('../models').User.findAll({
+        where: { area_id: areaId },
+        include: [
+          {
+            model: require('../models').Member,
+            as: 'led_members',
+            attributes: ['id']
+          }
+        ],
+        attributes: ['id', 'first_name', 'last_name', 'email', 'role']
+      });
+      res.json(leaders);
+    } catch (error) {
+      console.error('Get area leaders error:', error);
+      res.status(500).json({ error: 'Erreur lors de la récupération des leaders' });
     }
   }
 };
