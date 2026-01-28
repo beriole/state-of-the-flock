@@ -22,12 +22,13 @@ export const generateProfessionalPDF = ({
 
         // --- Design Tokens (Modern Palette) ---
         const colors = {
-            primary: [15, 23, 42],     // Deep Navy (Slate 900)
-            accent: [153, 27, 27],      // Rich Crimson (Church Brand)
+            primary: [185, 28, 28],     // Deep Red (Church Brand - Tailwind Red-700)
+            accent: [220, 38, 38],      // Brighter Red (Tailwind Red-600)
+            secondary: [15, 23, 42],    // Deep Navy for contrast (Slate 900)
             gold: [180, 83, 9],        // Warm Gold
             slate: [71, 85, 105],      // Slate 600
-            light: [248, 250, 252],     // Slate 50
-            border: [226, 232, 240],    // Slate 200
+            light: [254, 242, 242],     // Red-50 (Extremely light red for backgrounds)
+            border: [254, 226, 226],    // Red-100 (Light border)
             white: [255, 255, 255]
         };
 
@@ -149,11 +150,12 @@ export const generateProfessionalPDF = ({
                     // Disclaimer / Footer Text
                     const footerY = pageHeight - 10;
                     doc.setDrawColor(...colors.border);
+                    doc.setLineWidth(0.1);
                     doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
 
-                    doc.text(`Généré par le Système de Gestion de Données - First Love Church`, margin, footerY);
-                    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth / 2, footerY, { align: 'center' });
-                    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber} / ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
+                    doc.text(`SYSTÈME DE GESTION DE DONNÉES - FIRST LOVE CHURCH`, margin, footerY);
+                    doc.text(`Rapport généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth / 2, footerY, { align: 'center' });
+                    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber} sur ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
                 }
             });
         }
