@@ -34,7 +34,11 @@ import {
     Award,
     Calendar,
     PhoneCall,
-    Mail
+    PhoneCall,
+    Mail,
+    ArrowLeft,
+    ClipboardCheck,
+    HomeIcon
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styles from './Bishop.module.css';
