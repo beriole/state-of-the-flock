@@ -82,6 +82,20 @@ const dashboardController = {
             }]
           });
 
+          const recentMeetings = await BacentaMeeting.findAll({
+            where: {
+              created_at: { [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+            },
+            include: [{
+              model: User,
+              as: 'leader',
+              where: userWhere,
+              attributes: ['id', 'first_name', 'last_name']
+            }],
+            order: [['date', 'DESC']],
+            limit: 5
+          });
+
           res.json({
             user_role: userRole,
             last_updated: new Date(),
@@ -93,7 +107,14 @@ const dashboardController = {
               attendance_change: 0,
               recent_call_logs: recentCallLogs || 0,
               recent_bacenta_meetings: recentBacentaMeetings || 0
-            }
+            },
+            recent_meetings: recentMeetings.map(m => ({
+              id: m.id,
+              title: m.title,
+              date: m.date,
+              attendance: m.attendance_count || 0, // This might need actual count logic
+              leader_name: m.leader ? `${m.leader.first_name} ${m.leader.last_name}` : 'Inconnu'
+            }))
           });
         } catch (dbError) {
           console.error('Database error in dashboard:', dbError);
@@ -517,10 +538,14 @@ const dashboardController = {
                     AND att.present = true
             )`), 'total_present']
         ],
+        include: [{
+          model: Region,
+          as: 'region',
+          attributes: ['name']
+        }],
         order: [[sequelize.literal('total_present'), 'DESC']],
         limit: 3
       });
-
       res.json({
         top_recruiters: topRecruiters,
         top_zones: topZones

@@ -103,10 +103,6 @@ const Bishop = () => {
         leader_id: ''
     });
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
     const fetchData = React.useCallback(async () => {
         setLoading(true);
         try {
@@ -160,6 +156,10 @@ const Bishop = () => {
             setLoading(false);
         }
     }, [activeTab, memberFilters]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     // --- Modal Handlers ---
 
@@ -442,10 +442,10 @@ const Bishop = () => {
                                     <div key={index} className={styles.rankingItem}>
                                         <div className={styles.rankingRank}>{index + 1}</div>
                                         <div className={styles.rankingInfo}>
-                                            <div className={styles.rankingName}>{leader.name}</div>
-                                            <div className={styles.rankingMeta}>{leader.area_name}</div>
+                                            <div className={styles.rankingName}>{leader.first_name} {leader.last_name}</div>
+                                            <div className={styles.rankingMeta}>{leader.area?.name || 'Sans Zone'}</div>
                                         </div>
-                                        <div className={styles.rankingValue}>{leader.count} mbrs</div>
+                                        <div className={styles.rankingValue}>{leader.dataValues?.new_members_count || leader.new_members_count || 0} mbrs</div>
                                     </div>
                                 ))}
                             </div>
@@ -459,7 +459,7 @@ const Bishop = () => {
                                         <div className={styles.rankingRank} style={{ backgroundColor: index < 3 ? '#FEF3F2' : '#F8FAFC', color: index < 3 ? '#DC2626' : '#64748B' }}>{index + 1}</div>
                                         <div className={styles.rankingInfo}>
                                             <div className={styles.rankingName}>{zone.name}</div>
-                                            <div className={styles.rankingMeta}>{zone.region_name}</div>
+                                            <div className={styles.rankingMeta}>{zone.region?.name || 'Sans Région'}</div>
                                         </div>
                                         <div className={styles.rankingValue}>{zone.attendance_avg}%</div>
                                     </div>

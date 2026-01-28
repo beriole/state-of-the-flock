@@ -17,6 +17,7 @@ const MemberForm = () => {
     const [ministries, setMinistries] = useState([]);
     const [regions, setRegions] = useState([]);
     const [areas, setAreas] = useState([]);
+    const [leaders, setLeaders] = useState([]);
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -54,6 +55,10 @@ const MemberForm = () => {
                     const areasRes = await areaAPI.getAreas({ region_id: memberData.area.region_id });
                     setAreas(areasRes.data || []);
                 }
+                if (memberData.area_id) {
+                    const leadersRes = await areaAPI.getAreaLeaders(memberData.area_id);
+                    setLeaders(leadersRes.data || []);
+                }
             }
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -78,7 +83,8 @@ const MemberForm = () => {
                 ministry: selectedMinistry ? selectedMinistry.name : null
             }));
         } else if (name === 'region_id') {
-            setFormData(prev => ({ ...prev, region_id: value, area_id: '' }));
+            setFormData(prev => ({ ...prev, region_id: value, area_id: '', leader_id: '' }));
+            setLeaders([]);
             if (value) {
                 try {
                     const areasRes = await areaAPI.getAreas({ region_id: value });
@@ -88,6 +94,18 @@ const MemberForm = () => {
                 }
             } else {
                 setAreas([]);
+            }
+        } else if (name === 'area_id') {
+            setFormData(prev => ({ ...prev, area_id: value, leader_id: '' }));
+            if (value) {
+                try {
+                    const leadersRes = await areaAPI.getAreaLeaders(value);
+                    setLeaders(leadersRes.data || []);
+                } catch (err) {
+                    console.error("Error fetching leaders:", err);
+                }
+            } else {
+                setLeaders([]);
             }
         } else {
             setFormData(prev => ({
@@ -253,6 +271,22 @@ const MemberForm = () => {
                                     >
                                         <option value="">Sélectionner une zone</option>
                                         {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Bacenta Leader *</label>
+                                    <select
+                                        name="leader_id"
+                                        value={formData.leader_id || ''}
+                                        onChange={handleChange}
+                                        className={styles.select}
+                                        required={user?.role === 'Bishop'}
+                                        disabled={!formData.area_id}
+                                    >
+                                        <option value="">Sélectionner un leader</option>
+                                        {leaders.map(l => (
+                                            <option key={l.id} value={l.id}>{l.first_name} {l.last_name}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </>

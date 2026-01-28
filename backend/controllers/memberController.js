@@ -63,7 +63,11 @@ const memberController = {
       const members = await Member.findAndCountAll({
         where: whereClause,
         include: [
-          { model: Area, as: 'area' },
+          {
+            model: Area,
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['name'] }]
+          },
           { model: User, as: 'leader' },
           { model: Ministry, as: 'ministry_association' }
         ],
@@ -91,7 +95,11 @@ const memberController = {
 
       const member = await Member.findByPk(memberId, {
         include: [
-          { model: Area, as: 'area' },
+          {
+            model: Area,
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['name'] }]
+          },
           { model: User, as: 'leader' },
           { model: Ministry, as: 'ministry_association' },
           {
@@ -207,12 +215,15 @@ const memberController = {
 
       const newMember = await Member.findByPk(member.id, {
         include: [
-          { model: Area, as: 'area' },
+          {
+            model: Area,
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['name'] }]
+          },
           { model: User, as: 'leader' },
           { model: Ministry, as: 'ministry_association' }
         ]
       });
-
       res.status(201).json(newMember);
     } catch (error) {
       console.error('Create member error:', error);
@@ -253,12 +264,15 @@ const memberController = {
 
       const updatedMember = await Member.findByPk(memberId, {
         include: [
-          { model: Area, as: 'area' },
+          {
+            model: Area,
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['name'] }]
+          },
           { model: User, as: 'leader' },
           { model: Ministry, as: 'ministry_association' }
         ]
       });
-
       res.json(updatedMember);
     } catch (error) {
       console.error('Update member error:', error);
