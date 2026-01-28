@@ -388,6 +388,31 @@ const Bishop = () => {
 
                 <div className={styles.statCard}>
                     <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                            <ClipboardCheck size={24} />
+                        </div>
+                        {stats?.summary?.current_week_attendance > 0 && (
+                            <div className={styles.statusActive}>
+                                {stats.summary.current_week_attendance}%
+                            </div>
+                        )}
+                    </div>
+                    <h3 className={styles.statValue}>{stats?.summary?.present_members || 0}</h3>
+                    <p className={styles.statLabel}>Membres Présents (Semaine)</p>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(217, 119, 6, 0.1)', color: '#d97706' }}>
+                            <HomeIcon size={24} />
+                        </div>
+                    </div>
+                    <h3 className={styles.statValue}>{stats?.summary?.total_areas || 0}</h3>
+                    <p className={styles.statLabel}>Total Zones (Areas)</p>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statHeader}>
                         <div className={styles.statIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
                             <Globe size={24} />
                         </div>
@@ -837,57 +862,6 @@ const Bishop = () => {
     return (
         <div className={styles.container}>
             {renderHeader()}
-
-            <div className={styles.tabs}>
-                <button
-                    className={`${styles.tab} ${activeTab === 'dashboard' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('dashboard')}
-                >
-                    <LayoutDashboard size={18} /> Tableau de bord
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'governors' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('governors')}
-                >
-                    <Shield size={18} /> Gouverneurs
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'regions' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('regions')}
-                >
-                    <Map size={18} /> Régions
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'areas' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('areas')}
-                >
-                    <Globe size={18} /> Zones
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('members')}
-                >
-                    <Users size={18} /> Membres
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'bacenta' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('bacenta')}
-                >
-                    <Library size={18} /> Bacenta
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'ministries' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('ministries')}
-                >
-                    <Library size={18} /> Ministères
-                </button>
-                <button
-                    className={`${styles.tab} ${activeTab === 'reports' ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab('reports')}
-                >
-                    <FileBarChart size={18} /> Rapports
-                </button>
-            </div>
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>

@@ -104,6 +104,8 @@ const dashboardController = {
               total_leaders: totalLeaders || 0,
               total_areas: totalAreas || 0,
               current_week_attendance: attendancePercentage || 0,
+              present_members: presentCount || 0,
+              total_attendance_records: totalAttendanceRecords || 0,
               attendance_change: 0,
               recent_call_logs: recentCallLogs || 0,
               recent_bacenta_meetings: recentBacentaMeetings || 0

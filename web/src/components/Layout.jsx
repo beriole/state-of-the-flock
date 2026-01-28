@@ -46,11 +46,14 @@ const Layout = () => {
         navSections.push({
             title: 'BISHOP SPACE',
             items: [
-                { path: '/bishop?tab=dashboard', label: 'Global Dashboard', icon: <LayoutDashboard size={20} /> },
-                { path: '/bishop?tab=governors', label: 'Governors', icon: <ShieldCheck size={20} /> },
-                { path: '/bishop?tab=regions', label: 'Regions', icon: <Globe size={20} /> },
-                { path: '/bishop?tab=ministries', label: 'Ministries', icon: <Library size={20} /> },
-                { path: '/bishop?tab=reports', label: 'Global Reports', icon: <FileBarChart size={20} /> },
+                { path: '/bishop?tab=dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
+                { path: '/bishop?tab=governors', label: 'Gouverneurs', icon: <ShieldCheck size={20} /> },
+                { path: '/bishop?tab=regions', label: 'Régions', icon: <Map size={20} /> },
+                { path: '/bishop?tab=areas', label: 'Zones', icon: <Globe size={20} /> },
+                { path: '/bishop?tab=members', label: 'Membres', icon: <Users size={20} /> },
+                { path: '/bishop?tab=bacenta', label: 'Bacenta', icon: <HomeIcon size={20} /> },
+                { path: '/bishop?tab=ministries', label: 'Ministères', icon: <Library size={20} /> },
+                { path: '/bishop?tab=reports', label: 'Rapports', icon: <FileBarChart size={20} /> },
             ]
         });
     }
