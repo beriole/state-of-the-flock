@@ -134,7 +134,7 @@ export const governorAPI = {
     uploadUserPhoto: (id, formData) => api.post(`/users/${id}/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    getGlobalStats: () => api.get('/dashboard'),
+    getGlobalStats: (params = {}) => api.get('/dashboard', { params }),
 };
 
 // Fonctions API pour les rapports
@@ -158,11 +158,11 @@ export const areaAPI = {
 };
 
 export const dashboardAPI = {
-    getGlobalStats: () => api.get('/dashboard'),
+    getGlobalStats: (params = {}) => api.get('/dashboard', { params }),
     getAreaStats: (areaId) => api.get(`/dashboard/area/${areaId}/stats`),
     getLeaderStats: (leaderId) => api.get(`/dashboard/leader/${leaderId}/stats`),
-    getFinancialStats: () => api.get('/dashboard/financials'),
-    getPerformanceRankings: () => api.get('/dashboard/rankings'),
+    getFinancialStats: (params = {}) => api.get('/dashboard/financials', { params }),
+    getPerformanceRankings: (params = {}) => api.get('/dashboard/rankings', { params }),
 };
 
 // Fonctions API pour les Ministères

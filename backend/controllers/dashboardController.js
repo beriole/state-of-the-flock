@@ -22,6 +22,26 @@ const dashboardController = {
           }
           // Note: Bishop and Assisting_Overseer (global) leave areaIds as null
 
+          // Récupérer le filtre de zone optionnel
+          const { area_id } = req.query;
+
+          // Si un area_id est demandé
+          if (area_id) {
+            // Pour le Gouverneur, on vérifie que c'est dans sa région
+            if (userRole === 'Governor') {
+              if (areaIds.includes(area_id)) {
+                // On remplace la liste complète par cette seule zone
+                areaIds = [area_id];
+              } else {
+                // Tentative d'accès hors zone : on ignore ou on rejette (ici on ignore pour fallback sur toute la région)
+                // areaIds reste inchangé (toute la région)
+              }
+            } else {
+              // Bishop/Overseer : on applique le filtre directement
+              areaIds = [area_id];
+            }
+          }
+
           const memberWhere = areaIds ? { area_id: { [Op.in]: areaIds } } : {};
           const userWhere = { role: 'Bacenta_Leader', is_active: true };
           if (areaIds) userWhere.area_id = { [Op.in]: areaIds };

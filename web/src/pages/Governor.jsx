@@ -72,6 +72,18 @@ const Governor = () => {
     const [members, setMembers] = useState([]);
     const [memberFilters, setMemberFilters] = useState({
         area_id: '',
+        leader_id: '',
+        status: 'active'
+    });
+    const [dashboardFilters, setDashboardFilters] = useState({
+        area_id: ''
+    });
+    const [leaderFilters, setLeaderFilters] = useState({
+        area_id: '',
+        search: ''
+    });
+    const [areaFilters, setAreaFilters] = useState({
+        search: '',
         leader_id: ''
     });
     const [growthData, setGrowthData] = useState(null);
@@ -175,7 +187,7 @@ const Governor = () => {
 
     useEffect(() => {
         fetchData();
-    }, [activeTab]);
+    }, [activeTab, dashboardFilters, leaderFilters.area_id, leaderFilters.search]);
 
     // Secondary effect for member-specific filtering to avoid reloading everything
     useEffect(() => {
@@ -187,7 +199,20 @@ const Governor = () => {
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            const membersRes = await memberAPI.getMembers({ ...memberFilters, search: debouncedSearchQuery });
+            const params = { ...memberFilters, search: debouncedSearchQuery };
+
+            // Map status to is_active
+            if (memberFilters.status === 'active') {
+                params.is_active = true;
+            } else if (memberFilters.status === 'inactive') {
+                params.is_active = false;
+            }
+            // If status is 'all', we don't send is_active (or send undefined) logic handles it? 
+            // Controller: if (is_active !== undefined) ...
+            // So for 'all', we delete params.status and ensure is_active is undefined.
+            delete params.status;
+
+            const membersRes = await memberAPI.getMembers(params);
             setMembers(membersRes.data.members || []);
         } catch (error) {
             console.error('Error fetching members:', error);
@@ -200,19 +225,21 @@ const Governor = () => {
         setLoading(true);
         try {
             if (activeTab === 'dashboard') {
-                const [statsRes, growthRes, financialRes, rankingsRes] = await Promise.all([
-                    dashboardAPI.getGlobalStats(),
-                    reportAPI.getMemberGrowthReport({ period: '3months' }),
-                    dashboardAPI.getFinancialStats(),
-                    dashboardAPI.getPerformanceRankings()
+                const [statsRes, growthRes, financialRes, rankingsRes, areasRes] = await Promise.all([
+                    dashboardAPI.getGlobalStats({ area_id: dashboardFilters.area_id }),
+                    reportAPI.getMemberGrowthReport({ period: '3months', area_id: dashboardFilters.area_id }),
+                    dashboardAPI.getFinancialStats({ area_id: dashboardFilters.area_id }),
+                    dashboardAPI.getPerformanceRankings({ area_id: dashboardFilters.area_id }),
+                    areaAPI.getAreas()
                 ]);
                 setStats(statsRes.data);
                 setGrowthData(growthRes.data);
                 setFinancialStats(financialRes.data);
                 setRankings(rankingsRes.data);
+                setAreas(areasRes.data.areas || []);
             } else if (activeTab === 'leaders') {
                 const [leadersRes, areasRes] = await Promise.all([
-                    governorAPI.getBacentaLeaders(),
+                    governorAPI.getBacentaLeaders({ area_id: leaderFilters.area_id, search: leaderFilters.search }),
                     areaAPI.getAreas()
                 ]);
                 setLeaders(leadersRes.data.users || []);
@@ -869,6 +896,22 @@ const Governor = () => {
 
     const renderDashboard = () => (
         <div className={styles.section}>
+            <div className={styles.sectionHeader} style={{ marginBottom: '1.5rem' }}>
+                <h2 className={styles.sectionTitle}>Tableau de Bord</h2>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <select
+                        className={styles.select}
+                        value={dashboardFilters.area_id}
+                        onChange={(e) => setDashboardFilters({ ...dashboardFilters, area_id: e.target.value })}
+                        style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                    >
+                        <option value="">Toutes les Zones</option>
+                        {areas.map(area => (
+                            <option key={area.id} value={area.id}>{area.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
             <div className={styles.statsGrid}>
                 <div className={styles.statCard}>
                     <div className={styles.statHeader}>
@@ -1028,17 +1071,28 @@ const Governor = () => {
             </div>
 
             <div className={styles.tableContainer}>
-                <div className={styles.searchBar}>
-                    <div className={styles.searchInputWrapper}>
+                <div className={styles.searchBar} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div className={styles.searchInputWrapper} style={{ flex: 1, minWidth: '250px' }}>
                         <Search size={18} className={styles.searchIcon} />
                         <input
                             type="text"
                             className={styles.searchInput}
                             placeholder="Rechercher un leader par nom ou email..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
+                            value={leaderFilters.search}
+                            onChange={e => setLeaderFilters({ ...leaderFilters, search: e.target.value })}
                         />
                     </div>
+                    <select
+                        className={styles.select}
+                        value={leaderFilters.area_id}
+                        onChange={(e) => setLeaderFilters({ ...leaderFilters, area_id: e.target.value })}
+                        style={{ padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', minWidth: '200px' }}
+                    >
+                        <option value="">Toutes les Zones</option>
+                        {areas.map(area => (
+                            <option key={area.id} value={area.id}>{area.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <table className={styles.table}>
                     <thead>
@@ -1050,66 +1104,98 @@ const Governor = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredLeaders.map(leader => (
-                            <tr key={leader.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div className={styles.userCell}>
-                                        <div className={styles.avatar}>
-                                            {leader.photo_url ? (
-                                                <img src={getPhotoUrl(leader.photo_url)} alt="Profile" className={styles.avatarImage} />
-                                            ) : (
-                                                <>{leader.first_name[0]}{leader.last_name[0]}</>
-                                            )}
+                        <tbody>
+                            {leaders.map(leader => (
+                                <tr key={leader.id} className={styles.tr}>
+                                    <td className={styles.td}>
+                                        <div className={styles.userCell}>
+                                            <div className={styles.avatar}>
+                                                {leader.photo_url ? (
+                                                    <img src={getPhotoUrl(leader.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                                ) : (
+                                                    <>{leader.first_name[0]}{leader.last_name[0]}</>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <span className={styles.userName}>{leader.first_name} {leader.last_name}</span>
+                                                <span className={styles.userEmail}>{leader.email}</span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span className={styles.userName}>{leader.first_name} {leader.last_name}</span>
-                                            <span className={styles.userEmail}>{leader.email}</span>
+                                    </td>
+                                    <td className={styles.td}>
+                                        <span className={`${styles.badge} ${styles.badgeArea}`}>
+                                            {areas.find(a => a.id === leader.area_id)?.name || 'Non assigné'}
+                                        </span>
+                                    </td>
+                                    <td className={styles.td}>{leader.phone || '-'}</td>
+                                    <td className={styles.td}>
+                                        <div className={styles.actions}>
+                                            <button className={styles.actionBtn} onClick={() => fetchLeaderDetail(leader)} title="Voir détails">
+                                                <ChevronRight size={18} />
+                                            </button>
+                                            <button className={styles.actionBtn} onClick={() => openLeaderModal(leader)}>
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteLeader(leader.id)}>
+                                                <Trash2 size={18} />
+                                            </button>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className={styles.td}>
-                                    <span className={`${styles.badge} ${styles.badgeArea}`}>
-                                        {areas.find(a => a.id === leader.area_id)?.name || 'Non assigné'}
-                                    </span>
-                                </td>
-                                <td className={styles.td}>{leader.phone || '-'}</td>
-                                <td className={styles.td}>
-                                    <div className={styles.actions}>
-                                        <button className={styles.actionBtn} onClick={() => fetchLeaderDetail(leader)} title="Voir détails">
-                                            <ChevronRight size={18} />
-                                        </button>
-                                        <button className={styles.actionBtn} onClick={() => openLeaderModal(leader)}>
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteLeader(leader.id)}>
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
                 </table>
             </div>
         </div>
     );
 
     const renderZones = () => {
+        // Filter areas locally
+        const filteredAreas = areas.filter(a => {
+            const matchesSearch = areaFilters.search === '' || a.name.toLowerCase().includes(areaFilters.search.toLowerCase());
+            const matchesLeader = areaFilters.leader_id === '' || (a.leader_id === areaFilters.leader_id || a.leaderId === areaFilters.leader_id);
+            return matchesSearch && matchesLeader;
+        });
+
         // Group areas by region
         const zonesByRegion = regions.map(region => ({
             ...region,
-            zones: areas.filter(a => a.region_id === region.id)
+            zones: filteredAreas.filter(a => a.region_id === region.id)
         }));
 
-        const unassignedZones = areas.filter(a => !a.region_id);
+        const unassignedZones = filteredAreas.filter(a => !a.region_id);
 
         return (
             <div className={styles.section}>
                 <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>Gestion des Zones</h2>
-                    <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
-                        <Plus size={20} /> Nouvelle Zone
-                    </button>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div className={styles.searchInputWrapper} style={{ minWidth: '200px' }}>
+                            <Search size={16} className={styles.searchIcon} />
+                            <input
+                                type="text"
+                                className={styles.searchInput}
+                                placeholder="Rechercher une zone..."
+                                value={areaFilters.search}
+                                onChange={e => setAreaFilters({ ...areaFilters, search: e.target.value })}
+                                style={{ padding: '0.5rem 0.5rem 0.5rem 2.5rem', fontSize: '0.9rem' }}
+                            />
+                        </div>
+                        <select
+                            className={styles.select}
+                            value={areaFilters.leader_id}
+                            onChange={(e) => setAreaFilters({ ...areaFilters, leader_id: e.target.value })}
+                            style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                        >
+                            <option value="">Tous les responsables</option>
+                            {leaders.map(l => (
+                                <option key={l.id} value={l.id}>{l.first_name} {l.last_name}</option>
+                            ))}
+                        </select>
+                        <button className={styles.primaryBtn} onClick={() => openAreaModal()}>
+                            <Plus size={20} /> Nouvelle Zone
+                        </button>
+                    </div>
                 </div>
 
                 {zonesByRegion.map(region => (
@@ -1252,6 +1338,16 @@ const Governor = () => {
                         {areas.map(area => (
                             <option key={area.id} value={area.id}>{area.name}</option>
                         ))}
+                    </select>
+                    <select
+                        className={styles.select}
+                        style={{ width: 'auto', marginRight: '1rem' }}
+                        value={memberFilters.status}
+                        onChange={e => setMemberFilters({ ...memberFilters, status: e.target.value })}
+                    >
+                        <option value="active">Actifs</option>
+                        <option value="inactive">Inactifs</option>
+                        <option value="all">Tous</option>
                     </select>
                     <select
                         className={styles.select}
