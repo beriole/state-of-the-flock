@@ -11,38 +11,45 @@ const dashboardController = {
 
       if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
         try {
-          console.log('Testing basic DB connection...');
+          let areaIds = null;
+          if (userRole === 'Governor') {
+            const governorRegion = await require('../models').Region.findOne({
+              where: { governor_id: userId },
+              include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+            });
+            if (!governorRegion) return res.status(404).json({ error: 'Région introuvable pour ce gouverneur' });
+            areaIds = governorRegion.areas.map(a => a.id);
+          }
+
+          const memberWhere = areaIds ? { area_id: { [Op.in]: areaIds } } : {};
+          const userWhere = { role: 'Bacenta_Leader', is_active: true };
+          if (areaIds) userWhere.area_id = { [Op.in]: areaIds };
+          const areaWhere = areaIds ? { id: { [Op.in]: areaIds } } : {};
+
           // Test basique de connexion DB
-          const testConnection = await sequelize.authenticate();
-          console.log('DB connection test passed');
+          await sequelize.authenticate();
 
-          // Test simple de comptage
-          const totalMembers = await Member.count();
-          console.log('Member count query successful:', totalMembers);
-
-          // Statistiques générales pour les administrateurs
-          const totalLeaders = await User.count({
-            where: {
-              role: 'Bacenta_Leader',
-              is_active: true
-            }
-          });
-          console.log('Total leaders:', totalLeaders);
-
-          const totalAreas = await Area.count();
-          console.log('Total areas:', totalAreas);
+          // Statistiques
+          const totalMembers = await Member.count({ where: memberWhere });
+          const totalLeaders = await User.count({ where: userWhere });
+          const totalAreas = await Area.count({ where: areaWhere });
 
           // Présence de cette semaine
           const today = new Date();
           const sunday = new Date(today);
           sunday.setDate(today.getDate() - today.getDay());
+          const sundayStr = sunday.toISOString().split('T')[0];
 
           const weekAttendance = await Attendance.findAll({
             where: {
-              sunday_date: {
-                [Op.gte]: sunday.toISOString().split('T')[0]
-              }
-            }
+              sunday_date: { [Op.gte]: sundayStr }
+            },
+            include: [{
+              model: Member,
+              as: 'member',
+              where: memberWhere,
+              attributes: ['id']
+            }]
           });
 
           const totalAttendanceRecords = weekAttendance.length;
@@ -52,18 +59,26 @@ const dashboardController = {
 
           const recentCallLogs = await CallLog.count({
             where: {
-              created_at: {
-                [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-              }
-            }
+              created_at: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+            },
+            include: [{
+              model: Member,
+              as: 'member',
+              where: memberWhere,
+              attributes: ['id']
+            }]
           });
 
           const recentBacentaMeetings = await BacentaMeeting.count({
             where: {
-              created_at: {
-                [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-              }
-            }
+              created_at: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+            },
+            include: [{
+              model: User,
+              as: 'leader',
+              where: userWhere,
+              attributes: ['id']
+            }]
           });
 
           res.json({
@@ -74,30 +89,17 @@ const dashboardController = {
               total_leaders: totalLeaders || 0,
               total_areas: totalAreas || 0,
               current_week_attendance: attendancePercentage || 0,
-              attendance_change: 5,
+              attendance_change: 0,
               recent_call_logs: recentCallLogs || 0,
               recent_bacenta_meetings: recentBacentaMeetings || 0
             }
           });
         } catch (dbError) {
-          console.error('Database error in Bishop dashboard:', dbError);
-          // Retourner des données par défaut en cas d'erreur DB
-          res.json({
-            user_role: userRole,
-            last_updated: new Date(),
-            summary: {
-              total_members: 0,
-              total_leaders: 0,
-              total_areas: 0,
-              current_week_attendance: 0,
-              attendance_change: 0,
-              recent_call_logs: 0,
-              recent_bacenta_meetings: 0
-            },
-            warning: 'Erreur de base de données - données par défaut affichées'
-          });
+          console.error('Database error in dashboard:', dbError);
+          res.status(500).json({ error: 'Erreur lors de la récupération des données du tableau de bord' });
         }
-      } else if (userRole === 'Bacenta_Leader') {
+      }
+      else if (userRole === 'Bacenta_Leader') {
         try {
           // Comptage simple des membres pour ce leader
           const totalMembers = await Member.count({
@@ -197,17 +199,21 @@ const dashboardController = {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
-      const area = await Area.findByPk(area_id, {
-        include: [{
-          model: User,
-          as: 'leaders',
-          where: { role: 'Bacenta_Leader', is_active: true },
-          attributes: ['id', 'first_name', 'last_name']
-        }]
-      });
+      const area = await Area.findByPk(area_id);
 
       if (!area) {
         return res.status(404).json({ error: 'Zone non trouvée' });
+      }
+
+      // Sécurité Gouverneur: Vérifier si la zone appartient à sa région
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        if (!governorRegion || !governorRegion.areas.some(a => a.id === area.id)) {
+          return res.status(403).json({ error: 'Accès interdit à cette zone' });
+        }
       }
 
       // Statistiques de la zone
@@ -272,6 +278,17 @@ const dashboardController = {
         return res.status(404).json({ error: 'Leader non trouvé' });
       }
 
+      // Sécurité Gouverneur: Vérifier si le leader appartient à sa région
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(leader.area_id)) {
+          return res.status(403).json({ error: 'Accès interdit à ce leader' });
+        }
+      }
       // Statistiques du leader
       const totalMembers = await Member.count({
         where: { leader_id, is_active: true }

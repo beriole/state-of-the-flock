@@ -222,6 +222,16 @@ const bacentaController = {
         return res.status(403).json({ error: 'Accès non autorisé à cette réunion' });
       }
 
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(meeting.leader?.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
+      }
       res.json(meeting);
     } catch (error) {
       console.error('Get bacenta meeting error:', error);
@@ -250,7 +260,9 @@ const bacentaController = {
         details // Added details for potential fallback
       } = req.body;
 
-      const meeting = await BacentaMeeting.findByPk(meetingId);
+      const meeting = await BacentaMeeting.findByPk(meetingId, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
@@ -258,6 +270,17 @@ const bacentaController = {
       // Vérification des permissions
       if (req.user.role === 'Bacenta_Leader' && meeting.leader_id !== req.user.userId) {
         return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(meeting.leader?.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       const meetingTypeMap = {
@@ -329,13 +352,26 @@ const bacentaController = {
         return res.status(400).json({ error: 'ID de réunion et liste de présence requis' });
       }
 
-      const meeting = await BacentaMeeting.findByPk(bacenta_meeting_id);
+      const meeting = await BacentaMeeting.findByPk(bacenta_meeting_id, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
 
       if (req.user.role === 'Bacenta_Leader' && meeting.leader_id !== req.user.userId) {
         return res.status(403).json({ error: 'Accès non autorisé à cette réunion' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(meeting.leader?.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       const results = [];
@@ -412,13 +448,26 @@ const bacentaController = {
         return res.status(400).json({ error: 'Liste d\'offrandes requise' });
       }
 
-      const meeting = await BacentaMeeting.findByPk(meetingId);
+      const meeting = await BacentaMeeting.findByPk(meetingId, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
 
       if (req.user.role === 'Bacenta_Leader' && meeting.leader_id !== req.user.userId) {
         return res.status(403).json({ error: 'Accès non autorisé à cette réunion' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(meeting.leader?.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       const results = [];
@@ -459,14 +508,28 @@ const bacentaController = {
       const meetingId = req.params.id;
       const { verification_notes } = req.body;
 
-      const meeting = await BacentaMeeting.findByPk(meetingId);
+      const meeting = await BacentaMeeting.findByPk(meetingId, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
 
       // Seuls les superviseurs peuvent vérifier
-      if (!['Bishop', 'Assisting_Overseer', 'Area_Pastor'].includes(req.user.role)) {
+      if (!['Bishop', 'Assisting_Overseer', 'Area_Pastor', 'Governor'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Accès non autorisé. Rôle insuffisant.' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        const leader = await User.findByPk(meeting.leader_id);
+        if (!leader || !areaIds.includes(leader.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       await meeting.update({
@@ -538,7 +601,9 @@ const bacentaController = {
     try {
       const meetingId = req.params.id;
 
-      const meeting = await BacentaMeeting.findByPk(meetingId);
+      const meeting = await BacentaMeeting.findByPk(meetingId, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
@@ -546,6 +611,17 @@ const bacentaController = {
       // Vérification des permissions
       if (req.user.role === 'Bacenta_Leader' && meeting.leader_id !== req.user.userId) {
         return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        if (!areaIds.includes(meeting.leader?.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       await meeting.destroy();
@@ -565,15 +641,29 @@ const bacentaController = {
       }
 
       const meetingId = req.params.id;
-      const meeting = await BacentaMeeting.findByPk(meetingId);
+      const meeting = await BacentaMeeting.findByPk(meetingId, {
+        include: [{ model: User, as: 'leader' }] // Include leader to check area_id
+      });
 
       if (!meeting) {
         return res.status(404).json({ error: 'Réunion non trouvée' });
       }
 
       // Vérifier que l'utilisateur est le leader de la réunion ou un superviseur
-      if (meeting.leader_id !== req.user.userId && !['Bishop', 'Assisting_Overseer', 'Area_Pastor'].includes(req.user.role)) {
+      if (meeting.leader_id !== req.user.userId && !['Bishop', 'Assisting_Overseer', 'Area_Pastor', 'Governor'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      if (req.user.role === 'Governor') {
+        const governorRegion = await require('../models').Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+        const leader = await User.findByPk(meeting.leader_id);
+        if (!leader || !areaIds.includes(leader.area_id)) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        }
       }
 
       const photoUrl = `/uploads/bacenta-meetings/${req.file.filename}`;

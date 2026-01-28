@@ -6,17 +6,17 @@ const attendanceController = {
   // Lister les présences
   getAttendance: async (req, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        member_id, 
-        leader_id, 
-        area_id, 
+      const {
+        page = 1,
+        limit = 50,
+        member_id,
+        leader_id,
+        area_id,
         sunday_date,
         start_date,
-        end_date 
+        end_date
       } = req.query;
-      
+
       const offset = (page - 1) * limit;
       const whereClause = {};
 
@@ -43,8 +43,8 @@ const attendanceController = {
       const attendance = await Attendance.findAndCountAll({
         where: whereClause,
         include: [
-          { 
-            model: Member, 
+          {
+            model: Member,
             as: 'member',
             include: [
               { model: Area, as: 'area' },
@@ -95,6 +95,17 @@ const attendanceController = {
             continue;
           }
 
+          if (req.user.role === 'Governor') {
+            const governorRegion = await require('../models').Region.findOne({
+              where: { governor_id: req.user.userId },
+              include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+            });
+            const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
+            if (!areaIds.includes(member.area_id)) {
+              errors.push(`Accès non autorisé (Hors région) pour le membre ${member.first_name} ${member.last_name}`);
+              continue;
+            }
+          }
           const existing = await Attendance.findOne({
             where: {
               member_id: att.member_id,
@@ -143,7 +154,7 @@ const attendanceController = {
       const { area_id, leader_id, start_date, end_date } = req.query;
 
       const whereClause = {};
-      
+
       if (req.user.role === 'Bacenta_Leader') {
         whereClause['$member.leader_id$'] = req.user.userId;
       } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
@@ -183,7 +194,7 @@ const attendanceController = {
         total: parseInt(stat.total),
         present_count: parseInt(stat.present_count || 0),
         absent_count: parseInt(stat.total) - parseInt(stat.present_count || 0),
-        percentage: parseInt(stat.total) > 0 ? 
+        percentage: parseInt(stat.total) > 0 ?
           Math.round((parseInt(stat.present_count || 0) / parseInt(stat.total)) * 100) : 0
       }));
 
@@ -198,11 +209,11 @@ const attendanceController = {
   generateCallList: async (req, res) => {
     try {
       const { weeks_back = 2 } = req.query;
-      
+
       const today = new Date();
       const lastSunday = new Date(today);
       lastSunday.setDate(today.getDate() - today.getDay() - 7 * (weeks_back - 1));
-      
+
       const previousSunday = new Date(lastSunday);
       previousSunday.setDate(lastSunday.getDate() - 7);
 

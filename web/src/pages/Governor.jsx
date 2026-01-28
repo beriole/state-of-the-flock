@@ -7,7 +7,6 @@ import {
     memberAPI,
     bacentaAPI,
     getPhotoUrl,
-    ministryAPI,
     regionAPI
 } from '../utils/api';
 import {
@@ -67,7 +66,6 @@ const Governor = () => {
     const [stats, setStats] = useState(null);
     const [leaders, setLeaders] = useState([]);
     const [areas, setAreas] = useState([]);
-    const [ministries, setMinistries] = useState([]);
     const [regions, setRegions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -100,9 +98,6 @@ const Governor = () => {
     const [selectedReportType, setSelectedReportType] = useState('attendance'); // 'attendance' or 'growth'
     const [isViewingReport, setIsViewingReport] = useState(false);
     const [pendingFilters, setPendingFilters] = useState(null); // For "Apply" logic
-    const [ministryTab, setMinistryTab] = useState('list'); // 'list' or 'entries'
-    const [manualHeadcounts, setManualHeadcounts] = useState({}); // For bulk entry
-    const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
     const [callTrackingData, setCallTrackingData] = useState([]);
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
@@ -110,14 +105,6 @@ const Governor = () => {
     const [reportDebugInfo, setReportDebugInfo] = useState(null);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-    const [ministryReportData, setMinistryReportData] = useState([]);
-    const [selectedMinistryForReport, setSelectedMinistryForReport] = useState('');
-    const [ministryOverviewData, setMinistryOverviewData] = useState([]);
-    const [evolutionData, setEvolutionData] = useState([]);
-    const [evolutionDateRange, setEvolutionDateRange] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
-    });
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     // Debounce searchQuery
     useEffect(() => {
@@ -136,7 +123,9 @@ const Governor = () => {
     // Debounce effect to update evolutionDateRange when local changes
     useEffect(() => {
         const timer = setTimeout(() => {
-            setEvolutionDateRange(localEvolutionDateRange);
+            // Assuming setEvolutionDateRange is defined elsewhere or intended to be added
+            // For now, this line is commented out to avoid a reference error if not defined.
+            // setEvolutionDateRange(localEvolutionDateRange);
         }, 800);
         return () => clearTimeout(timer);
     }, [localEvolutionDateRange]);
@@ -149,15 +138,10 @@ const Governor = () => {
     // Modals
     const [showLeaderModal, setShowLeaderModal] = useState(false);
     const [showAreaModal, setShowAreaModal] = useState(false);
-    const [showMinistryModal, setShowMinistryModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalError, setModalError] = useState('');
-    const [showMinistryAttendanceModal, setShowMinistryAttendanceModal] = useState(false);
     const [showMemberModal, setShowMemberModal] = useState(false);
-    const [selectedMinistryForAttendance, setSelectedMinistryForAttendance] = useState(null);
-    const [ministryAttendanceMembers, setMinistryAttendanceMembers] = useState([]);
-    const [ministryAttendanceDate, setMinistryAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Member Form
     const [memberForm, setMemberForm] = useState({
@@ -168,10 +152,8 @@ const Governor = () => {
         gender: 'M',
         leader_id: '',
         area_id: '',
-        ministry_id: '',
         is_active: true
     });
-
     // Forms
     const [leaderForm, setLeaderForm] = useState({
         first_name: '',
@@ -190,11 +172,6 @@ const Governor = () => {
         region_id: ''
     });
 
-    const [ministryForm, setMinistryForm] = useState({
-        name: '',
-        description: '',
-        leader_id: ''
-    });
 
     useEffect(() => {
         fetchData();
@@ -240,31 +217,13 @@ const Governor = () => {
                 ]);
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
-            } else if (activeTab === 'zones') {
-                const [areasRes, leadersRes, regionsRes] = await Promise.all([
-                    areaAPI.getAreas(),
-                    governorAPI.getUsers({ limit: 1000 }), // Fetch all users to have all potential leaders
-                    regionAPI.getRegions()
-                ]);
-                setAreas(areasRes.data.areas || []);
-                setLeaders(leadersRes.data.users || []);
-                setRegions(regionsRes.data || []);
-            } else if (activeTab === 'ministries') {
-                const [ministriesRes, leadersRes] = await Promise.all([
-                    ministryAPI.getAllMinistries(),
-                    governorAPI.getBacentaLeaders()
-                ]);
-                setMinistries(ministriesRes.data || []);
-                setLeaders(leadersRes.data.users || []);
             } else if (activeTab === 'members') {
-                const [leadersRes, areasRes, ministriesRes] = await Promise.all([
+                const [leadersRes, areasRes] = await Promise.all([
                     governorAPI.getBacentaLeaders(),
-                    areaAPI.getAreas(),
-                    ministryAPI.getAllMinistries()
+                    areaAPI.getAreas()
                 ]);
                 setLeaders(leadersRes.data.users || []);
                 setAreas(areasRes.data.areas || []);
-                setMinistries(ministriesRes.data || []);
                 // fetchMembers() call will be implicitly handled by the useEffect above
                 // but we can call it here for the initial load if we want to be explicit
                 await fetchMembers();
@@ -394,20 +353,6 @@ const Governor = () => {
         navigate(`/members/${memberId}`);
     };
 
-    useEffect(() => {
-        if (showMinistryAttendanceModal && selectedMinistryForAttendance) {
-            fetchMinistryAttendance();
-        }
-    }, [ministryAttendanceDate]);
-
-    const fetchMinistryAttendance = async () => {
-        try {
-            const res = await ministryAPI.getAttendanceStats(selectedMinistryForAttendance.id, ministryAttendanceDate);
-            setMinistryAttendanceMembers(res.data.details || []);
-        } catch (error) {
-            console.error('Error fetching ministry attendance:', error);
-        }
-    };
 
     useEffect(() => {
         if (activeTab === 'reports') {
@@ -419,59 +364,10 @@ const Governor = () => {
                 fetchCallTrackingData();
             } else if (selectedReportType === 'bacenta_meetings') {
                 fetchBacentaReportData();
-            } else if (selectedReportType === 'ministries') {
-                fetchMinistryReportData();
             }
         }
-    }, [reportFilters, selectedReportType, activeTab, callTrackingView, selectedMinistryForReport]);
+    }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
 
-    useEffect(() => {
-        if (activeTab === 'ministries' && ministryTab === 'entries') {
-            fetchManualHeadcounts(entryDate);
-        }
-    }, [ministryTab, entryDate, activeTab]);
-
-    const fetchMinistryReportData = async () => {
-        setLoading(true);
-        try {
-            if (!selectedMinistryForReport) {
-                const res = await ministryAPI.getAttendanceOverview(reportFilters.startDate);
-                setMinistryOverviewData(res.data || []);
-                setMinistryReportData([]);
-            } else {
-                const res = await ministryAPI.getAttendanceStats(selectedMinistryForReport, reportFilters.startDate);
-                setMinistryReportData(res.data.details || []);
-                setMinistryOverviewData([]);
-            }
-        } catch (error) {
-            console.error('Error fetching ministry report:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchMinistryEvolution = async () => {
-        if (!selectedMinistryForReport) return;
-        setLoading(true);
-        try {
-            const res = await ministryAPI.getMinistryEvolution(
-                selectedMinistryForReport,
-                evolutionDateRange.startDate,
-                evolutionDateRange.endDate
-            );
-            setEvolutionData(res.data || []);
-        } catch (error) {
-            console.error('Error fetching ministry evolution:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (showEvolutionChart && selectedMinistryForReport) {
-            fetchMinistryEvolution();
-        }
-    }, [showEvolutionChart, selectedMinistryForReport, evolutionDateRange]);
 
     const handleLeaderPhotoUpload = async (e) => {
         const file = e.target.files[0];
@@ -808,298 +704,7 @@ const Governor = () => {
         setShowAreaModal(true);
     };
 
-    const openMinistryModal = (ministry = null) => {
-        setModalError('');
-        setModalLoading(false);
-        if (ministry) {
-            setEditingItem(ministry);
-            setMinistryForm({
-                name: ministry.name,
-                description: ministry.description || '',
-                leader_id: ministry.leader_id || ''
-            });
-        } else {
-            setEditingItem(null);
-            setMinistryForm({
-                name: '',
-                description: '',
-                leader_id: ''
-            });
-        }
-        setShowMinistryModal(true);
-    };
 
-    const handleSaveMinistry = async (e) => {
-        e.preventDefault();
-        setModalLoading(true);
-        setModalError('');
-        try {
-            if (editingItem) {
-                await ministryAPI.createMinistry({ ...ministryForm, id: editingItem.id }); // Use create with ID for update or add update to API
-            } else {
-                await ministryAPI.createMinistry(ministryForm);
-            }
-            setShowMinistryModal(false);
-            fetchData();
-        } catch (error) {
-            console.error('Error saving ministry:', error);
-            setModalError(error.response?.data?.error || 'Erreur lors de l\'enregistrement');
-        } finally {
-            setModalLoading(false);
-        }
-    };
-
-    const handleDeleteMinistry = async (id) => {
-        if (window.confirm('Voulez-vous supprimer ce ministère ?')) {
-            try {
-                await ministryAPI.deleteMinistry(id);
-                fetchData();
-            } catch (error) {
-                console.error('Error deleting ministry:', error);
-            }
-        }
-    };
-
-    const openMinistryAttendance = async (ministry) => {
-        setLoading(true);
-        setSelectedMinistryForAttendance(ministry);
-        try {
-            // Ensure date is reset to today if opening fresh? Or keep last date.
-            const res = await ministryAPI.getAttendanceStats(ministry.id, ministryAttendanceDate);
-            setMinistryAttendanceMembers(res.data.details || []);
-            setShowMinistryAttendanceModal(true);
-        } catch (error) {
-            console.error('Error fetching ministry attendance:', error);
-            alert('Erreur lors du chargement des membres du ministère');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleToggleAttendance = (memberId) => {
-        setMinistryAttendanceMembers(prev => prev.map(m =>
-            m.member_id === memberId ? { ...m, present: !m.present } : m
-        ));
-    };
-
-    const handleMarkAllAttendance = (present) => {
-        setMinistryAttendanceMembers(prev => prev.map(m => ({ ...m, present })));
-    };
-
-    const handleSaveMinistryAttendance = async () => {
-        if (!selectedMinistryForAttendance) return;
-        setModalLoading(true);
-        try {
-            await ministryAPI.markAttendance(selectedMinistryForAttendance.id, {
-                date: ministryAttendanceDate,
-                attendances: ministryAttendanceMembers.map(m => ({
-                    member_id: m.member_id,
-                    present: m.present
-                }))
-            });
-            setShowMinistryAttendanceModal(false);
-            alert('Présences enregistrées avec succès');
-            fetchMinistryReportData();
-        } catch (error) {
-            console.error('Error saving ministry attendance:', error);
-            alert('Erreur lors de l\'enregistrement des présences');
-        } finally {
-            setModalLoading(false);
-        }
-    };
-
-    const fetchManualHeadcounts = async (date) => {
-        setLoading(true);
-        try {
-            const res = await ministryAPI.getAttendanceOverview(date);
-            const counts = {};
-            res.data.forEach(m => {
-                counts[m.id] = m.manual_count || m.nominative_count || 0;
-            });
-            setManualHeadcounts(counts);
-        } catch (error) {
-            console.error('Error fetching headcounts:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleHeadcountChange = (ministryId, value) => {
-        setManualHeadcounts(prev => ({
-            ...prev,
-            [ministryId]: parseInt(value) || 0
-        }));
-    };
-
-    const handleSaveHeadcounts = async () => {
-        setModalLoading(true);
-        try {
-            const data = {
-                date: entryDate,
-                headcounts: Object.entries(manualHeadcounts).map(([id, count]) => ({
-                    ministry_id: id,
-                    headcount: count
-                }))
-            };
-            await ministryAPI.saveHeadcounts(data);
-            alert('Effectifs enregistrés avec succès');
-            if (activeTab === 'reports') fetchMinistryReportData();
-        } catch (error) {
-            console.error('Error saving headcounts:', error);
-            alert('Erreur lors de l\'enregistrement');
-        } finally {
-            setModalLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (ministryTab === 'entries' && activeTab === 'ministries') {
-            fetchManualHeadcounts(entryDate);
-        }
-    }, [entryDate, ministryTab, activeTab]);
-
-    const renderMinistries = () => (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>
-                    <span key="ministry-title">Ministères</span>
-                </h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '4px' }}>
-                        <button
-                            className={ministryTab === 'list' ? styles.activeTabBtn : styles.tabBtn}
-                            onClick={() => setMinistryTab('list')}
-                            style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: ministryTab === 'list' ? 'rgba(220, 38, 38, 0.1)' : 'transparent', color: ministryTab === 'list' ? '#DC2626' : '#94a3b8', cursor: 'pointer', fontWeight: '600' }}
-                        >
-                            Gérer
-                        </button>
-                        <button
-                            className={ministryTab === 'entries' ? styles.activeTabBtn : styles.tabBtn}
-                            onClick={() => setMinistryTab('entries')}
-                            style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: ministryTab === 'entries' ? 'rgba(220, 38, 38, 0.1)' : 'transparent', color: ministryTab === 'entries' ? '#DC2626' : '#94a3b8', cursor: 'pointer', fontWeight: '600' }}
-                        >
-                            Saisie Rapide
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {ministryTab === 'list' ? (
-                <>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-                        <button className={styles.primaryBtn} onClick={() => openMinistryModal()}>
-                            <Plus size={20} /> Nouveau Ministère
-                        </button>
-                    </div>
-                    <div className={styles.tableContainer}>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.th}>Ministère</th>
-                                    <th className={styles.th}>Responsable</th>
-                                    <th className={styles.th}>Description</th>
-                                    <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {ministries.length > 0 ? (
-                                    ministries.map(ministry => (
-                                        <tr key={ministry.id} className={styles.tr}>
-                                            <td className={styles.td}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                    <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '8px' }}>
-                                                        <Library size={18} />
-                                                    </div>
-                                                    <strong style={{ color: 'white' }}>{ministry.name}</strong>
-                                                </div>
-                                            </td>
-                                            <td className={styles.td}>
-                                                {ministry.leader ? `${ministry.leader.first_name} ${ministry.leader.last_name}` : 'Non assigné'}
-                                            </td>
-                                            <td className={styles.td} style={{ maxWidth: '300px', fontSize: '0.85rem', color: '#94a3b8' }}>
-                                                {ministry.description || '-'}
-                                            </td>
-                                            <td className={styles.td} style={{ textAlign: 'right' }}>
-                                                <div className={styles.actions}>
-                                                    <button className={styles.actionBtn} title="Présences nominatives" onClick={() => openMinistryAttendance(ministry)}>
-                                                        <CheckCircle size={18} />
-                                                    </button>
-                                                    <button className={styles.actionBtn} onClick={() => openMinistryModal(ministry)}>
-                                                        <Pencil size={18} />
-                                                    </button>
-                                                    <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteMinistry(ministry.id)}>
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                            Aucun ministère configuré.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
-            ) : (
-                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                            <div>
-                                <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Saisie des Effectifs</h3>
-                                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Entrez le nombre total de participants par ministère pour une date précise.</p>
-                            </div>
-                            <div className={styles.formGroup} style={{ marginBottom: 0, width: 'auto' }}>
-                                <label className={styles.label}>Date de réunion</label>
-                                <input
-                                    type="date"
-                                    className={styles.input}
-                                    style={{ width: '200px' }}
-                                    value={entryDate}
-                                    onChange={e => setEntryDate(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                            {ministries.map(m => (
-                                <div key={m.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ color: 'white', fontWeight: '600' }}>{m.name}</div>
-                                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total membres: {m.member_count}</div>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        className={styles.input}
-                                        style={{ width: '80px', textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold' }}
-                                        value={manualHeadcounts[m.id] || ''}
-                                        placeholder="0"
-                                        onChange={e => handleHeadcountChange(m.id, e.target.value)}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-
-                        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                className={styles.primaryBtn}
-                                style={{ padding: '0.8rem 2.5rem', fontSize: '1rem' }}
-                                onClick={handleSaveHeadcounts}
-                                disabled={modalLoading}
-                            >
-                                {modalLoading ? <Loader2 className={styles.spin} /> : <Save size={20} style={{ marginRight: '0.5rem' }} />}
-                                Enregistrer tous les effectifs
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
 
     const filteredLeaders = leaders.filter(l =>
         `${l.first_name} ${l.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1488,357 +1093,6 @@ const Governor = () => {
             </div>
         </div>
     );
-
-    const renderMinistryReport = () => {
-        if (!selectedMinistryForReport) {
-            return (
-                <div style={{ width: '100%' }}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>Ministère</th>
-                                <th className={styles.th}>Effectif</th>
-                                <th className={styles.th}>Présents</th>
-                                <th className={styles.th}>Taux %</th>
-                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ministryOverviewData.length > 0 ? (
-                                ministryOverviewData.map(m => (
-                                    <tr key={m.id} className={styles.tr}>
-                                        <td className={styles.td}>
-                                            <div style={{ fontWeight: '600', color: 'white' }}>{m.name}</div>
-                                        </td>
-                                        <td className={styles.td}>{m.total_members}</td>
-                                        <td className={styles.td}>
-                                            <span style={{ color: m.present_count > 0 ? '#10b981' : '#94a3b8' }}>
-                                                {m.present_count}
-                                            </span>
-                                        </td>
-                                        <td className={styles.td}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                    <div style={{ width: `${m.attendance_rate}%`, height: '100%', background: m.attendance_rate > 50 ? '#10b981' : '#f59e0b' }}></div>
-                                                </div>
-                                                <span style={{ fontSize: '0.8rem' }}>{m.attendance_rate}%</span>
-                                            </div>
-                                        </td>
-                                        <td className={styles.td} style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                <button
-                                                    className={styles.actionBtn}
-                                                    onClick={() => setSelectedMinistryForReport(m.id)}
-                                                    title="Détails"
-                                                >
-                                                    <Search size={16} />
-                                                </button>
-                                                <button
-                                                    className={styles.actionBtn}
-                                                    onClick={() => {
-                                                        setMinistryAttendanceDate(reportFilters.startDate);
-                                                        openMinistryAttendance(m);
-                                                    }}
-                                                    title="Saisir les présences"
-                                                >
-                                                    <CheckCircle size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
-                                        {loading ? <Loader2 className={styles.spin} /> : 'Aucun ministère trouvé.'}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        }
-
-        const renderEvolutionChart = () => {
-            const hasData = evolutionData.some(d => d.total_members > 0 || d.attendance > 0);
-            const diag = evolutionData.length > 0 ? evolutionData[0].diagnostic : null;
-
-            const CustomTooltip = ({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                    return (
-                        <div style={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem', backdropFilter: 'blur(8px)' }}>
-                            <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                                {new Date(label).toLocaleDateString("fr-FR", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {payload.map((entry, index) => (
-                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: entry.color }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color }}></div>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>{entry.name}: {entry.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                }
-                return null;
-            };
-
-            const handleDateRangePreset = (months) => {
-                const end = new Date();
-                const start = new Date();
-                start.setMonth(start.getMonth() - months);
-                const newRange = {
-                    startDate: start.toISOString().split('T')[0],
-                    endDate: end.toISOString().split('T')[0]
-                };
-                setLocalEvolutionDateRange(newRange);
-                setEvolutionDateRange(newRange); // Immediate update for presets
-            };
-
-            return (
-                <div className={styles.section} style={{ marginTop: '2rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 className={styles.sectionTitle} style={{ fontSize: '1.2rem', margin: 0 }}>Évolution des Statistiques</h3>
-                            <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px' }}>
-                                {[
-                                    { label: '1M', months: 1 },
-                                    { label: '3M', months: 3 },
-                                    { label: '6M', months: 6 },
-                                    { label: '1A', months: 12 }
-                                ].map(preset => (
-                                    <button
-                                        key={preset.label}
-                                        onClick={() => handleDateRangePreset(preset.months)}
-                                        style={{
-                                            padding: '0.3rem 0.8rem',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            background: 'transparent',
-                                            color: '#94a3b8',
-                                            fontSize: '0.8rem',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            fontWeight: '500'
-                                        }}
-                                        onMouseOver={e => e.target.style.color = 'white'}
-                                        onMouseOut={e => e.target.style.color = '#94a3b8'}
-                                    >
-                                        {preset.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', padding: '0.8rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <Calendar size={18} style={{ color: '#64748b' }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <div style={{ position: 'relative' }}>
-                                    <label style={{ position: 'absolute', top: '-8px', left: '8px', background: '#0f172a', padding: '0 4px', fontSize: '0.7rem', color: '#64748b' }}>Du</label>
-                                    <input
-                                        type="date"
-                                        className={styles.input}
-                                        style={{ padding: '0.6rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.9rem', cursor: 'pointer' }}
-                                        value={localEvolutionDateRange.startDate}
-                                        onChange={e => setLocalEvolutionDateRange({ ...localEvolutionDateRange, startDate: e.target.value })}
-                                        onKeyDown={(e) => e.preventDefault()}
-                                        onClick={(e) => e.currentTarget.showPicker()}
-                                    />
-                                </div>
-                                <span style={{ color: '#64748b' }}>→</span>
-                                <div style={{ position: 'relative' }}>
-                                    <label style={{ position: 'absolute', top: '-8px', left: '8px', background: '#0f172a', padding: '0 4px', fontSize: '0.7rem', color: '#64748b' }}>Au</label>
-                                    <input
-                                        type="date"
-                                        className={styles.input}
-                                        style={{ padding: '0.6rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.9rem', cursor: 'pointer' }}
-                                        value={localEvolutionDateRange.endDate}
-                                        onChange={e => setLocalEvolutionDateRange({ ...localEvolutionDateRange, endDate: e.target.value })}
-                                        onKeyDown={(e) => e.preventDefault()}
-                                        onClick={(e) => e.currentTarget.showPicker()}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ height: '350px', width: '100%', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden', padding: '1rem' }}>
-                        {loading ? (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                                <Loader2 className="animate-spin" size={32} style={{ marginBottom: '1rem' }} />
-                                <span>Chargement...</span>
-                            </div>
-                        ) : !selectedMinistryForReport ? (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                                <Library size={48} style={{ color: '#1e293b', marginBottom: '1.5rem' }} />
-                                <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Aucun ministère sélectionné</h4>
-                                <p style={{ color: '#64748b', maxWidth: '300px' }}>Sélectionnez un ministère pour voir son évolution.</p>
-                            </div>
-                        ) : !hasData ? (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                                <TrendingUp size={48} style={{ color: '#1e293b', marginBottom: '1.5rem' }} />
-                                <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Aucune donnée disponible</h4>
-                                <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Aucun enregistrement trouvé sur cette période.</p>
-                                {diag && (
-                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem', textAlign: 'left', maxWidth: '300px' }}>
-                                        <div style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>Diagnostic :</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.25rem' }}>
-                                            <span>Membres :</span> <span style={{ color: diag.members > 0 ? '#10b981' : '#ef4444' }}>{diag.members}</span>
-                                            <span>Effectifs :</span> <span style={{ color: diag.headcounts > 0 ? '#10b981' : '#64748b' }}>{diag.headcounts}</span>
-                                            <span>Présences :</span> <span style={{ color: diag.attendances > 0 ? '#10b981' : '#64748b' }}>{diag.attendances}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={evolutionData}>
-                                    <defs>
-                                        <linearGradient id="colorMembers" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="#64748b"
-                                        fontSize={12}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickFormatter={(str) => {
-                                            const d = new Date(str);
-                                            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-                                        }}
-                                        minTickGap={30}
-                                    />
-                                    <YAxis
-                                        stroke="#64748b"
-                                        fontSize={12}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Legend
-                                        verticalAlign="top"
-                                        align="right"
-                                        iconType="circle"
-                                        content={({ payload }) => (
-                                            <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                                                {payload.map((entry, index) => (
-                                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color }}></div>
-                                                        <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{entry.value}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    />
-                                    <Area
-                                        name="Total Membres"
-                                        type="monotone"
-                                        dataKey="total_members"
-                                        stroke="#3b82f6"
-                                        strokeWidth={3}
-                                        fillOpacity={1}
-                                        fill="url(#colorMembers)"
-                                    />
-                                    <Area
-                                        name="Présents"
-                                        type="monotone"
-                                        dataKey="attendance"
-                                        stroke="#10b981"
-                                        strokeWidth={3}
-                                        fillOpacity={1}
-                                        fill="url(#colorAttendance)"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        return (
-            <div style={{ width: '100%' }}>
-                <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <button
-                            className={styles.actionBtn}
-                            onClick={() => {
-                                setSelectedMinistryForReport('');
-                                setShowEvolutionChart(false);
-                            }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '8px' }}
-                        >
-                            <ArrowLeft size={16} /> Retour
-                        </button>
-                        <button
-                            className={`${styles.actionBtn} ${showEvolutionChart ? styles.active : ''}`}
-                            onClick={() => setShowEvolutionChart(!showEvolutionChart)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                background: showEvolutionChart ? '#3b82f6' : 'rgba(255,255,255,0.05)',
-                                padding: '0.5rem 1rem', borderRadius: '8px'
-                            }}
-                        >
-                            <TrendingUp size={16} /> {showEvolutionChart ? 'Voir Liste' : 'Voir Évolution'}
-                        </button>
-                    </div>
-                    <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                        {showEvolutionChart ?
-                            'Analyse sur la période sélectionnée' :
-                            `${ministryReportData.filter(m => m.present).length} présents sur ${ministryReportData.length} (Date: ${new Date(reportFilters.startDate).toLocaleDateString()})`
-                        }
-                    </div>
-                </div>
-
-                {showEvolutionChart ? renderEvolutionChart() : (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>Membre</th>
-                                <th className={styles.th}>Statut de Présence</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ministryReportData.length > 0 ? (
-                                ministryReportData.map(m => (
-                                    <tr key={m.member_id} className={styles.tr}>
-                                        <td className={styles.td}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <User size={16} />
-                                                </div>
-                                                {m.name}
-                                            </div>
-                                        </td>
-                                        <td className={styles.td}>
-                                            <span className={`${styles.badge} ${m.present ? styles.badgeActive : styles.badgeInactive}`}>
-                                                {m.present ? 'Présent' : 'Absent'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={2} className={styles.td} style={{ textAlign: 'center', padding: '2rem' }}>
-                                        Aucune donnée pour cette date.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-        );
-    };
 
     const renderZones = () => {
         // Group areas by region
@@ -2267,21 +1521,6 @@ const Governor = () => {
                             <p className={styles.reportDesc}>Rapports détaillés des réunions hebdomadaires effectués par les leaders.</p>
                             <div className={styles.reportBadge} style={{ background: '#38bdf8' }}>Récent</div>
                         </div>
-                        <div
-                            className={styles.reportCard}
-                            onClick={() => {
-                                setSelectedReportType('ministries');
-                                setIsViewingReport(true);
-                                setPendingFilters({ ...reportFilters, selectedMinistryForReport });
-                            }}
-                        >
-                            <div className={styles.reportIcon} style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' }}>
-                                <Library size={32} />
-                            </div>
-                            <h3 className={styles.reportTitle}>Rapport des Ministères</h3>
-                            <p className={styles.reportDesc}>Suivi des présences et de l'engagement par ministère.</p>
-                            <div className={styles.reportBadge}>Nouveau</div>
-                        </div>
                     </div>
                 </div>
             );
@@ -2362,22 +1601,6 @@ const Governor = () => {
                                     </select>
                                 </div>
                             </>
-                        )}
-                        {selectedReportType === 'ministries' && (
-                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                                <label className={styles.label} style={{ fontSize: '0.7rem' }}>Ministère</label>
-                                <select
-                                    className={styles.select}
-                                    style={{ padding: '0.4rem', minWidth: '150px' }}
-                                    value={pendingFilters?.selectedMinistryForReport || ''}
-                                    onChange={e => setPendingFilters({ ...pendingFilters, selectedMinistryForReport: e.target.value })}
-                                >
-                                    <option value="">Sélectionner</option>
-                                    {ministries.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                </select>
-                            </div>
                         )}
                         {(selectedReportType !== 'growth' || selectedReportType === 'ministries') && (
                             <div className={styles.formGroup} style={{ marginBottom: 0 }}>
@@ -2816,8 +2039,6 @@ const Governor = () => {
                         <>
                             {activeTab === 'dashboard' && renderDashboard()}
                             {activeTab === 'leaders' && renderLeaders()}
-                            {activeTab === 'zones' && renderZones()}
-                            {activeTab === 'ministries' && renderMinistries()}
                             {activeTab === 'members' && renderMembers()}
                             {activeTab === 'reports' && renderReports()}
                         </>
@@ -3159,23 +2380,6 @@ const Governor = () => {
                                         </div>
                                     </div>
 
-                                    <div className={styles.formGroupPremium}>
-                                        <label className={styles.label}>Ministère (Optionnel)</label>
-                                        <div className={styles.inputWrapperPremium}>
-                                            <Library className={styles.inputIcon} size={18} />
-                                            <select
-                                                className={styles.selectPremium}
-                                                value={memberForm.ministry_id}
-                                                onChange={e => setMemberForm({ ...memberForm, ministry_id: e.target.value })}
-                                                disabled={modalLoading}
-                                            >
-                                                <option value="">Aucun ministère</option>
-                                                {ministries.map(min => (
-                                                    <option key={min.id} value={min.id}>{min.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
 
                                     <div className={styles.formGroupPremium}>
                                         <label className={styles.label}>Zone Assignée</label>
@@ -3351,156 +2555,6 @@ const Governor = () => {
                 </div>
             )}
 
-            {showMinistryModal && (
-                <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryModal(false)}>
-                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        <div className={styles.modalHeader}>
-                            <h2 className={styles.modalTitle}>
-                                {editingItem ? 'Modifier le Ministère' : 'Nouveau Ministère'}
-                            </h2>
-                            <button className={styles.closeBtn} onClick={() => setShowMinistryModal(false)}>
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSaveMinistry}>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Nom du Ministère</label>
-                                <input
-                                    className={styles.input}
-                                    value={ministryForm.name}
-                                    onChange={e => setMinistryForm({ ...ministryForm, name: e.target.value })}
-                                    required
-                                    placeholder="ex: Musique, Accueil..."
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Description</label>
-                                <textarea
-                                    className={styles.input}
-                                    value={ministryForm.description}
-                                    onChange={e => setMinistryForm({ ...ministryForm, description: e.target.value })}
-                                    placeholder="Brève description du ministère..."
-                                    rows={3}
-                                    style={{ resize: 'vertical' }}
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Responsable</label>
-                                <select
-                                    className={styles.select}
-                                    value={ministryForm.leader_id}
-                                    onChange={e => setMinistryForm({ ...ministryForm, leader_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner un responsable</option>
-                                    {leaders.map(leader => (
-                                        <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className={styles.modalActions}>
-                                <button type="button" className={styles.cancelBtn} onClick={() => setShowMinistryModal(false)}>Annuler</button>
-                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
-                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )
-            }
-
-            {
-                showMinistryAttendanceModal && (
-                    <div className={styles.modalOverlay} onClick={() => !modalLoading && setShowMinistryAttendanceModal(false)}>
-                        <div className={styles.modalContent} style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-                            <div className={styles.modalHeader}>
-                                <div>
-                                    <h2 className={styles.modalTitle}>Présences : {selectedMinistryForAttendance?.name}</h2>
-                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Marquez les membres présents</p>
-                                </div>
-                                <button className={styles.closeBtn} onClick={() => setShowMinistryAttendanceModal(false)}>
-                                    <X size={24} />
-                                </button>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Date de réunion</label>
-                                <input
-                                    type="date"
-                                    className={styles.input}
-                                    value={ministryAttendanceDate}
-                                    onChange={e => setMinistryAttendanceDate(e.target.value)}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                                <button
-                                    className={styles.actionBtn}
-                                    onClick={() => handleMarkAllAttendance(true)}
-                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}
-                                >
-                                    Tout Présent
-                                </button>
-                                <button
-                                    className={styles.actionBtn}
-                                    onClick={() => handleMarkAllAttendance(false)}
-                                    style={{ flex: 1, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem' }}
-                                >
-                                    Tout Absent
-                                </button>
-                            </div>
-
-                            <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                {ministryAttendanceMembers.length > 0 ? (
-                                    ministryAttendanceMembers.map(m => (
-                                        <div key={m.member_id} style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '1rem',
-                                            borderBottom: '1px solid rgba(255,255,255,0.02)',
-                                            cursor: 'pointer'
-                                        }} onClick={() => handleToggleAttendance(m.member_id)}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                <div style={{
-                                                    width: '36px', height: '36px', borderRadius: '50%',
-                                                    background: m.present ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)',
-                                                    color: m.present ? '#10b981' : '#64748b',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    transition: 'all 0.2s'
-                                                }}>
-                                                    <User size={18} />
-                                                </div>
-                                                <span style={{ color: m.present ? 'white' : '#94a3b8', fontWeight: m.present ? '600' : '400' }}>
-                                                    {m.name}
-                                                </span>
-                                            </div>
-                                            <div style={{
-                                                width: '24px', height: '24px', borderRadius: '6px',
-                                                border: `2px solid ${m.present ? '#DC2626' : 'rgba(255,255,255,0.1)'}`,
-                                                background: m.present ? '#DC2626' : 'transparent',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s'
-                                            }}>
-                                                {m.present && <CheckCircle size={14} color="white" />}
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Aucun membre dans ce ministère.</p>
-                                )}
-                            </div>
-
-                            <div className={styles.modalActions}>
-                                <button className={styles.cancelBtn} onClick={() => setShowMinistryAttendanceModal(false)}>Annuler</button>
-                                <button className={styles.submitBtn} onClick={handleSaveMinistryAttendance} disabled={modalLoading}>
-                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
             <ContactModal
                 isOpen={isContactModalOpen}

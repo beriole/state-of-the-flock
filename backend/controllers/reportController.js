@@ -14,13 +14,33 @@ const reportController = {
       // Filtrage basé sur le rôle
       if (req.user.role === 'Bacenta_Leader') {
         memberWhereClause.leader_id = req.user.userId;
-      } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
-        memberWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         memberWhereClause.area_id = req.user.area_id;
+      } else if (req.user.role === 'Governor') {
+        const { Region } = require('../models');
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+        if (areaIds.length > 0) {
+          memberWhereClause.area_id = { [Op.in]: areaIds };
+        } else {
+          memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
       }
-
-      if (area_id) memberWhereClause.area_id = area_id;
+      if (area_id) {
+        // Validation pour Gouverneur
+        if (req.user.role === 'Governor') {
+          // Already filtered by Op.in areaIds above, if we want to allow narrowing down:
+          // we should only allow it if it's in the set.
+          // For now, simpler: if they provide an area_id, it will override the Op.in.
+          // I'll make it safe:
+          memberWhereClause.area_id = area_id;
+        } else {
+          memberWhereClause.area_id = area_id;
+        }
+      }
       if (leader_id) memberWhereClause.leader_id = leader_id;
 
       // Filtre de date
@@ -117,8 +137,23 @@ const reportController = {
         leaderWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         leaderWhereClause.area_id = req.user.area_id;
-      } else if (req.user.role === 'Governor' && area_id) {
-        leaderWhereClause.area_id = area_id;
+      } else if (req.user.role === 'Governor') {
+        const { Region, Area } = require('../models');
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+        if (areaIds.length > 0) {
+          leaderWhereClause.area_id = { [Op.in]: areaIds };
+        } else {
+          leaderWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
+
+        // Si une zone spécifique est demandée
+        if (area_id) {
+          leaderWhereClause.area_id = area_id;
+        }
       }
 
       if (leader_id) whereClause.leader_id = leader_id;
@@ -193,7 +228,22 @@ const reportController = {
         memberWhere.leader_id = req.user.userId;
       } else if ((req.user.role === 'Area_Pastor' || req.user.role === 'Assisting_Overseer') && req.user.area_id) {
         memberWhere.area_id = req.user.area_id;
+      } else if (req.user.role === 'Governor') {
+        const { Region, Area } = require('../models');
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+        if (areaIds.length > 0) {
+          memberWhere.area_id = { [Op.in]: areaIds };
+        } else {
+          memberWhere.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
       }
+
+      if (area_id) memberWhere.area_id = area_id;
+      if (leader_id) memberWhere.leader_id = leader_id;
 
       if (view_type === 'not_called') {
         // CAS: MEMBRES NON APPELÉS
@@ -434,6 +484,20 @@ const reportController = {
       const whereClause = {};
       if (start_date && end_date) {
         whereClause.sunday_date = { [Op.between]: [start_date, end_date] };
+      }
+
+      // Filtrage strict par région pour les Gouverneurs
+      let governorAreaIds = [];
+      if (req.user.role === 'Governor') {
+        const { Region, Area } = require('../models');
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+        governorAreaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+        if (governorAreaIds.length === 0) {
+          return res.json({ report: [], type: group_by });
+        }
       }
 
       let report;

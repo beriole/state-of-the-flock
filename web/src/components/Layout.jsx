@@ -61,7 +61,6 @@ const Layout = () => {
             items: [
                 { path: '/governor?tab=dashboard', label: 'My Dashboard', icon: <LayoutDashboard size={20} /> },
                 { path: '/governor?tab=leaders', label: 'Bacenta Leaders', icon: <Crown size={20} /> },
-                { path: '/governor?tab=zones', label: 'My Zones', icon: <Map size={20} /> },
                 { path: '/governor?tab=members', label: 'My Members', icon: <Users size={20} /> },
                 { path: '/governor?tab=reports', label: 'Regional Reports', icon: <FileBarChart size={20} /> },
             ]

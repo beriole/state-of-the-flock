@@ -2,7 +2,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 /**
- * Professional PDF Generator Utility for First Love Church
+ * Premium PDF Generator Utility for First Love Church
+ * Redesigned for a professional, high-end appearance.
  */
 export const generateProfessionalPDF = ({
     title,
@@ -10,7 +11,7 @@ export const generateProfessionalPDF = ({
     columns = [],
     rows = [],
     fileName,
-    stats = [], // Array of { label, value, color }
+    stats = [], // Array of { label, value, color, icon }
     branding = "FIRST LOVE CHURCH"
 }) => {
     try {
@@ -19,124 +20,164 @@ export const generateProfessionalPDF = ({
         const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 15;
 
-        // --- Colors ---
+        // --- Design Tokens (Modern Palette) ---
         const colors = {
-            primary: [153, 27, 27], // Deep Red (#991B1B)
-            secondary: [30, 41, 59], // Slate 800
-            muted: [100, 116, 139], // Slate 500
-            gold: [180, 83, 9],    // Gold (#B45309)
+            primary: [15, 23, 42],     // Deep Navy (Slate 900)
+            accent: [153, 27, 27],      // Rich Crimson (Church Brand)
+            gold: [180, 83, 9],        // Warm Gold
+            slate: [71, 85, 105],      // Slate 600
+            light: [248, 250, 252],     // Slate 50
+            border: [226, 232, 240],    // Slate 200
             white: [255, 255, 255]
         };
 
-        // --- Header ---
-        // Top Background
+        // --- Background & Header ---
+        // Top Ribbon
         doc.setFillColor(...colors.primary);
-        doc.rect(0, 0, pageWidth, 45, 'F');
+        doc.rect(0, 0, pageWidth, 50, 'F');
 
-        // Branding / Church Name
-        doc.setTextColor(...colors.white);
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text(branding, margin, 20);
+        // Accent bar
+        doc.setFillColor(...colors.accent);
+        doc.rect(0, 50, pageWidth, 2, 'F');
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('LOYALTY HOUSE INTERNATIONAL', margin, 27);
-
-        // Title (Right Aligned)
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title.toUpperCase(), pageWidth - margin, 20, { align: 'right' });
-
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'italic');
-        if (subtitle) {
-            doc.text(subtitle, pageWidth - margin, 28, { align: 'right' });
+        // Branding & Logo
+        try {
+            // Using a standard public path that should be accessible in the browser
+            doc.addImage('/church_logo.png', 'PNG', margin, 12, 12, 12);
+        } catch (e) {
+            console.warn("Logo not found at /church_logo.png, skipping image.");
         }
 
-        // --- Stats Cards (Optional) ---
-        let startY = 55;
+        doc.setTextColor(...colors.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.text(branding, margin + 15, 23);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(200, 200, 200);
+        doc.text('LOYALTY HOUSE INTERNATIONAL', margin + 15, 30);
+
+        // Report Title & Meta
+        doc.setTextColor(...colors.white);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title.toUpperCase(), pageWidth - margin, 23, { align: 'right' });
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        if (subtitle) {
+            doc.text(subtitle, pageWidth - margin, 31, { align: 'right' });
+        }
+
+        // --- Dashboard / Stats Section ---
+        let startY = 65;
         if (stats && stats.length > 0) {
-            const cardWidth = (pageWidth - (2 * margin) - ((stats.length - 1) * 5)) / stats.length;
-            const cardHeight = 22;
+            const gap = 5;
+            const containerWidth = pageWidth - (2 * margin);
+            const cardWidth = (containerWidth - (gap * (stats.length - 1))) / stats.length;
+            const cardHeight = 25;
 
             stats.forEach((stat, index) => {
-                const x = margin + (index * (cardWidth + 5));
+                const x = margin + (index * (cardWidth + gap));
 
-                // Card Background
-                doc.setFillColor(248, 250, 252); // Very light slate
-                doc.setDrawColor(226, 232, 240); // Slate 200
-                doc.roundedRect(x, startY, cardWidth, cardHeight, 2, 2, 'FD');
+                // Shadow simulation
+                doc.setFillColor(0, 0, 0, 0.05);
+                doc.roundedRect(x + 1, startY + 1, cardWidth, cardHeight, 3, 3, 'F');
 
-                // Bottom Border (Accent)
-                doc.setDrawColor(...(stat.color || colors.gold));
-                doc.setLineWidth(1);
-                doc.line(x + 2, startY + cardHeight - 1, x + cardWidth - 2, startY + cardHeight - 1);
+                // Card Base
+                doc.setFillColor(...colors.white);
+                doc.setDrawColor(...colors.border);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(x, startY, cardWidth, cardHeight, 3, 3, 'FD');
+
+                // Accent line on left
+                doc.setFillColor(...(stat.color || colors.accent));
+                doc.rect(x, startY + 5, 2, cardHeight - 10, 'F');
 
                 // Label
-                doc.setTextColor(...colors.muted);
+                doc.setTextColor(...colors.slate);
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'bold');
-                doc.text(stat.label.toUpperCase(), x + (cardWidth / 2), startY + 7, { align: 'center' });
+                doc.text(stat.label.toUpperCase(), x + 6, startY + 10);
 
                 // Value
-                doc.setTextColor(...colors.secondary);
+                doc.setTextColor(...colors.primary);
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text(String(stat.value), x + (cardWidth / 2), startY + 16, { align: 'center' });
+                doc.text(String(stat.value), x + 6, startY + 19);
             });
-            startY += cardHeight + 10;
+            startY += cardHeight + 15;
         }
 
-        // --- Table ---
+        // --- Main Content Table ---
         if (columns.length > 0) {
             autoTable(doc, {
                 startY: startY,
                 head: [columns],
                 body: rows,
-                theme: 'striped',
+                theme: 'grid',
                 headStyles: {
                     fillColor: colors.primary,
                     textColor: colors.white,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontStyle: 'bold',
-                    halign: 'center'
+                    halign: 'center',
+                    cellPadding: 5,
+                    lineWidth: 0
                 },
                 styles: {
-                    fontSize: 9,
+                    fontSize: 8.5,
                     cellPadding: 4,
-                    valign: 'middle'
+                    valign: 'middle',
+                    lineColor: colors.border,
+                    lineWidth: 0.1
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold' }
                 },
                 alternateRowStyles: {
-                    fillColor: [250, 250, 250]
+                    fillColor: colors.light
                 },
                 margin: { left: margin, right: margin },
                 didDrawPage: (data) => {
-                    // Footer
+                    // Footer Management
                     const pageCount = doc.internal.getNumberOfPages();
                     doc.setFontSize(8);
-                    doc.setTextColor(...colors.muted);
+                    doc.setTextColor(...colors.slate);
 
-                    // Footer Line
-                    doc.setDrawColor(226, 232, 240);
-                    doc.setLineWidth(0.5);
-                    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+                    // Disclaimer / Footer Text
+                    const footerY = pageHeight - 10;
+                    doc.setDrawColor(...colors.border);
+                    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
 
-                    // Left Text
-                    doc.text('Généré le ' + new Date().toLocaleString('fr-FR'), margin, pageHeight - 10);
-
-                    // Center Text
-                    doc.text('Database Management System - First Love Church', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-                    // Right Text (Page Number)
-                    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber} sur ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+                    doc.text(`Généré par le Système de Gestion de Données - First Love Church`, margin, footerY);
+                    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth / 2, footerY, { align: 'center' });
+                    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber} / ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
                 }
             });
         }
 
-        doc.save(`${fileName || 'Rapport'}.pdf`);
+        // --- Final Professional Touch: Signature Section (if it's the last page) ---
+        const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : startY;
+        if (finalY + 40 < pageHeight) {
+            const sigY = finalY + 25;
+            doc.setDrawColor(...colors.slate);
+            doc.setLineWidth(0.5);
+
+            // Signature Line 1
+            doc.line(margin, sigY, margin + 60, sigY);
+            doc.setFontSize(8);
+            doc.text('Gouverneur / Responsable', margin, sigY + 5);
+
+            // Signature Line 2
+            doc.line(pageWidth - margin - 60, sigY, pageWidth - margin, sigY);
+            doc.text('Cachet de l\'Église', pageWidth - margin - 60, sigY + 5);
+        }
+
+        doc.save(`${fileName || 'Rapport_FLC'}.pdf`);
     } catch (err) {
-        console.error("Error in generateProfessionalPDF:", err);
-        throw err; // Re-throw to be caught by the page-level handler
+        console.error("Critical error in PDF Generation:", err);
+        throw err;
     }
 };
