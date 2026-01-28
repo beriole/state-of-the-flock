@@ -500,9 +500,21 @@ const reportController = {
         dataPoints.push(currentCount);
       });
 
+      const history = labels.map((date, index) => ({
+        date: date,
+        count: dataPoints[index]
+      }));
+
+      const finalCount = dataPoints[dataPoints.length - 1];
+      const growthRate = initialCount > 0 ? Math.round(((finalCount - initialCount) / initialCount) * 100) : 0;
+
       res.json({
         period: { start_date: startDate, end_date: endDate },
         total_new: newMembers.length,
+        total_members: finalCount,
+        growth_rate: growthRate,
+        history: history,
+        // Keep chart_data for backward compatibility if used by Mobile App format
         chart_data: {
           labels,
           datasets: [{

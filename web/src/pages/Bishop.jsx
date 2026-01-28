@@ -119,12 +119,15 @@ const Bishop = () => {
         leader_id: ''
     });
 
-    const fetchMinistryDetails = async (id) => {
+    const [ministryDate, setMinistryDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const fetchMinistryDetails = async (id, date = null) => {
         setLoading(true);
         try {
+            const targetDate = date || ministryDate;
             const [membersRes, statsRes] = await Promise.all([
                 ministryAPI.getMinistryMembers(id),
-                ministryAPI.getMinistryStats(id, { date: new Date().toISOString().split('T')[0] })
+                ministryAPI.getMinistryStats(id, { date: targetDate })
             ]);
             setMinistryMembers(membersRes.data || []);
             setMinistryStats(statsRes.data || null);
@@ -153,15 +156,27 @@ const Bishop = () => {
         setLoading(true);
         try {
             setSelectedReport(type);
+            const params = {
+                start_date: reportDateRange.startDate,
+                end_date: reportDateRange.endDate
+            };
+
             if (type === 'offerings') {
                 const res = await dashboardAPI.getFinancialStats();
                 setReportData(res.data);
             } else if (type === 'presence') {
-                const res = await reportAPI.getAttendanceReport();
+                const res = await reportAPI.getAttendanceReport(params);
                 setReportData(res.data);
             } else if (type === 'calls') {
-                const res = await callLogAPI.getCallLogs({ limit: 50 });
+                const res = await callLogAPI.getCallLogs({ limit: 50, ...params });
                 setReportData(res.data.logs || []);
+            } else if (type === 'growth') {
+                const res = await reportAPI.getMemberGrowthReport({ period: '12months' });
+                setReportData(res.data);
+            } else if (type === 'ministries') {
+                const targetDate = params.start_date || new Date().toISOString().split('T')[0];
+                const res = await ministryAPI.getAttendanceOverview(targetDate);
+                setReportData(res.data);
             }
         } catch (error) {
             console.error("Error fetching report detail:", error);
@@ -185,8 +200,12 @@ const Bishop = () => {
                 setFinancials(financialRes.data);
                 setRankings(rankingsRes.data);
             } else if (activeTab === 'governors') {
-                const governorsRes = await governorAPI.getUsers({ role: 'Governor' });
+                const [governorsRes, regionsRes] = await Promise.all([
+                    governorAPI.getUsers({ role: 'Governor' }),
+                    regionAPI.getRegions()
+                ]);
                 setGovernors(governorsRes.data.users || []);
+                setRegions(regionsRes.data || []);
             } else if (activeTab === 'regions') {
                 const [regionsRes, governorsRes] = await Promise.all([
                     regionAPI.getRegions(),
@@ -238,11 +257,14 @@ const Bishop = () => {
         setModalError('');
         if (governor) {
             setEditingItem(governor);
+            // Find region for this governor
+            const govRegion = regions.find(r => r.governor_id === governor.id);
             setGovernorForm({
                 first_name: governor.first_name,
                 last_name: governor.last_name,
                 email: governor.email,
                 phone: governor.phone || '',
+                region_id: govRegion ? govRegion.id : '',
                 role: 'Governor'
                 // password left blank
             });
@@ -253,6 +275,7 @@ const Bishop = () => {
                 last_name: '',
                 email: '',
                 phone: '',
+                region_id: '',
                 password: '',
                 role: 'Governor'
             });
@@ -325,11 +348,21 @@ const Bishop = () => {
         setModalLoading(true);
         setModalError('');
         try {
+            let userId;
             if (editingItem) {
                 await governorAPI.updateUser(editingItem.id, governorForm);
+                userId = editingItem.id;
             } else {
-                await governorAPI.createUser(governorForm);
+                const res = await governorAPI.createUser(governorForm);
+                userId = res.data?.user?.id || res.data?.id;
             }
+
+            // Handle Region Assignment
+            if (governorForm.region_id) {
+                // If it's a new assignment or changed
+                await regionAPI.updateRegion(governorForm.region_id, { governor_id: userId });
+            }
+
             setShowGovernorModal(false);
             fetchData();
         } catch (error) {
@@ -797,10 +830,24 @@ const Bishop = () => {
     const renderMinistryDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <button className={styles.actionBtn} onClick={() => setSelectedMinistry(null)} style={{ marginRight: '1rem' }}>
-                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> Retour
-                </button>
-                <h2 className={styles.sectionTitle}>Ministère: {selectedMinistry?.name}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className={styles.actionBtn} onClick={() => setSelectedMinistry(null)}>
+                        <ArrowLeft size={20} /> Retour
+                    </button>
+                    <h2 className={styles.sectionTitle}>Ministère: {selectedMinistry?.name}</h2>
+                </div>
+                <div className={styles.headerActions}>
+                    <input
+                        type="date"
+                        className={styles.input}
+                        style={{ width: 'auto', padding: '0.3rem' }}
+                        value={ministryDate}
+                        onChange={e => {
+                            setMinistryDate(e.target.value);
+                            fetchMinistryDetails(selectedMinistry.id, e.target.value);
+                        }}
+                    />
+                </div>
             </div>
 
             <div className={styles.statsGrid}>
@@ -821,15 +868,27 @@ const Bishop = () => {
                         <tr>
                             <th className={styles.th}>Nom</th>
                             <th className={styles.th}>Leader Bacenta</th>
+                            <th className={styles.th}>Statut ({new Date(ministryDate).toLocaleDateString()})</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {ministryMembers.map(member => (
-                            <tr key={member.id} className={styles.tr}>
-                                <td className={styles.td}>{member.first_name} {member.last_name}</td>
-                                <td className={styles.td}>{member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'Aucun'}</td>
-                            </tr>
-                        ))}
+                        {ministryMembers.map(member => {
+                            const attendance = ministryStats?.details?.find(d => d.member_id === member.id);
+                            return (
+                                <tr key={member.id} className={styles.tr}>
+                                    <td className={styles.td}>{member.first_name} {member.last_name}</td>
+                                    <td className={styles.td}>{member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'Aucun'}</td>
+                                    <td className={styles.td}>
+                                        <span className={styles.badge} style={{
+                                            background: attendance?.present ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                            color: attendance?.present ? '#34d399' : '#f87171'
+                                        }}>
+                                            {attendance?.present ? 'Présent' : 'Absent'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -1027,84 +1086,197 @@ const Bishop = () => {
     const renderReportDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
-                <button className={styles.actionBtn} onClick={() => setSelectedReport(null)} style={{ marginRight: '1rem' }}>
-                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} /> Retour
-                </button>
-                <h2 className={styles.sectionTitle}>
-                    {selectedReport === 'presence' ? 'Détails Présence Globale' :
-                        selectedReport === 'offerings' ? 'Détails Offrandes & Finances' : 'Détails Appels'}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className={styles.actionBtn} onClick={() => setSelectedReport(null)}>
+                        <ArrowLeft size={20} /> Retour
+                    </button>
+                    <h2 className={styles.sectionTitle}>
+                        {selectedReport === 'presence' ? 'Détails Présence Globale' :
+                            selectedReport === 'offerings' ? 'Détails Offrandes & Finances' :
+                                selectedReport === 'calls' ? 'Détails Appels' :
+                                    selectedReport === 'growth' ? 'Détails Croissance' : 'Détails Ministères'}
+                    </h2>
+                </div>
+
+                <div className={styles.headerActions} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                        type="date"
+                        className={styles.input}
+                        style={{ width: 'auto', padding: '0.3rem' }}
+                        value={reportDateRange.startDate}
+                        onChange={e => setReportDateRange({ ...reportDateRange, startDate: e.target.value })}
+                    />
+                    <span style={{ color: '#64748b' }}>au</span>
+                    <input
+                        type="date"
+                        className={styles.input}
+                        style={{ width: 'auto', padding: '0.3rem' }}
+                        value={reportDateRange.endDate}
+                        onChange={e => setReportDateRange({ ...reportDateRange, endDate: e.target.value })}
+                    />
+                    <button
+                        className={styles.primaryBtn}
+                        onClick={() => fetchReportDetail(selectedReport)}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem' }}
+                    >
+                        Filtrer
+                    </button>
+                </div>
             </div>
 
-            {selectedReport === 'offerings' && reportData && (
-                <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>Zone</th>
-                                <th className={styles.th}>Total Offrandes</th>
-                                <th className={styles.th}>Nombre de Réunions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.by_zone?.map((item, idx) => (
-                                <tr key={idx} className={styles.tr}>
-                                    <td className={styles.td}>{item.name}</td>
-                                    <td className={styles.td}>{item.total.toLocaleString()} CFA</td>
-                                    <td className={styles.td}>{item.meeting_count}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {!reportData ? (
+                <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
+                    <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 1rem' }} />
+                    Chargement des données...
                 </div>
-            )}
+            ) : (
+                <>
 
-            {selectedReport === 'presence' && reportData && (
-                <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>Zone</th>
-                                <th className={styles.th}>Taux de Présence</th>
-                                <th className={styles.th}>Membres Présents</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.by_area?.map((item, idx) => (
-                                <tr key={idx} className={styles.tr}>
-                                    <td className={styles.td}>{item.name}</td>
-                                    <td className={styles.td}>{item.percentage}%</td>
-                                    <td className={styles.td}>{item.present} / {item.total}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                    {selectedReport === 'offerings' && reportData && (
+                        <div className={styles.tableContainer}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Zone</th>
+                                        <th className={styles.th}>Total Offrandes</th>
+                                        <th className={styles.th}>Nombre de Réunions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportData.by_zone?.map((item, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>{item.name}</td>
+                                            <td className={styles.td}>{item.total.toLocaleString()} CFA</td>
+                                            <td className={styles.td}>{item.meeting_count}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-            {selectedReport === 'calls' && reportData && (
-                <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th className={styles.th}>Membre</th>
-                                <th className={styles.th}>Date</th>
-                                <th className={styles.th}>Type</th>
-                                <th className={styles.th}>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.map?.((log, idx) => (
-                                <tr key={idx} className={styles.tr}>
-                                    <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
-                                    <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>
-                                    <td className={styles.td}>{log.log_type}</td>
-                                    <td className={styles.td}>{log.status}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                    {selectedReport === 'presence' && reportData && (
+                        <div className={styles.tableContainer}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Zone</th>
+                                        <th className={styles.th}>Taux de Présence</th>
+                                        <th className={styles.th}>Membres Présents</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportData.by_area?.map((item, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>{item.name}</td>
+                                            <td className={styles.td}>{item.percentage}%</td>
+                                            <td className={styles.td}>{item.present} / {item.total}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {selectedReport === 'calls' && reportData && (
+                        <div className={styles.tableContainer}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Membre</th>
+                                        <th className={styles.th}>Date</th>
+                                        <th className={styles.th}>Type</th>
+                                        <th className={styles.th}>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportData.map?.((log, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
+                                            <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>
+                                            <td className={styles.td}>{log.log_type}</td>
+                                            <td className={styles.td}>{log.status}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {selectedReport === 'growth' && reportData && (
+                        <div className={styles.chartContainer}>
+                            <h3 className={styles.chartTitle}>Évolution des Membres (12 derniers mois)</h3>
+                            <div style={{ height: 400, width: '100%' }}>
+                                <ResponsiveContainer>
+                                    <AreaChart data={reportData.history || []}>
+                                        <defs>
+                                            <linearGradient id="colorGrowthReport" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                                        <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowthReport)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className={styles.statsGrid} style={{ marginTop: '2rem' }}>
+                                <div className={styles.statCard}>
+                                    <h3 className={styles.statValue}>{reportData.total_members || 0}</h3>
+                                    <p className={styles.statLabel}>Membres Totaux</p>
+                                </div>
+                                <div className={styles.statCard}>
+                                    <div className={styles.statHeader}>
+                                        {reportData.growth_rate >= 0 ? <TrendingUp size={20} color="#10b981" /> : <TrendingDown size={20} color="#ef4444" />}
+                                    </div>
+                                    <h3 className={styles.statValue}>{reportData.growth_rate}%</h3>
+                                    <p className={styles.statLabel}>Taux de Croissance</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {selectedReport === 'ministries' && reportData && (
+                        <div className={styles.tableContainer}>
+                            <div className={styles.sectionHeader} style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
+                                * Affichage pour la date du: {new Date(reportDateRange.startDate || new Date()).toLocaleDateString()}
+                            </div>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>Ministère</th>
+                                        <th className={styles.th}>Présents</th>
+                                        <th className={styles.th}>Total Membres</th>
+                                        <th className={styles.th}>Taux</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportData.map((item, idx) => (
+                                        <tr key={idx} className={styles.tr}>
+                                            <td className={styles.td}>{item.name}</td>
+                                            <td className={styles.td}>{item.present_count}</td>
+                                            <td className={styles.td}>{item.total_members}</td>
+                                            <td className={styles.td}>
+                                                <div className={styles.progressBar}>
+                                                    <div
+                                                        className={styles.progressFill}
+                                                        style={{ width: `${item.attendance_rate}%`, backgroundColor: item.attendance_rate > 50 ? '#10b981' : '#f59e0b' }}
+                                                    />
+                                                </div>
+                                                <span style={{ fontSize: '0.8rem', marginLeft: '0.5rem' }}>{item.attendance_rate}%</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
@@ -1140,6 +1312,22 @@ const Bishop = () => {
                         <h3 className={styles.reportTitle}>Suivi des Appels</h3>
                         <p className={styles.reportDesc}>Statistiques de contact et fidélisation des membres.</p>
                         <button className={styles.badge} onClick={() => fetchReportDetail('calls')}>Consulter</button>
+                    </div>
+                    <div className={styles.reportCard}>
+                        <div className={styles.reportIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                            <TrendingUp size={32} />
+                        </div>
+                        <h3 className={styles.reportTitle}>Croissance</h3>
+                        <p className={styles.reportDesc}>Évolution du nombre de membres et nouvelles âmes.</p>
+                        <button className={styles.badge} onClick={() => fetchReportDetail('growth')}>Consulter</button>
+                    </div>
+                    <div className={styles.reportCard}>
+                        <div className={styles.reportIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <Library size={32} />
+                        </div>
+                        <h3 className={styles.reportTitle}>Ministères</h3>
+                        <p className={styles.reportDesc}>Présences et statistiques par ministère.</p>
+                        <button className={styles.badge} onClick={() => fetchReportDetail('ministries')}>Consulter</button>
                     </div>
                 </div>
             </div>
@@ -1202,6 +1390,21 @@ const Bishop = () => {
                             <div className={styles.formGroup}>
                                 <label className={styles.label}>Téléphone</label>
                                 <input className={styles.input} value={governorForm.phone} onChange={e => setGovernorForm({ ...governorForm, phone: e.target.value })} />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Région Assignée (Zone de Supervision)</label>
+                                <select
+                                    className={styles.select}
+                                    value={governorForm.region_id}
+                                    onChange={e => setGovernorForm({ ...governorForm, region_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner une région (Optionnel)</option>
+                                    {regions.map(r => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.name} {r.governor_id && r.governor_id !== editingItem?.id ? '(Déjà assignée)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             {!editingItem && (
                                 <div className={styles.formGroup}>
