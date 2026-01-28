@@ -13,6 +13,7 @@ import Bacenta from './pages/Bacenta';
 import CallCenter from './pages/CallCenter';
 import Attendance from './pages/Attendance';
 import Governor from './pages/Governor';
+import Bishop from './pages/Bishop';
 
 // Composant pour protéger les routes
 const PrivateRoute = ({ children }) => {
@@ -106,6 +107,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Governor />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/bishop"
+              element={
+                <PrivateRoute>
+                  <Bishop />
                 </PrivateRoute>
               }
             />

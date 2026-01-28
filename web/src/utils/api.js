@@ -158,6 +158,10 @@ export const areaAPI = {
 
 export const dashboardAPI = {
     getGlobalStats: () => api.get('/dashboard'),
+    getAreaStats: (areaId) => api.get(`/dashboard/area/${areaId}/stats`),
+    getLeaderStats: (leaderId) => api.get(`/dashboard/leader/${leaderId}/stats`),
+    getFinancialStats: () => api.get('/dashboard/financials'),
+    getPerformanceRankings: () => api.get('/dashboard/rankings'),
 };
 
 // Fonctions API pour les Ministères
@@ -175,8 +179,10 @@ export const ministryAPI = {
 
 // Fonctions API pour les Régions
 export const regionAPI = {
-    getRegions: () => api.get('/regions'), // Note: need to ensure backend has this route or add it
+    getRegions: () => api.get('/regions'),
     createRegion: (data) => api.post('/regions', data),
+    updateRegion: (id, data) => api.put(`/regions/${id}`, data),
+    deleteRegion: (id) => api.delete(`/regions/${id}`),
 };
 
 export default api;

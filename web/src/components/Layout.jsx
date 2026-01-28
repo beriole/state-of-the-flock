@@ -14,7 +14,9 @@ import {
     Crown,
     Map,
     FileBarChart,
-    Library
+    Library,
+    ShieldCheck,
+    Globe
 } from 'lucide-react';
 import styles from './Layout.module.css';
 import logo from '../assets/logo.png';
@@ -35,37 +37,56 @@ const Layout = () => {
         navigate('/login');
     };
 
-    const isGovernor = user?.role === 'Governor' || user?.role === 'Bishop';
+    const isBishop = user?.role === 'Bishop';
+    const isGovernor = user?.role === 'Governor';
 
-    const navSections = isGovernor ? [
-        {
-            title: 'GOUVERNEUR',
+    let navSections = [];
+
+    if (isBishop) {
+        navSections.push({
+            title: 'BISHOP SPACE',
             items: [
-                { path: '/governor?tab=dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
-                { path: '/governor?tab=leaders', label: 'Leaders', icon: <Crown size={20} /> },
-                { path: '/governor?tab=zones', label: 'Zones', icon: <Map size={20} /> },
-                { path: '/governor?tab=ministries', label: 'Ministères', icon: <Library size={20} /> },
-                { path: '/governor?tab=members', label: 'Membres', icon: <Users size={20} /> },
-                { path: '/governor?tab=reports', label: 'Rapports', icon: <FileBarChart size={20} /> },
+                { path: '/bishop?tab=dashboard', label: 'Global Dashboard', icon: <LayoutDashboard size={20} /> },
+                { path: '/bishop?tab=governors', label: 'Governors', icon: <ShieldCheck size={20} /> },
+                { path: '/bishop?tab=regions', label: 'Regions', icon: <Globe size={20} /> },
+                { path: '/bishop?tab=ministries', label: 'Ministries', icon: <Library size={20} /> },
+                { path: '/bishop?tab=reports', label: 'Global Reports', icon: <FileBarChart size={20} /> },
             ]
-        }
-    ] : [
-        {
-            title: 'MENU',
+        });
+    }
+
+    if (isGovernor) {
+        navSections.push({
+            title: 'GOVERNOR SPACE',
             items: [
-                { path: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
-                { path: '/members', label: 'Membres', icon: <Users size={20} /> },
-                { path: '/bacenta', label: 'Bacenta', icon: <HomeIcon size={20} /> },
+                { path: '/governor?tab=dashboard', label: 'My Dashboard', icon: <LayoutDashboard size={20} /> },
+                { path: '/governor?tab=leaders', label: 'Bacenta Leaders', icon: <Crown size={20} /> },
+                { path: '/governor?tab=zones', label: 'My Zones', icon: <Map size={20} /> },
+                { path: '/governor?tab=members', label: 'My Members', icon: <Users size={20} /> },
+                { path: '/governor?tab=reports', label: 'Regional Reports', icon: <FileBarChart size={20} /> },
             ]
-        },
-        {
-            title: 'ACTIONS',
-            items: [
-                { path: '/attendance', label: 'Présences', icon: <ClipboardCheck size={20} /> },
-                { path: '/calls', label: 'Appels', icon: <Phone size={20} /> },
-            ]
-        }
-    ];
+        });
+    }
+
+    if (!isBishop && !isGovernor) {
+        navSections.push(
+            {
+                title: 'MENU',
+                items: [
+                    { path: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
+                    { path: '/members', label: 'Membres', icon: <Users size={20} /> },
+                    { path: '/bacenta', label: 'Bacenta', icon: <HomeIcon size={20} /> },
+                ]
+            },
+            {
+                title: 'ACTIONS',
+                items: [
+                    { path: '/attendance', label: 'Présences', icon: <ClipboardCheck size={20} /> },
+                    { path: '/calls', label: 'Appels', icon: <Phone size={20} /> },
+                ]
+            }
+        );
+    }
 
     const isActive = (path) => {
         if (path.includes('?')) {

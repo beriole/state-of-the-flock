@@ -40,7 +40,10 @@ import {
     Camera,
     Library,
     Loader2,
-    Shield
+    Loader2,
+    Shield,
+    DollarSign,
+    Award
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -75,6 +78,8 @@ const Governor = () => {
         leader_id: ''
     });
     const [growthData, setGrowthData] = useState(null);
+    const [financialStats, setFinancialStats] = useState(null);
+    const [rankings, setRankings] = useState(null);
     const [attendanceReportData, setAttendanceReportData] = useState([]);
     const [attendanceReportType, setAttendanceReportType] = useState('area'); // area, leader, member_detail
 
@@ -219,16 +224,19 @@ const Governor = () => {
         setLoading(true);
         try {
             if (activeTab === 'dashboard') {
-                const [statsRes, growthRes] = await Promise.all([
+                const [statsRes, growthRes, financialRes, rankingsRes] = await Promise.all([
                     dashboardAPI.getGlobalStats(),
-                    reportAPI.getMemberGrowthReport({ period: '3months' })
+                    reportAPI.getMemberGrowthReport({ period: '3months' }),
+                    dashboardAPI.getFinancialStats(),
+                    dashboardAPI.getPerformanceRankings()
                 ]);
                 setStats(statsRes.data);
                 setGrowthData(growthRes.data);
+                setFinancialStats(financialRes.data);
+                setRankings(rankingsRes.data);
             } else if (activeTab === 'leaders') {
-                const isBishop = authUser?.role === 'Bishop';
                 const [leadersRes, areasRes] = await Promise.all([
-                    isBishop ? governorAPI.getUsers({ role: ['Bacenta_Leader', 'Governor'] }) : governorAPI.getBacentaLeaders(),
+                    governorAPI.getBacentaLeaders(),
                     areaAPI.getAreas()
                 ]);
                 setLeaders(leadersRes.data.users || []);
@@ -1295,53 +1303,113 @@ const Governor = () => {
                 <div className={styles.statCard}>
                     <div className={styles.statHeader}>
                         <div className={styles.statIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                            <Home size={24} />
+                            <DollarSign size={24} />
                         </div>
                     </div>
-                    <h3 className={styles.statValue}>{stats?.summary?.recent_bacenta_meetings || 0}</h3>
-                    <p className={styles.statLabel}>Réunions Bacenta</p>
+                    {/* Display formatted currency if possible, assuming GHS or generic currency symbol */}
+                    <h3 className={styles.statValue}>{financialStats?.total_offerings?.toLocaleString() || 0}</h3>
+                    <p className={styles.statLabel}>Offrandes (Ce mois)</p>
                 </div>
             </div>
 
             <div className={styles.dashboardContent}>
-                <div className={styles.chartWrapper}>
-                    {renderGrowthChart()}
-                </div>
-                <div className={styles.recentActivity}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Rapports Récents</h2>
-                        <button className={styles.primaryBtn} onClick={() => setActiveTab('reports')}>
-                            Voir tous
-                        </button>
+
+                {/* Row 1: Charts & Financial Breakdown */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <div className={styles.chartWrapper} style={{ height: '100%' }}>
+                        {renderGrowthChart()}
                     </div>
-                    <div className={styles.tableContainer}>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.th}>Période</th>
-                                    <th className={styles.th}>Présence</th>
-                                    <th className={styles.th}>Statut</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr className={styles.tr}>
-                                    <td className={styles.td}>Semaine Actuelle</td>
-                                    <td className={styles.td}>{stats?.summary?.current_week_attendance || 0}%</td>
-                                    <td className={styles.td}>
-                                        <span className={`${styles.badge} ${styles.badgeActive}`}>À jour</span>
-                                    </td>
-                                </tr>
-                                <tr className={styles.tr}>
-                                    <td className={styles.td}>Semaine Dernière</td>
-                                    <td className={styles.td}>{stats?.summary?.last_week_attendance || 0}%</td>
-                                    <td className={styles.td}>
-                                        <span className={`${styles.badge} ${styles.badgeActive}`}>Terminé</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                    <div className={styles.financialSection}>
+                        <div className={styles.sectionHeader} style={{ marginBottom: '1rem' }}>
+                            <h2 className={styles.sectionTitle} style={{ fontSize: '1rem' }}>Offrandes par Zone</h2>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <table className={styles.financialTable}>
+                                <tbody>
+                                    {financialStats?.by_zone?.map(z => (
+                                        <tr key={z.id} className={styles.financialRow}>
+                                            <td>{z.name}</td>
+                                            <td>{z.total?.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                    {(!financialStats?.by_zone || financialStats.by_zone.length === 0) && (
+                                        <tr><td colSpan="2" className={styles.emptyState} style={{ padding: '1rem', background: 'transparent' }}>Aucune donnée</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+
+                {/* Row 2: Gamification / Rankings */}
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Award className={styles.icon} size={24} color="#F59E0B" /> Performances du Mois
+                    </h2>
+                </div>
+
+                <div className={styles.rankingsGrid}>
+
+                    {/* Top Recruiters */}
+                    <div className={styles.rankingCard}>
+                        <div className={styles.rankingHeader}>
+                            <Users size={18} color="#F59E0B" />
+                            <h3 className={styles.rankingTitle}>Top Recruteurs</h3>
+                        </div>
+
+                        <div className={styles.rankingList}>
+                            {rankings?.top_recruiters?.map((user, idx) => (
+                                <div key={user.id} className={styles.rankingItem}>
+                                    <div className={styles.rankUser}>
+                                        <div className={`${styles.rankBadge} ${idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : idx === 2 ? styles.rank3 : styles.rankOther}`}>
+                                            {idx + 1}
+                                        </div>
+                                        <div className={styles.rankInfo}>
+                                            <span className={styles.rankName}>{user.first_name} {user.last_name}</span>
+                                            <span className={styles.rankMeta}>{user.area?.name}</span>
+                                        </div>
+                                    </div>
+                                    <span className={styles.rankScore}>+{user.new_members_count}</span>
+                                </div>
+                            ))}
+                            {(!rankings?.top_recruiters || rankings.top_recruiters.length === 0) && (
+                                <div className={styles.emptyState} style={{ padding: '1.5rem' }}>Aucune donnée de recrutement ce mois-ci</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Top Zones */}
+                    <div className={styles.rankingCard}>
+                        <div className={styles.rankingHeader}>
+                            <MapPin size={18} color="#10b981" />
+                            <h3 className={styles.rankingTitle}>Meilleures Zones (Présence)</h3>
+                        </div>
+
+                        <div className={styles.rankingList}>
+                            {rankings?.top_zones?.map((zone, idx) => (
+                                <div key={zone.id} className={styles.rankingItem}>
+                                    <div className={styles.rankUser}>
+                                        <div className={`${styles.rankBadge} ${idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : idx === 2 ? styles.rank3 : styles.rankOther}`}>
+                                            {idx + 1}
+                                        </div>
+                                        <div className={styles.rankInfo}>
+                                            <span className={styles.rankName}>{zone.name}</span>
+                                            <span className={styles.rankMeta}>Zone #{zone.number || idx + 1}</span>
+                                        </div>
+                                    </div>
+                                    <span className={styles.rankScore} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+                                        {zone.total_present} présents
+                                    </span>
+                                </div>
+                            ))}
+                            {(!rankings?.top_zones || rankings.top_zones.length === 0) && (
+                                <div className={styles.emptyState} style={{ padding: '1.5rem' }}>Aucune donnée de présence</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

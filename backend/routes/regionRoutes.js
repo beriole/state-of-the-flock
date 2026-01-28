@@ -9,5 +9,6 @@ router.use(authMiddleware);
 router.get('/', regionController.getRegions);
 router.post('/', regionController.createRegion);
 router.put('/:id', regionController.updateRegion);
+router.delete('/:id', regionController.deleteRegion);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 // controllers/userController.js
 const bcrypt = require('bcrypt');
-const { User, Area, Member } = require('../models');
+const { User, Area, Member, Region } = require('../models');
 const { Op } = require('sequelize');
 
 const userController = {
@@ -16,6 +16,31 @@ const userController = {
 
       if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
+      }
+
+      // Filtrage strict pour les Gouverneurs (voir uniquement les zones de leur région)
+      if (req.user.role === 'Governor') {
+        const region = await Region.findOne({
+          where: { governor_id: req.user.userId },
+          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
+        });
+
+        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
+
+        if (areaIds.length > 0) {
+          if (area_id) {
+            // Si un area_id spécifique est demandé, vérifier qu'il appartient à la région
+            if (!areaIds.includes(area_id)) {
+              whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+            } else {
+              whereClause.area_id = area_id;
+            }
+          } else {
+            whereClause.area_id = { [Op.in]: areaIds };
+          }
+        } else {
+          whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
       }
 
       const users = await User.findAndCountAll({

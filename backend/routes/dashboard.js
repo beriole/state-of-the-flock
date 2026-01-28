@@ -17,4 +17,10 @@ router.get('/area/:area_id/stats', dashboardController.getAreaStats);
 // GET /api/dashboard/leader/:leader_id/stats
 router.get('/leader/:leader_id/stats', dashboardController.getLeaderStats);
 
+// GET /api/dashboard/financials
+router.get('/financials', dashboardController.getFinancialStats);
+
+// GET /api/dashboard/rankings
+router.get('/rankings', dashboardController.getPerformanceRankings);
+
 module.exports = router;
