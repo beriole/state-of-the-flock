@@ -40,7 +40,6 @@ import {
     Camera,
     Library,
     Loader2,
-    Loader2,
     Shield,
     DollarSign,
     Award
