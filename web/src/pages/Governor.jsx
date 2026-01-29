@@ -1104,46 +1104,46 @@ const Governor = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tbody>
-                            {leaders.map(leader => (
-                                <tr key={leader.id} className={styles.tr}>
-                                    <td className={styles.td}>
-                                        <div className={styles.userCell}>
-                                            <div className={styles.avatar}>
-                                                {leader.photo_url ? (
-                                                    <img src={getPhotoUrl(leader.photo_url)} alt="Profile" className={styles.avatarImage} />
-                                                ) : (
-                                                    <>{leader.first_name[0]}{leader.last_name[0]}</>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <span className={styles.userName}>{leader.first_name} {leader.last_name}</span>
-                                                <span className={styles.userEmail}>{leader.email}</span>
-                                            </div>
+
+                        {leaders.map(leader => (
+                            <tr key={leader.id} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <div className={styles.userCell}>
+                                        <div className={styles.avatar}>
+                                            {leader.photo_url ? (
+                                                <img src={getPhotoUrl(leader.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                            ) : (
+                                                <>{leader.first_name[0]}{leader.last_name[0]}</>
+                                            )}
                                         </div>
-                                    </td>
-                                    <td className={styles.td}>
-                                        <span className={`${styles.badge} ${styles.badgeArea}`}>
-                                            {areas.find(a => a.id === leader.area_id)?.name || 'Non assigné'}
-                                        </span>
-                                    </td>
-                                    <td className={styles.td}>{leader.phone || '-'}</td>
-                                    <td className={styles.td}>
-                                        <div className={styles.actions}>
-                                            <button className={styles.actionBtn} onClick={() => fetchLeaderDetail(leader)} title="Voir détails">
-                                                <ChevronRight size={18} />
-                                            </button>
-                                            <button className={styles.actionBtn} onClick={() => openLeaderModal(leader)}>
-                                                <Pencil size={18} />
-                                            </button>
-                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteLeader(leader.id)}>
-                                                <Trash2 size={18} />
-                                            </button>
+                                        <div>
+                                            <span className={styles.userName}>{leader.first_name} {leader.last_name}</span>
+                                            <span className={styles.userEmail}>{leader.email}</span>
                                         </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                                    </div>
+                                </td>
+                                <td className={styles.td}>
+                                    <span className={`${styles.badge} ${styles.badgeArea}`}>
+                                        {areas.find(a => a.id === leader.area_id)?.name || 'Non assigné'}
+                                    </span>
+                                </td>
+                                <td className={styles.td}>{leader.phone || '-'}</td>
+                                <td className={styles.td}>
+                                    <div className={styles.actions}>
+                                        <button className={styles.actionBtn} onClick={() => fetchLeaderDetail(leader)} title="Voir détails">
+                                            <ChevronRight size={18} />
+                                        </button>
+                                        <button className={styles.actionBtn} onClick={() => openLeaderModal(leader)}>
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteLeader(leader.id)}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </table>
             </div>
         </div>
