@@ -34,7 +34,7 @@ import {
     Award,
     Calendar,
     PhoneCall,
-    PhoneCall,
+
     Mail,
     ArrowLeft,
     ClipboardCheck,
