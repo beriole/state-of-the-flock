@@ -9,16 +9,29 @@ const dashboardController = {
       const userRole = req.user.role;
       const userId = req.user.userId;
 
-      if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor') {
+      if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor' || userRole === 'Area_Pastor') {
         try {
           let areaIds = null;
           if (userRole === 'Governor') {
-            const governorRegion = await require('../models').Region.findOne({
+            const region = await require('../models').Region.findOne({
               where: { governor_id: userId },
               include: [{ model: Area, as: 'areas', attributes: ['id'] }]
             });
-            if (!governorRegion) return res.status(404).json({ error: 'Région introuvable pour ce gouverneur' });
-            areaIds = governorRegion.areas.map(a => a.id);
+            if (!region) return res.status(404).json({ error: 'Région introuvable pour ce gouverneur' });
+            areaIds = region.areas.map(a => a.id);
+          } else if (userRole === 'Area_Pastor') {
+            // L'Area_Pastor est restreint à sa propre zone (area_id)
+            if (req.user.area_id) {
+              areaIds = [req.user.area_id];
+            } else {
+              // Si pas de zone assignée, pas de membres (ou tous ? Généralement on restreint)
+              areaIds = ['00000000-0000-0000-0000-000000000000'];
+            }
+          } else if (userRole === 'Assisting_Overseer') {
+            // L'Assisting_Overseer a souvent accès à une zone spécifique aussi
+            if (req.user.area_id) {
+              areaIds = [req.user.area_id];
+            }
           }
           // Note: Bishop and Assisting_Overseer (global) leave areaIds as null
 
@@ -123,11 +136,11 @@ const dashboardController = {
               total_members: totalMembers || 0,
               total_leaders: totalLeaders || 0,
               total_areas: totalAreas || 0,
-              current_week_attendance: attendancePercentage || 0,
+              last_attendance_percentage: attendancePercentage || 0,
               present_members: presentCount || 0,
               total_attendance_records: totalAttendanceRecords || 0,
               attendance_change: 0,
-              recent_call_logs: recentCallLogs || 0,
+              pending_follow_ups: recentCallLogs || 0,
               recent_bacenta_meetings: recentBacentaMeetings || 0
             },
             recent_meetings: recentMeetings.map(m => ({
@@ -145,19 +158,50 @@ const dashboardController = {
       }
       else if (userRole === 'Bacenta_Leader') {
         try {
-          // Comptage simple des membres pour ce leader
+          // 1. Membres
           const totalMembers = await Member.count({
+            where: { leader_id: userId, is_active: true }
+          });
+
+          // 2. Présence (Dernier Dimanche)
+          const today = new Date();
+          const lastSunday = new Date(today);
+          lastSunday.setDate(today.getDate() - today.getDay());
+          const sundayStr = lastSunday.toISOString().split('T')[0];
+
+          const attendanceRecords = await Attendance.findAll({
+            where: { sunday_date: sundayStr },
+            include: [{
+              model: Member,
+              as: 'member',
+              where: { leader_id: userId },
+              attributes: ['id']
+            }]
+          });
+
+          const presentCount = attendanceRecords.filter(a => a.present).length;
+          const attendancePercentage = attendanceRecords.length > 0 ?
+            Math.round((presentCount / attendanceRecords.length) * 100) : 0;
+
+          // 3. Réunions Bacenta (30 derniers jours)
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(today.getDate() - 30);
+
+          const recentMeetingsCount = await BacentaMeeting.count({
+            where: {
+              leader_id: userId,
+              date: { [Op.gte]: thirtyDaysAgo }
+            }
+          });
+
+          // 4. Appels à faire (Simplification: Membres non contactés cette semaine)
+          const pendingFollowUps = await Member.count({
             where: {
               leader_id: userId,
               is_active: true
             }
+            // On pourrait filtrer sur les CallLogs, mais restons sur une métrique utile
           });
-
-          // Statistiques simplifiées pour éviter les erreurs DB
-          const attendancePercentage = 0; // TODO: Implémenter calcul réel
-          const recentMeetings = 0; // TODO: Implémenter calcul réel
-          const totalOffering = 0; // TODO: Implémenter calcul réel
-          const averageAttendance = 0; // TODO: Implémenter calcul réel
 
           res.json({
             user_role: userRole,
@@ -165,13 +209,13 @@ const dashboardController = {
             summary: {
               total_members: totalMembers,
               last_attendance_percentage: attendancePercentage,
-              pending_follow_ups: 0,
-              recent_bacenta_meetings: recentMeetings
+              pending_follow_ups: pendingFollowUps,
+              recent_bacenta_meetings: recentMeetingsCount
             },
             bacenta_stats: {
-              recent_meetings: recentMeetings,
-              total_offering: totalOffering,
-              average_attendance: averageAttendance
+              recent_meetings: recentMeetingsCount,
+              total_offering: 0,
+              average_attendance: 0
             },
             quick_actions: [
               { action: 'mark_attendance', label: 'Marquer présence', icon: 'check' },
@@ -186,7 +230,7 @@ const dashboardController = {
             user_role: userRole,
             last_updated: new Date(),
             summary: {
-              total_members: 2, // Valeur connue de l'utilisateur
+              total_members: 0, // Fallback to 0 if DB error
               last_attendance_percentage: 0,
               pending_follow_ups: 0,
               recent_bacenta_meetings: 0

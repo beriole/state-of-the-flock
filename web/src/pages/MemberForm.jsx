@@ -53,7 +53,7 @@ const MemberForm = () => {
 
                 if (memberData.area?.region_id) {
                     const areasRes = await areaAPI.getAreas({ region_id: memberData.area.region_id });
-                    setAreas(areasRes.data || []);
+                    setAreas(areasRes.data?.areas || []);
                 }
                 if (memberData.area_id) {
                     const leadersRes = await areaAPI.getAreaLeaders(memberData.area_id);
@@ -88,7 +88,7 @@ const MemberForm = () => {
             if (value) {
                 try {
                     const areasRes = await areaAPI.getAreas({ region_id: value });
-                    setAreas(areasRes.data || []);
+                    setAreas(areasRes.data?.areas || []);
                 } catch (err) {
                     console.error("Error fetching areas:", err);
                 }
@@ -243,7 +243,7 @@ const MemberForm = () => {
                             />
                         </div>
 
-                        {user?.role === 'Bishop' && (
+                        {(user?.role === 'Bishop' || user?.role === 'Governor') && (
                             <>
                                 <h3 className={styles.sectionTitle}>Affectation (Superviseur)</h3>
                                 <div className={styles.formGroup}>
@@ -253,10 +253,10 @@ const MemberForm = () => {
                                         value={formData.region_id || ''}
                                         onChange={handleChange}
                                         className={styles.select}
-                                        required={user?.role === 'Bishop'}
+                                        required={user?.role === 'Bishop' || user?.role === 'Governor'}
                                     >
                                         <option value="">Sélectionner une région</option>
-                                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                        {(Array.isArray(regions) ? regions : []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                     </select>
                                 </div>
                                 <div className={styles.formGroup}>
@@ -266,11 +266,11 @@ const MemberForm = () => {
                                         value={formData.area_id || ''}
                                         onChange={handleChange}
                                         className={styles.select}
-                                        required={user?.role === 'Bishop'}
+                                        required={user?.role === 'Bishop' || user?.role === 'Governor'}
                                         disabled={!formData.region_id}
                                     >
                                         <option value="">Sélectionner une zone</option>
-                                        {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                        {(Array.isArray(areas) ? areas : []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                     </select>
                                 </div>
                                 <div className={styles.formGroup}>
@@ -280,11 +280,11 @@ const MemberForm = () => {
                                         value={formData.leader_id || ''}
                                         onChange={handleChange}
                                         className={styles.select}
-                                        required={user?.role === 'Bishop'}
+                                        required={user?.role === 'Bishop' || user?.role === 'Governor'}
                                         disabled={!formData.area_id}
                                     >
                                         <option value="">Sélectionner un leader</option>
-                                        {leaders.map(l => (
+                                        {(Array.isArray(leaders) ? leaders : []).map(l => (
                                             <option key={l.id} value={l.id}>{l.first_name} {l.last_name}</option>
                                         ))}
                                     </select>
@@ -303,7 +303,7 @@ const MemberForm = () => {
                                 className={styles.select}
                             >
                                 <option value="">Aucun ministère</option>
-                                {ministries.map(ministry => (
+                                {(Array.isArray(ministries) ? ministries : []).map(ministry => (
                                     <option key={ministry.id} value={ministry.id}>{ministry.name}</option>
                                 ))}
                             </select>
