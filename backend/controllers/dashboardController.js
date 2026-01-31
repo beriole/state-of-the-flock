@@ -1,5 +1,5 @@
 // controllers/dashboardController.js
-const { Area, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, sequelize } = require('../models');
+const { Area, Region, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 const dashboardController = {
@@ -7,9 +7,12 @@ const dashboardController = {
   getLeaderDashboard: async (req, res) => {
     try {
       const userRole = req.user.role;
+      const role = userRole ? userRole.toLowerCase() : '';
       const userId = req.user.userId;
 
-      if (userRole === 'Bishop' || userRole === 'Assisting_Overseer' || userRole === 'Governor' || userRole === 'Area_Pastor') {
+      console.log(`📊 Dashboard request for role: ${userRole}, user: ${userId}`);
+
+      if (role === 'bishop' || role === 'assisting_overseer' || role === 'governor' || role === 'area_pastor') {
         try {
           let areaIds = null;
           if (userRole === 'Governor') {
@@ -67,6 +70,20 @@ const dashboardController = {
           const totalMembers = await Member.count({ where: memberWhere });
           const totalLeaders = await User.count({ where: userWhere });
           const totalAreas = await Area.count({ where: areaWhere });
+
+          let totalRegions = 0;
+          let totalGovernors = 0;
+          let totalAreaPastors = 0;
+
+          if (role === 'bishop' || role === 'assisting_overseer') {
+            totalRegions = await Region.count();
+            totalGovernors = await User.count({ where: { role: 'Governor', is_active: true } });
+            totalAreaPastors = await User.count({ where: { role: 'Area_Pastor', is_active: true } });
+          } else if (role === 'governor') {
+            totalRegions = 1;
+          }
+
+          console.log(`✅ Stats calculated: members=${totalMembers}, areas=${totalAreas}, regions=${totalRegions}`);
 
           // Présence de cette semaine
           const today = new Date();
@@ -136,6 +153,9 @@ const dashboardController = {
               total_members: totalMembers || 0,
               total_leaders: totalLeaders || 0,
               total_areas: totalAreas || 0,
+              total_regions: totalRegions || 0,
+              total_governors: totalGovernors || 0,
+              total_area_pastors: totalAreaPastors || 0,
               last_attendance_percentage: attendancePercentage || 0,
               present_members: presentCount || 0,
               total_attendance_records: totalAttendanceRecords || 0,

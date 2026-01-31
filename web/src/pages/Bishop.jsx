@@ -525,18 +525,38 @@ const Bishop = () => {
                             <Globe size={24} />
                         </div>
                     </div>
-                    <h3 className={styles.statValue}>{stats?.summary?.total_regions || regions.length || 0}</h3>
+                    <h3 className={styles.statValue}>{stats?.summary?.total_regions || 0}</h3>
                     <p className={styles.statLabel}>Régions</p>
                 </div>
 
                 <div className={styles.statCard}>
                     <div className={styles.statHeader}>
                         <div className={styles.statIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <Crown size={24} />
+                        </div>
+                    </div>
+                    <h3 className={styles.statValue}>{stats?.summary?.total_governors || 0}</h3>
+                    <p className={styles.statLabel}>Gouverneurs</p>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' }}>
+                            <Shield size={24} />
+                        </div>
+                    </div>
+                    <h3 className={styles.statValue}>{stats?.summary?.total_area_pastors || 0}</h3>
+                    <p className={styles.statLabel}>Area Pastors</p>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statHeader}>
+                        <div className={styles.statIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
                             <Award size={24} />
                         </div>
                     </div>
-                    <h3 className={styles.statValue}>{rankings?.top_recruiters?.length || 0}</h3>
-                    <p className={styles.statLabel}>Top Leaders</p>
+                    <h3 className={styles.statValue}>{stats?.summary?.total_leaders || 0}</h3>
+                    <p className={styles.statLabel}>Bacenta Leaders</p>
                 </div>
             </div>
 
