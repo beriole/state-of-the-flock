@@ -56,6 +56,7 @@ const Bishop = () => {
     const [stats, setStats] = useState(null);
     const [governors, setGovernors] = useState([]);
     const [regions, setRegions] = useState([]);
+    const [areas, setAreas] = useState([]);
     const [ministries, setMinistries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [growthData, setGrowthData] = useState(null);
@@ -102,7 +103,8 @@ const Bishop = () => {
         email: '',
         phone: '',
         password: '',
-        area_id: '', // Will be used for Region in Bishop context if applicable, or we might need region_id
+        region_id: '',
+        area_id: '',
         role: 'Governor'
     });
 
@@ -204,12 +206,14 @@ const Bishop = () => {
                 setFinancials(financialRes.data);
                 setRankings(rankingsRes.data);
             } else if (activeTab === 'governors') {
-                const [governorsRes, regionsRes] = await Promise.all([
+                const [governorsRes, regionsRes, areasRes] = await Promise.all([
                     governorAPI.getUsers({ role: 'Governor' }),
-                    regionAPI.getRegions()
+                    regionAPI.getRegions(),
+                    areaAPI.getAreas({ limit: 100 })
                 ]);
                 setGovernors(governorsRes.data.users || []);
                 setRegions(regionsRes.data || []);
+                setAreas(areasRes.data.areas || []);
             } else if (activeTab === 'regions') {
                 const [regionsRes, governorsRes] = await Promise.all([
                     regionAPI.getRegions(),
@@ -257,6 +261,11 @@ const Bishop = () => {
 
     // --- Modal Handlers ---
 
+    // Filtrer les zones par région sélectionnée
+    const filteredAreasForForm = governorForm.region_id 
+        ? areas.filter(a => a.region_id === governorForm.region_id)
+        : [];
+
     const openGovernorModal = (governor = null) => {
         setModalError('');
         if (governor) {
@@ -269,6 +278,7 @@ const Bishop = () => {
                 email: governor.email,
                 phone: governor.phone || '',
                 region_id: govRegion ? govRegion.id : '',
+                area_id: governor.area_id || '',
                 role: 'Governor'
                 // password left blank
             });
@@ -280,6 +290,7 @@ const Bishop = () => {
                 email: '',
                 phone: '',
                 region_id: '',
+                area_id: '',
                 password: '',
                 role: 'Governor'
             });
@@ -353,11 +364,26 @@ const Bishop = () => {
         setModalError('');
         try {
             let userId;
+            // Préparer les données avec region_id et area_id
+            const userData = {
+                first_name: governorForm.first_name,
+                last_name: governorForm.last_name,
+                email: governorForm.email,
+                phone: governorForm.phone,
+                role: 'Governor',
+                area_id: governorForm.area_id || null
+            };
+            
+            // Ajouter le mot de passe seulement pour un nouveau governor
+            if (!editingItem && governorForm.password) {
+                userData.password = governorForm.password;
+            }
+            
             if (editingItem) {
-                await governorAPI.updateUser(editingItem.id, governorForm);
+                await governorAPI.updateUser(editingItem.id, userData);
                 userId = editingItem.id;
             } else {
-                const res = await governorAPI.createUser(governorForm);
+                const res = await governorAPI.createUser(userData);
                 userId = res.data?.user?.id || res.data?.id;
             }
 
@@ -661,11 +687,18 @@ const Bishop = () => {
                             <th className={styles.th}>Nom</th>
                             <th className={styles.th}>Email</th>
                             <th className={styles.th}>Téléphone</th>
+                            <th className={styles.th}>Région</th>
+                            <th className={styles.th}>Zone</th>
                             <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {governors.map(gov => (
+                        {governors.map(gov => {
+                            // Trouver la région du governor
+                            const govRegion = regions.find(r => r.governor_id === gov.id);
+                            // Trouver la zone du governor
+                            const govArea = areas.find(a => a.id === gov.area_id);
+                            return (
                             <tr key={gov.id} className={styles.tr}>
                                 <td className={styles.td}>
                                     <div className={styles.userCell}>
@@ -676,17 +709,18 @@ const Bishop = () => {
                                     </div>
                                 </td>
                                 <td className={styles.td}>{gov.email}</td>
-                                <td className={styles.td}>{gov.phone}</td>
+                                <td className={styles.td}>{gov.phone || '-'}</td>
+                                <td className={styles.td}>{govRegion?.name || '-'}</td>
+                                <td className={styles.td}>{govArea ? `${govArea.name} (Zone ${govArea.number})` : '-'}</td>
                                 <td className={styles.td} style={{ textAlign: 'right' }}>
                                     <div className={styles.actions}>
                                         <button className={styles.actionBtn} onClick={() => openGovernorModal(gov)}>
                                             <Pencil size={18} />
                                         </button>
-                                        {/* Delete logic if needed */}
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
             </div>
@@ -1420,9 +1454,9 @@ const Bishop = () => {
                                 <select
                                     className={styles.select}
                                     value={governorForm.region_id}
-                                    onChange={e => setGovernorForm({ ...governorForm, region_id: e.target.value })}
+                                    onChange={e => setGovernorForm({ ...governorForm, region_id: e.target.value, area_id: '' })}
                                 >
-                                    <option value="">Sélectionner une région (Optionnel)</option>
+                                    <option value="">Sélectionner une région</option>
                                     {regions.map(r => (
                                         <option key={r.id} value={r.id}>
                                             {r.name} {r.governor_id && r.governor_id !== editingItem?.id ? '(Déjà assignée)' : ''}
@@ -1430,6 +1464,23 @@ const Bishop = () => {
                                     ))}
                                 </select>
                             </div>
+                            {governorForm.region_id && (
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Zone (Cellule Principale)</label>
+                                    <select
+                                        className={styles.select}
+                                        value={governorForm.area_id}
+                                        onChange={e => setGovernorForm({ ...governorForm, area_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner une zone</option>
+                                        {filteredAreasForForm.map(a => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.name} (Zone {a.number})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             {!editingItem && (
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Mot de passe</label>
