@@ -7,7 +7,6 @@ import {
     ministryAPI,
     regionAPI,
     memberAPI,
-    memberAPI,
     bacentaAPI,
     authAPI,
     callLogAPI,
