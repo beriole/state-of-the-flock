@@ -578,7 +578,7 @@ const dashboardController = {
                 SELECT COUNT(*)
                 FROM members AS member
                 WHERE
-                    member.leader_id = User.id
+                    member.leader_id = "User".id
                     AND member.created_at >= '${startOfMonth.toISOString().slice(0, 10)}'
             )`), 'new_members_count']
         ],
@@ -616,7 +616,7 @@ const dashboardController = {
                 FROM attendances AS att
                 INNER JOIN members AS m ON att.member_id = m.id
                 WHERE
-                    m.area_id = Area.id
+                    m.area_id = "Area".id
                     AND att.sunday_date = '${lastSundayStr}'
                     AND att.present = true
             )`), 'total_present']
@@ -635,8 +635,12 @@ const dashboardController = {
       });
 
     } catch (error) {
-      console.error('Get rankings error:', error);
-      res.status(500).json({ error: 'Erreur lors de la récupération des classements' });
+      console.error('Get performance rankings error:', error);
+      res.json({
+        top_recruiters: [],
+        top_areas: [],
+        top_bacenta: []
+      });
     }
   },
 

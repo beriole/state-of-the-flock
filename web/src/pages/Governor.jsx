@@ -226,11 +226,11 @@ const Governor = () => {
         try {
             if (activeTab === 'dashboard') {
                 const [statsRes, growthRes, financialRes, rankingsRes, areasRes] = await Promise.all([
-                    dashboardAPI.getGlobalStats({ area_id: dashboardFilters.area_id }),
-                    reportAPI.getMemberGrowthReport({ period: '3months', area_id: dashboardFilters.area_id }),
-                    dashboardAPI.getFinancialStats({ area_id: dashboardFilters.area_id }),
-                    dashboardAPI.getPerformanceRankings({ area_id: dashboardFilters.area_id }),
-                    areaAPI.getAreas()
+                    dashboardAPI.getGlobalStats({ area_id: dashboardFilters.area_id }).catch(e => ({ data: {} })),
+                    reportAPI.getMemberGrowthReport({ period: '3months', area_id: dashboardFilters.area_id }).catch(e => ({ data: {} })),
+                    dashboardAPI.getFinancialStats({ area_id: dashboardFilters.area_id }).catch(e => ({ data: {} })),
+                    dashboardAPI.getPerformanceRankings({ area_id: dashboardFilters.area_id }).catch(e => ({ data: {} })),
+                    areaAPI.getAreas().catch(e => ({ data: { areas: [] } }))
                 ]);
                 setStats(statsRes.data);
                 setGrowthData(growthRes.data);

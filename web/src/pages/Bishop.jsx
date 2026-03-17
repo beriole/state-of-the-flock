@@ -199,10 +199,10 @@ const Bishop = () => {
         try {
             if (activeTab === 'dashboard' || activeTab === 'reports') {
                 const [statsRes, growthRes, financialRes, rankingsRes] = await Promise.all([
-                    dashboardAPI.getGlobalStats(),
-                    reportAPI.getMemberGrowthReport({ period: '3months' }),
-                    dashboardAPI.getFinancialStats(),
-                    dashboardAPI.getPerformanceRankings()
+                    dashboardAPI.getGlobalStats().catch(e => ({ data: {} })),
+                    reportAPI.getMemberGrowthReport({ period: '3months' }).catch(e => ({ data: {} })),
+                    dashboardAPI.getFinancialStats().catch(e => ({ data: {} })),
+                    dashboardAPI.getPerformanceRankings().catch(e => ({ data: {} }))
                 ]);
                 setStats(statsRes.data);
                 setGrowthData(growthRes.data);
