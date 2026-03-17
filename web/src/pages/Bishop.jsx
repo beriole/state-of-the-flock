@@ -1277,7 +1277,7 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reportData.map?.((log, idx) => (
+                                    {reportData.data?.map((log, idx) => (
                                         <tr key={idx} className={styles.tr}>
                                             <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
                                             <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>

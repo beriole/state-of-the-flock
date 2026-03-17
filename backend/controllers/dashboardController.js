@@ -110,7 +110,7 @@ const dashboardController = {
 
           const recentCallLogs = await CallLog.count({
             where: {
-              created_at: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+              createdAt: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
             },
             include: [{
               model: Member,
@@ -122,7 +122,7 @@ const dashboardController = {
 
           const recentBacentaMeetings = await BacentaMeeting.count({
             where: {
-              created_at: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+              createdAt: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
             },
             include: [{
               model: User,
@@ -134,7 +134,7 @@ const dashboardController = {
 
           const recentMeetings = await BacentaMeeting.findAll({
             where: {
-              created_at: { [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+              createdAt: { [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
             },
             include: [{
               model: User,
@@ -142,7 +142,7 @@ const dashboardController = {
               where: userWhere,
               attributes: ['id', 'first_name', 'last_name']
             }],
-            order: [['date', 'DESC']],
+            order: [['meeting_date', 'DESC']],
             limit: 5
           });
 
@@ -166,8 +166,8 @@ const dashboardController = {
             recent_meetings: recentMeetings.map(m => ({
               id: m.id,
               title: m.title,
-              date: m.date,
-              attendance: m.attendance_count || 0, // This might need actual count logic
+              date: m.meeting_date,
+              attendance: m.total_members_present || 0,
               leader_name: m.leader ? `${m.leader.first_name} ${m.leader.last_name}` : 'Inconnu'
             }))
           });
@@ -210,7 +210,7 @@ const dashboardController = {
           const recentMeetingsCount = await BacentaMeeting.count({
             where: {
               leader_id: userId,
-              date: { [Op.gte]: thirtyDaysAgo }
+              meeting_date: { [Op.gte]: thirtyDaysAgo }
             }
           });
 
