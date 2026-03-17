@@ -38,14 +38,17 @@ import {
     Mail,
     ArrowLeft,
     ClipboardCheck,
-    HomeIcon
+    HomeIcon,
+    LogIn
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import styles from './Bishop.module.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Bishop = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get('tab') || 'dashboard';
 
@@ -257,6 +260,24 @@ const Bishop = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // --- Impersonation ---
+    const handleConnectAs = async (governor) => {
+        if (!window.confirm(`Voulez-vous vous connecter en tant que ${governor.first_name} ${governor.last_name} ?`)) return;
+
+        try {
+            setLoading(true);
+            const res = await authAPI.impersonate(governor.id);
+            const { user, token } = res.data;
+            await login(user, token);
+            navigate('/dashboard');
+        } catch (error) {
+            console.error('Impersonation failed:', error);
+            alert("Erreur lors de la connexion à l'espace de travail.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // --- Modal Handlers ---
 
@@ -713,6 +734,14 @@ const Bishop = () => {
                                     <td className={styles.td}>{govArea ? `${govArea.name} (Zone ${govArea.number})` : '-'}</td>
                                     <td className={styles.td} style={{ textAlign: 'right' }}>
                                         <div className={styles.actions}>
+                                            <button
+                                                className={styles.actionBtn}
+                                                onClick={() => handleConnectAs(gov)}
+                                                title="Se connecter à son espace"
+                                                style={{ color: '#059669' }}
+                                            >
+                                                <LogIn size={18} />
+                                            </button>
                                             <button className={styles.actionBtn} onClick={() => openGovernorModal(gov)}>
                                                 <Pencil size={18} />
                                             </button>
@@ -1464,23 +1493,21 @@ const Bishop = () => {
                                     ))}
                                 </select>
                             </div>
-                            {governorForm.region_id && (
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Zone (Cellule Principale)</label>
-                                    <select
-                                        className={styles.select}
-                                        value={governorForm.area_id}
-                                        onChange={e => setGovernorForm({ ...governorForm, area_id: e.target.value })}
-                                    >
-                                        <option value="">Sélectionner une zone</option>
-                                        {filteredAreasForForm.map(a => (
-                                            <option key={a.id} value={a.id}>
-                                                {a.name} (Zone {a.number})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Zone (Cellule Principale)</label>
+                                <select
+                                    className={styles.select}
+                                    value={governorForm.area_id}
+                                    onChange={e => setGovernorForm({ ...governorForm, area_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner une zone</option>
+                                    {filteredAreasForForm.map(a => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name} (Zone {a.number})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             {!editingItem && (
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Mot de passe</label>

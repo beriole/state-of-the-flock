@@ -161,6 +161,62 @@ const authController = {
       sameSite: 'strict'
     });
     res.json({ message: 'Déconnexion réussie' });
+  },
+
+  // Impersonner un utilisateur (Bishop seulement)
+  impersonateUser: async (req, res) => {
+    try {
+      if (req.user.role !== 'Bishop') {
+        return res.status(403).json({ error: 'Accès restreint aux Bishops' });
+      }
+
+      const targetUserId = req.params.id;
+      const user = await User.findByPk(targetUserId, {
+        include: [{ model: Area, as: 'area' }]
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+
+      // Création du token pour l'utilisateur cible
+      const secret = process.env.JWT_SECRET;
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          area_id: user.area_id,
+          isImpersonated: true,
+          originalAdminId: req.user.userId
+        },
+        secret,
+        { expiresIn: '2h' } // Token court pour l'impersonation
+      );
+
+      const userResponse = {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.role,
+        area: user.area,
+        area_id: user.area_id,
+        phone: user.phone,
+        photo_url: user.photo_url,
+        is_active: user.is_active
+      };
+
+      res.json({
+        message: `Impersonation réussie pour ${user.first_name} ${user.last_name}`,
+        token,
+        user: userResponse
+      });
+
+    } catch (error) {
+      console.error('Impersonation error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'impersonation' });
+    }
   }
 };
 

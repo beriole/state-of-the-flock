@@ -17,4 +17,7 @@ router.post('/change-password', authMiddleware, authController.changePassword);
 // POST /api/auth/logout
 router.post('/logout', authController.logout);
 
+// POST /api/auth/impersonate/:id (Bishop only)
+router.post('/impersonate/:id', authMiddleware, authController.impersonateUser);
+
 module.exports = router;

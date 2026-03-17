@@ -73,6 +73,7 @@ export const authAPI = {
     login: (data) => api.post('/auth/login', data),
     register: (data) => api.post('/auth/register', data),
     logout: () => api.post('/auth/logout'),
+    impersonate: (id) => api.post(`/auth/impersonate/${id}`),
 };
 
 // Fonctions API pour les membres
