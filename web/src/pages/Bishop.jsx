@@ -271,7 +271,7 @@ const Bishop = () => {
             const res = await authAPI.impersonate(governor.id);
             const { user, token } = res.data;
             await login(user, token);
-            navigate('/dashboard');
+            window.location.href = '/dashboard';
         } catch (error) {
             console.error('Impersonation failed:', error);
             alert("Erreur lors de la connexion à l'espace de travail.");

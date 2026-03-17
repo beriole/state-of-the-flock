@@ -20,8 +20,7 @@ const dashboardController = {
               where: { governor_id: userId },
               include: [{ model: Area, as: 'areas', attributes: ['id'] }]
             });
-            if (!region) return res.status(404).json({ error: 'Région introuvable pour ce gouverneur' });
-            areaIds = region.areas.map(a => a.id);
+            areaIds = region ? region.areas.map(a => a.id) : [];
           } else if (userRole === 'Area_Pastor') {
             // L'Area_Pastor est restreint à sa propre zone (area_id)
             if (req.user.area_id) {
@@ -485,16 +484,14 @@ const dashboardController = {
           include: [{ model: Area, as: 'areas', attributes: ['id'] }]
         });
 
-        if (!governorRegion) return res.status(404).json({ error: 'Région introuvable' });
-
-        const areaIds = governorRegion.areas.map(a => a.id);
+        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
 
         // On modifie l'include pour filtrer
         areaInclude = {
           model: Area,
           as: 'area',
           attributes: ['id', 'name'],
-          where: { id: { [Op.in]: areaIds } }
+          where: areaIds.length > 0 ? { id: { [Op.in]: areaIds } } : { id: null } // Force empty results if no areas
         };
       }
 

@@ -461,6 +461,8 @@ const reportController = {
         const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
         if (areaIds.length > 0) {
           whereClause.area_id = { [Op.in]: areaIds };
+        } else {
+          whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
       } else if (req.user.role !== 'Bishop' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;

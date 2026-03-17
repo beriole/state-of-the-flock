@@ -24,8 +24,12 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user?.role === 'Governor' || user?.role === 'Bishop') {
+        if (user?.role === 'Governor') {
             navigate('/governor');
+            return;
+        }
+        if (user?.role === 'Bishop') {
+            navigate('/bishop');
             return;
         }
 
