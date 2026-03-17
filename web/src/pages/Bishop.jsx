@@ -8,6 +8,7 @@ import {
     regionAPI,
     memberAPI,
     bacentaAPI,
+    authAPI,
     getPhotoUrl
 } from '../utils/api';
 import {
