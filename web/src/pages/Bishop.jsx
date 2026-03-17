@@ -63,7 +63,6 @@ const Bishop = () => {
     const [financials, setFinancials] = useState(null);
     const [rankings, setRankings] = useState(null);
     const [members, setMembers] = useState([]);
-    const [areas, setAreas] = useState([]);
     const [bacentaMeetings, setBacentaMeetings] = useState([]);
     const [memberFilters, setMemberFilters] = useState({
         region_id: '',
@@ -262,7 +261,7 @@ const Bishop = () => {
     // --- Modal Handlers ---
 
     // Filtrer les zones par région sélectionnée
-    const filteredAreasForForm = governorForm.region_id 
+    const filteredAreasForForm = governorForm.region_id
         ? areas.filter(a => a.region_id === governorForm.region_id)
         : [];
 
@@ -373,12 +372,12 @@ const Bishop = () => {
                 role: 'Governor',
                 area_id: governorForm.area_id || null
             };
-            
+
             // Ajouter le mot de passe seulement pour un nouveau governor
             if (!editingItem && governorForm.password) {
                 userData.password = governorForm.password;
             }
-            
+
             if (editingItem) {
                 await governorAPI.updateUser(editingItem.id, userData);
                 userId = editingItem.id;
@@ -699,28 +698,29 @@ const Bishop = () => {
                             // Trouver la zone du governor
                             const govArea = areas.find(a => a.id === gov.area_id);
                             return (
-                            <tr key={gov.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div className={styles.userCell}>
-                                        <div className={styles.avatar}>
-                                            {gov.first_name[0]}{gov.last_name[0]}
+                                <tr key={gov.id} className={styles.tr}>
+                                    <td className={styles.td}>
+                                        <div className={styles.userCell}>
+                                            <div className={styles.avatar}>
+                                                {gov.first_name[0]}{gov.last_name[0]}
+                                            </div>
+                                            <span className={styles.userName}>{gov.first_name} {gov.last_name}</span>
                                         </div>
-                                        <span className={styles.userName}>{gov.first_name} {gov.last_name}</span>
-                                    </div>
-                                </td>
-                                <td className={styles.td}>{gov.email}</td>
-                                <td className={styles.td}>{gov.phone || '-'}</td>
-                                <td className={styles.td}>{govRegion?.name || '-'}</td>
-                                <td className={styles.td}>{govArea ? `${govArea.name} (Zone ${govArea.number})` : '-'}</td>
-                                <td className={styles.td} style={{ textAlign: 'right' }}>
-                                    <div className={styles.actions}>
-                                        <button className={styles.actionBtn} onClick={() => openGovernorModal(gov)}>
-                                            <Pencil size={18} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )})}
+                                    </td>
+                                    <td className={styles.td}>{gov.email}</td>
+                                    <td className={styles.td}>{gov.phone || '-'}</td>
+                                    <td className={styles.td}>{govRegion?.name || '-'}</td>
+                                    <td className={styles.td}>{govArea ? `${govArea.name} (Zone ${govArea.number})` : '-'}</td>
+                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                        <div className={styles.actions}>
+                                            <button className={styles.actionBtn} onClick={() => openGovernorModal(gov)}>
+                                                <Pencil size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>
