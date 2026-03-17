@@ -7,8 +7,10 @@ import {
     ministryAPI,
     regionAPI,
     memberAPI,
+    memberAPI,
     bacentaAPI,
     authAPI,
+    callLogAPI,
     getPhotoUrl
 } from '../utils/api';
 import {
@@ -89,6 +91,10 @@ const Bishop = () => {
 
     const [selectedReport, setSelectedReport] = useState(null);
     const [reportData, setReportData] = useState(null);
+    const [reportDateRange, setReportDateRange] = useState({
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+    });
 
     // Modals
     const [showGovernorModal, setShowGovernorModal] = useState(false);
