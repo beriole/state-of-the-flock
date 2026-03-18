@@ -103,6 +103,9 @@ const Bishop = () => {
         endDate: new Date().toISOString().split('T')[0]
     });
 
+    const [showBacentaModal, setShowBacentaModal] = useState(false);
+    const [selectedBacentaMeeting, setSelectedBacentaMeeting] = useState(null);
+
     // Modals
     const [showGovernorModal, setShowGovernorModal] = useState(false);
     const [showRegionModal, setShowRegionModal] = useState(false);
@@ -1181,7 +1184,10 @@ const Bishop = () => {
                                 </td>
                                 <td className={styles.td} style={{ textAlign: 'right' }}>
                                     <div className={styles.actions}>
-                                        <button className={styles.actionBtn} onClick={() => navigate(`/bacenta/meeting/${meeting.id}`)}>
+                                        <button className={styles.actionBtn} onClick={() => {
+                                            setSelectedBacentaMeeting(meeting);
+                                            setShowBacentaModal(true);
+                                        }}>
                                             <ChevronRight size={18} />
                                         </button>
                                     </div>
@@ -1642,8 +1648,95 @@ const Bishop = () => {
                     </div>
                 </div>
             )}
+
+            {showBacentaModal && renderBacentaDetailModal()}
         </div>
     );
+
+    function renderBacentaDetailModal() {
+        if (!selectedBacentaMeeting) return null;
+        return (
+            <div className={styles.modalOverlay} onClick={() => setShowBacentaModal(false)}>
+                <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                    <div className={styles.modalHeader}>
+                        <h2 className={styles.modalTitle}>Détails de la Réunion</h2>
+                        <button className={styles.closeBtn} onClick={() => setShowBacentaModal(false)}>
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div className={styles.meetingInfo} style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
+                        <h3 style={{ color: '#DC2626', marginBottom: '1rem', fontSize: '1.5rem' }}>{selectedBacentaMeeting.title}</h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                            <div className={styles.detailRow}><Calendar size={18} /> <div><strong>Date</strong><br />{new Date(selectedBacentaMeeting.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+                            <div className={styles.detailRow}><Clock size={18} /> <div><strong>Heure</strong><br />{selectedBacentaMeeting.time}</div></div>
+                            <div className={styles.detailRow}><MapPin size={18} /> <div><strong>Lieu</strong><br />{selectedBacentaMeeting.location}</div></div>
+                            <div className={styles.detailRow}><User size={18} /> <div><strong>Hôte / Leader</strong><br />{selectedBacentaMeeting.host}<br /><small style={{ color: '#64748b' }}>Leader: {selectedBacentaMeeting.leader?.first_name} {selectedBacentaMeeting.leader?.last_name}</small></div></div>
+                        </div>
+
+                        {selectedBacentaMeeting.agenda && Array.isArray(selectedBacentaMeeting.agenda) && selectedBacentaMeeting.agenda.some(a => a) && (
+                            <div style={{ marginTop: '2rem' }}>
+                                <h4 className={styles.label} style={{ marginBottom: '0.5rem' }}>Agenda de la réunion</h4>
+                                <div className={styles.agendaList} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px' }}>
+                                    {selectedBacentaMeeting.agenda.filter(a => a).map((item, index) => (
+                                        <div key={index} className={styles.agendaItem} style={{ marginBottom: '0.5rem' }}>
+                                            <span className={styles.agendaNumber}>{index + 1}</span>
+                                            <span style={{ color: '#e2e8f0' }}>{item}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {(selectedBacentaMeeting.photo_url || selectedBacentaMeeting.familyPhoto) && (
+                            <div style={{ marginTop: '2rem' }}>
+                                <h4 className={styles.label} style={{ marginBottom: '0.5rem' }}>Photo de la réunion</h4>
+                                <div className={styles.photoPreviewContainer}>
+                                    <img
+                                        src={getPhotoUrl(selectedBacentaMeeting.photo_url || selectedBacentaMeeting.familyPhoto)}
+                                        alt="Réunion"
+                                        className={styles.photoPreview}
+                                        style={{ width: '100%', height: 'auto', borderRadius: '12px' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedBacentaMeeting.notes && (
+                            <div style={{ marginTop: '2rem' }}>
+                                <h4 className={styles.label} style={{ marginBottom: '0.5rem' }}>Notes & Témoignages</h4>
+                                <p style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', lineHeight: '1.6' }}>
+                                    {selectedBacentaMeeting.notes}
+                                </p>
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: '2rem' }}>
+                            <h4 className={styles.label} style={{ marginBottom: '0.5rem' }}>Statistiques</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6' }}>{selectedBacentaMeeting.attendance?.length || 0}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Présents</div>
+                                </div>
+                                <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{(selectedBacentaMeeting.offerings?.total || selectedBacentaMeeting.offerings || 0).toLocaleString()} XAF</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Offrandes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.modalActions}>
+                        <button className={styles.submitBtn} onClick={() => setShowBacentaModal(false)} style={{ width: '100%' }}>
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 };
 
 export default Bishop;
+

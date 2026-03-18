@@ -87,6 +87,14 @@ function App() {
               }
             />
             <Route
+              path="/bacenta/meeting/:id"
+              element={
+                <PrivateRoute>
+                  <Bacenta />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/calls"
               element={
                 <PrivateRoute>

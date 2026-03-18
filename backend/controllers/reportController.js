@@ -108,25 +108,48 @@ const reportController = {
           total_members: parseInt(stat.total_members)
         })),
         by_area: await (async () => {
-          const areas = await Area.findAll({
-            attributes: ['id', 'name'],
+          // Optimization: Get member counts per area
+          const areaMemberCounts = await Member.findAll({
+            attributes: [
+              'area_id',
+              [Member.sequelize.fn('COUNT', Member.sequelize.col('id')), 'total_members']
+            ],
+            group: ['area_id'],
+            raw: true
+          });
+
+          // Optimization: Get attendance stats per area
+          const areaAttendanceStats = await Attendance.findAll({
+            where: whereClause,
+            attributes: [
+              [Member.sequelize.col('member.area_id'), 'area_id'],
+              [Attendance.sequelize.fn('COUNT', Attendance.sequelize.col('Attendance.id')), 'total_records'],
+              [Attendance.sequelize.fn('SUM', Attendance.sequelize.col('present')), 'total_present']
+            ],
             include: [{
               model: Member,
-              as: 'members',
-              attributes: ['id'],
-              include: [{
-                model: Attendance,
-                as: 'attendances',
-                where: whereClause,
-                required: false
-              }]
-            }]
+              as: 'member',
+              attributes: [],
+              where: memberWhereClause
+            }],
+            group: [Member.sequelize.col('member.area_id')],
+            raw: true
           });
+
+          // Fetch area names
+          const areas = await Area.findAll({
+            attributes: ['id', 'name'],
+            raw: true
+          });
+
           return areas.map(a => {
-            const totalMembers = a.members.length;
-            const records = a.members.flatMap(m => m.attendances || []);
-            const totalRecords = records.length;
-            const totalPresent = records.filter(r => r.present).length;
+            const memberCount = areaMemberCounts.find(c => c.area_id === a.id);
+            const attendanceStat = areaAttendanceStats.find(s => s.area_id === a.id);
+
+            const totalMembers = parseInt(memberCount?.total_members || 0);
+            const totalRecords = parseInt(attendanceStat?.total_records || 0);
+            const totalPresent = parseInt(attendanceStat?.total_present || 0);
+
             return {
               name: a.name,
               total: totalMembers,
@@ -134,7 +157,7 @@ const reportController = {
               present: totalPresent,
               percentage: totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0
             };
-          });
+          }).filter(a => a.total > 0); // Only show areas with members
         })(),
         members_needing_follow_up: consecutiveAbsences.map(member => ({
           id: member.id,
