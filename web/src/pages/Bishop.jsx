@@ -53,9 +53,18 @@ const Bishop = () => {
     const { login } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get('tab') || 'dashboard';
+    const selectedReport = searchParams.get('report');
 
     const setActiveTab = (tab) => {
         setSearchParams({ tab });
+    };
+
+    const setSelectedReport = (report) => {
+        if (report) {
+            setSearchParams({ tab: activeTab, report });
+        } else {
+            setSearchParams({ tab: activeTab });
+        }
     };
 
     const [stats, setStats] = useState(null);
@@ -88,7 +97,6 @@ const Bishop = () => {
     const [selectedAreaDetails, setSelectedAreaDetails] = useState(null);
     const [areaLeaders, setAreaLeaders] = useState([]);
 
-    const [selectedReport, setSelectedReport] = useState(null);
     const [reportData, setReportData] = useState(null);
     const [reportDateRange, setReportDateRange] = useState({
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
@@ -184,7 +192,7 @@ const Bishop = () => {
                 setReportData(res.data);
             } else if (type === 'calls') {
                 const res = await callLogAPI.getCallLogs({ limit: 50, ...params });
-                setReportData(res.data.logs || []);
+                setReportData(res.data.logs || res.data || []);
             } else if (type === 'growth') {
                 const res = await reportAPI.getMemberGrowthReport({ period: '12months' });
                 setReportData(res.data);
@@ -264,7 +272,18 @@ const Bishop = () => {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+        // Reset report selection when tab changes to avoid sticking on a detail view
+        if (activeTab !== 'reports') {
+            // No need to explicitly reset selectedReport as it's driven by searchParams
+        }
+    }, [fetchData, activeTab]);
+
+    // Effect to fetch report details automatically when URL param is present
+    useEffect(() => {
+        if (activeTab === 'reports' && selectedReport) {
+            fetchReportDetail(selectedReport);
+        }
+    }, [activeTab, selectedReport]);
 
     // --- Impersonation ---
     const handleConnectAs = async (governor) => {
@@ -1282,7 +1301,7 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reportData.data?.map((log, idx) => (
+                                    {(Array.isArray(reportData) ? reportData : (reportData.data || reportData.logs || [])).map((log, idx) => (
                                         <tr key={idx} className={styles.tr}>
                                             <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
                                             <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>
@@ -1381,45 +1400,45 @@ const Bishop = () => {
                     <h2 className={styles.sectionTitle}>Rapports de Supervision</h2>
                 </div>
                 <div className={styles.reportsGrid}>
-                    <div className={styles.reportCard}>
+                    <div className={styles.reportCard} onClick={() => setSelectedReport('presence')} style={{ cursor: 'pointer' }}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
                             <Users size={32} />
                         </div>
                         <h3 className={styles.reportTitle}>Présence Globale</h3>
                         <p className={styles.reportDesc}>Évolution de la présence aux cultes sur toute l'église.</p>
-                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('presence')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
+                        <button className={styles.primaryBtn} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
-                    <div className={styles.reportCard}>
+                    <div className={styles.reportCard} onClick={() => setSelectedReport('offerings')} style={{ cursor: 'pointer' }}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
                             <DollarSign size={32} />
                         </div>
                         <h3 className={styles.reportTitle}>Offrandes & Finances</h3>
                         <p className={styles.reportDesc}>Suivi des offrandes collectées globalement et par région.</p>
-                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('offerings')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
+                        <button className={styles.primaryBtn} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
-                    <div className={styles.reportCard}>
+                    <div className={styles.reportCard} onClick={() => setSelectedReport('calls')} style={{ cursor: 'pointer' }}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
                             <PhoneCall size={32} />
                         </div>
                         <h3 className={styles.reportTitle}>Suivi des Appels</h3>
                         <p className={styles.reportDesc}>Statistiques de contact et fidélisation des membres.</p>
-                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('calls')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
+                        <button className={styles.primaryBtn} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
-                    <div className={styles.reportCard}>
+                    <div className={styles.reportCard} onClick={() => setSelectedReport('growth')} style={{ cursor: 'pointer' }}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
                             <TrendingUp size={32} />
                         </div>
                         <h3 className={styles.reportTitle}>Croissance</h3>
                         <p className={styles.reportDesc}>Évolution du nombre de membres et nouvelles âmes.</p>
-                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('growth')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
+                        <button className={styles.primaryBtn} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
-                    <div className={styles.reportCard}>
+                    <div className={styles.reportCard} onClick={() => setSelectedReport('ministries')} style={{ cursor: 'pointer' }}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
                             <Library size={32} />
                         </div>
                         <h3 className={styles.reportTitle}>Ministères</h3>
                         <p className={styles.reportDesc}>Présences et statistiques par ministère.</p>
-                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('ministries')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
+                        <button className={styles.primaryBtn} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                 </div>
             </div>

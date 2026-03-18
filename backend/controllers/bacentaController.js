@@ -72,6 +72,7 @@ const bacentaController = {
         theme: meeting.theme,
         notes: meeting.notes,
         status: meeting.is_verified ? 'completed' : 'planned',
+        leader: meeting.leader,
         attendance: meeting.attendances?.map(att => ({
           member_id: att.member_id,
           status: att.present ? 'present' : 'absent'
