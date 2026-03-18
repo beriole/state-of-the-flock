@@ -167,9 +167,10 @@ const Bishop = () => {
     };
 
     const fetchReportDetail = async (type) => {
-        setLoading(true);
         try {
             setSelectedReport(type);
+            setReportData(null);
+
             const params = {
                 start_date: reportDateRange.startDate,
                 end_date: reportDateRange.endDate
@@ -194,8 +195,6 @@ const Bishop = () => {
             }
         } catch (error) {
             console.error("Error fetching report detail:", error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -1388,7 +1387,7 @@ const Bishop = () => {
                         </div>
                         <h3 className={styles.reportTitle}>Présence Globale</h3>
                         <p className={styles.reportDesc}>Évolution de la présence aux cultes sur toute l'église.</p>
-                        <button className={styles.badge} onClick={() => fetchReportDetail('presence')}>Consulter</button>
+                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('presence')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                     <div className={styles.reportCard}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
@@ -1396,7 +1395,7 @@ const Bishop = () => {
                         </div>
                         <h3 className={styles.reportTitle}>Offrandes & Finances</h3>
                         <p className={styles.reportDesc}>Suivi des offrandes collectées globalement et par région.</p>
-                        <button className={styles.badge} onClick={() => fetchReportDetail('offerings')}>Consulter</button>
+                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('offerings')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                     <div className={styles.reportCard}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
@@ -1404,7 +1403,7 @@ const Bishop = () => {
                         </div>
                         <h3 className={styles.reportTitle}>Suivi des Appels</h3>
                         <p className={styles.reportDesc}>Statistiques de contact et fidélisation des membres.</p>
-                        <button className={styles.badge} onClick={() => fetchReportDetail('calls')}>Consulter</button>
+                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('calls')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                     <div className={styles.reportCard}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
@@ -1412,7 +1411,7 @@ const Bishop = () => {
                         </div>
                         <h3 className={styles.reportTitle}>Croissance</h3>
                         <p className={styles.reportDesc}>Évolution du nombre de membres et nouvelles âmes.</p>
-                        <button className={styles.badge} onClick={() => fetchReportDetail('growth')}>Consulter</button>
+                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('growth')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                     <div className={styles.reportCard}>
                         <div className={styles.reportIcon} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
@@ -1420,7 +1419,7 @@ const Bishop = () => {
                         </div>
                         <h3 className={styles.reportTitle}>Ministères</h3>
                         <p className={styles.reportDesc}>Présences et statistiques par ministère.</p>
-                        <button className={styles.badge} onClick={() => fetchReportDetail('ministries')}>Consulter</button>
+                        <button className={styles.primaryBtn} onClick={() => fetchReportDetail('ministries')} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Consulter</button>
                     </div>
                 </div>
             </div>
