@@ -108,8 +108,9 @@ const reportController = {
           total_members: parseInt(stat.total_members)
         })),
         by_area: await (async () => {
-          // Optimization: Get member counts per area
+          // Optimization: Get member counts per area using filtering
           const areaMemberCounts = await Member.findAll({
+            where: memberWhereClause,
             attributes: [
               'area_id',
               [Member.sequelize.fn('COUNT', Member.sequelize.col('id')), 'total_members']
@@ -136,8 +137,14 @@ const reportController = {
             raw: true
           });
 
-          // Fetch area names
+          // Fetch area names - restricted to relevant areas for Governor
+          const areaQueryWhere = {};
+          if (memberWhereClause.area_id) {
+            areaQueryWhere.id = memberWhereClause.area_id;
+          }
+
           const areas = await Area.findAll({
+            where: areaQueryWhere,
             attributes: ['id', 'name'],
             raw: true
           });
@@ -225,10 +232,14 @@ const reportController = {
           {
             model: User,
             as: 'leader',
-            // REVERT: Force LEFT JOIN temporaire pour restaurer l'affichage
             required: false,
             where: Object.keys(leaderWhereClause).length > 0 ? leaderWhereClause : undefined,
             include: [{ model: Area, as: 'area', required: false }]
+          },
+          {
+            model: BacentaAttendance,
+            as: 'attendances',
+            include: [{ model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name', 'photo_url'] }]
           }
         ],
         order: [['meeting_date', 'DESC']]
@@ -253,7 +264,9 @@ const reportController = {
           expected_participants: meeting.expected_participants,
           offering_amount: meeting.offering_amount,
           notes: meeting.notes,
-          photo_url: meeting.photo_url
+          photo_url: meeting.photo_url,
+          attendances: meeting.attendances, // New standard
+          attendance: meeting.attendances   // Legacy support for Bishop.jsx
         }))
       });
     } catch (error) {

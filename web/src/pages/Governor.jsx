@@ -115,6 +115,7 @@ const Governor = () => {
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
     const [bacentaReportData, setBacentaReportData] = useState([]);
     const [reportDebugInfo, setReportDebugInfo] = useState(null);
+    const [reportError, setReportError] = useState(null);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -280,6 +281,7 @@ const Governor = () => {
     };
 
     const fetchAttendanceData = async () => {
+        setReportError(null);
         try {
             // Force member_detail if we are drilling down (Area or Leader selected)
             const isDrillDown = !!(reportFilters.areaId || reportFilters.leaderId);
@@ -292,37 +294,43 @@ const Governor = () => {
                 group_by: isDrillDown ? 'member_detail' : 'area'
             };
 
-            console.log('Fetching Attendance Report:', params); // Debug log
-
-            setAttendanceReportData([]); // Clear previous data to indicate loading/change
+            setAttendanceReportData([]);
 
             const res = await reportAPI.getGovernorAttendanceReport(params);
 
             if (res.data) {
                 setAttendanceReportData(res.data.report || []);
-                setAttendanceReportType(res.data.type);
+                setAttendanceReportType(res.data.type || (isDrillDown ? 'member_detail' : 'area'));
+            } else {
+                throw new Error("Aucune donnée reçue du serveur");
             }
         } catch (error) {
             console.error('Error fetching attendance report:', error);
-            // Optionally add user feedback here
-            setAttendanceReportData([]); // Ensure table is empty on error
-            alert("Erreur lors du chargement des données. Veuillez réessayer.");
+            setReportError(error.response?.data?.error || "Erreur lors du chargement du rapport de présence");
+            setAttendanceReportData([]);
         }
     };
 
     const fetchGrowthData = async () => {
+        setReportError(null);
         try {
             const res = await reportAPI.getMemberGrowthReport({
                 start_date: reportFilters.startDate,
                 end_date: reportFilters.endDate
             });
-            setGrowthData(res.data);
+            if (res.data) {
+                setGrowthData(res.data);
+            } else {
+                throw new Error("Aucune donnée reçue du serveur");
+            }
         } catch (error) {
             console.error('Error fetching growth report:', error);
+            setReportError(error.response?.data?.error || "Erreur lors du chargement du rapport de croissance");
         }
     };
 
     const fetchCallTrackingData = async () => {
+        setReportError(null);
         try {
             const res = await reportAPI.getCallLogReport({
                 start_date: reportFilters.startDate,
@@ -331,14 +339,20 @@ const Governor = () => {
                 leader_id: reportFilters.leaderId,
                 view_type: callTrackingView
             });
-            setCallTrackingData(res.data.report || []);
-            setCallTrackingSummary(res.data.summary);
+            if (res.data) {
+                setCallTrackingData(res.data.report || []);
+                setCallTrackingSummary(res.data.summary);
+            } else {
+                throw new Error("Aucune donnée reçue du serveur");
+            }
         } catch (error) {
             console.error('Error fetching call tracking report:', error);
+            setReportError(error.response?.data?.error || "Erreur lors du chargement du suivi des appels");
         }
     };
 
     const fetchBacentaReportData = async () => {
+        setReportError(null);
         try {
             const res = await reportAPI.getBacentaReport({
                 start_date: reportFilters.startDate,
@@ -346,10 +360,15 @@ const Governor = () => {
                 area_id: reportFilters.areaId,
                 leader_id: reportFilters.leaderId
             });
-            setBacentaReportData(res.data.meetings || []);
-            setReportDebugInfo(res.data.debug);
+            if (res.data) {
+                setBacentaReportData(res.data.meetings || []);
+                setReportDebugInfo(res.data.debug);
+            } else {
+                throw new Error("Aucune donnée reçue du serveur");
+            }
         } catch (error) {
             console.error('Error fetching bacenta report:', error);
+            setReportError(error.response?.data?.error || "Erreur lors du chargement des rapports Bacenta");
         }
     };
 
@@ -1800,315 +1819,344 @@ const Governor = () => {
                     </div>
                 )}
 
-                <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)' }}>
-                    {selectedReportType === 'ministries' ? (
-                        renderMinistryReport()
-                    ) : selectedReportType === 'call_tracking' ? (
-                        <>
-                            <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
-                                    {callTrackingView === 'not_called'
-                                        ? `Membres sans appel (${callTrackingSummary?.count || 0})`
-                                        : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
-                                    }
-                                </h3>
-                            </div>
-                            <table className={styles.table}>
-                                <thead>
-                                    <tr>
-                                        <th className={styles.th}>Membre</th>
-                                        <th className={styles.th}>Téléphone</th>
-                                        <th className={styles.th}>Zone</th>
-                                        <th className={styles.th}>Leader</th>
-                                        {callTrackingView === 'not_called' ? (
-                                            <th className={styles.th}>Dernière Présence</th>
-                                        ) : (
-                                            <>
-                                                <th className={styles.th}>Date Appel</th>
-                                                <th className={styles.th}>Résultat</th>
-                                                <th className={styles.th}>Appelé par</th>
-                                            </>
-                                        )}
-                                        <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {callTrackingData.length > 0 ? (
-                                        callTrackingData.map((item, idx) => {
-                                            const targetMember = item.member || item;
-                                            return (
-                                                <tr key={idx} className={styles.tr}>
-                                                    <td className={styles.td}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <div style={{
-                                                                width: '32px', height: '32px', borderRadius: '50%',
-                                                                background: 'rgba(255,255,255,0.1)',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                color: 'white', fontSize: '0.8rem', overflow: 'hidden'
-                                                            }}>
-                                                                {targetMember.photo_url ? (
-                                                                    <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                ) : (
-                                                                    targetMember.first_name?.[0] || 'M'
-                                                                )}
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ color: 'white', fontWeight: '500' }}>
-                                                                    {`${targetMember.first_name} ${targetMember.last_name}`}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className={styles.td} style={{ color: '#94a3b8' }}>
-                                                        {targetMember.phone_primary}
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-                                                            {targetMember.area?.name || targetMember.Area?.name || '-'}
-                                                        </span>
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
-                                                            targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
-                                                    </td>
-                                                    {callTrackingView === 'not_called' ? (
-                                                        <td className={styles.td} style={{ color: '#ef4444' }}>
-                                                            {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
-                                                        </td>
-                                                    ) : (
-                                                        <>
-                                                            <td className={styles.td}>
-                                                                {new Date(item.call_date).toLocaleDateString()}
-                                                            </td>
-                                                            <td className={styles.td}>
-                                                                <span className={styles.badge} style={{
-                                                                    background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                                                    color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
-                                                                }}>
-                                                                    {item.outcome}
-                                                                </span>
-                                                            </td>
-                                                            <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                                                {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                    <td className={styles.td}>
-                                                        <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
-                                                            <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
-                                                                <Phone size={18} />
-                                                            </button>
-                                                            <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
-                                                                <ChevronRight size={18} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                                Aucune donnée trouvée pour cette période.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </>
-                    ) : selectedReportType === 'bacenta_meetings' ? (
-                        <div className={styles.bacentaReportWrapper}>
-                            {renderBacentaStats()}
-                            <div className={styles.tableWrapper}>
+                <div className={styles.tableContainer} style={{ background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(10px)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+                    {reportError ? (
+                        <div style={{ padding: '4rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                            <AlertCircle size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
+                            <p style={{ color: '#ef4444', marginBottom: '1.5rem', maxWidth: '400px' }}>{reportError}</p>
+                            <button
+                                className={styles.primaryBtn}
+                                onClick={() => {
+                                    setReportError(null);
+                                    if (selectedReportType === 'attendance') fetchAttendanceData();
+                                    else if (selectedReportType === 'growth') fetchGrowthData();
+                                    else if (selectedReportType === 'call_tracking') fetchCallTrackingData();
+                                    else if (selectedReportType === 'bacenta_meetings') fetchBacentaReportData();
+                                }}
+                                style={{ background: '#ef4444' }}
+                            >
+                                Réessayer
+                            </button>
+                        </div>
+                    ) : ((selectedReportType === 'attendance' && attendanceReportData.length === 0) ||
+                        (selectedReportType === 'growth' && !growthData) ||
+                        (selectedReportType === 'call_tracking' && callTrackingData.length === 0) ||
+                        (selectedReportType === 'bacenta_meetings' && bacentaReportData.length === 0)) ? (
+                        <div style={{ padding: '4rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#64748b' }}>
+                            <Loader2 className="animate-spin" size={32} style={{ marginBottom: '1rem' }} />
+                            Chargement des données...
+                        </div>
+                    ) : null}
+
+                    {!reportError && (
+                        selectedReportType === 'ministries' ? (
+                            renderMinistryReport()
+                        ) : selectedReportType === 'call_tracking' ? (
+                            <>
+                                <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
+                                        {callTrackingView === 'not_called'
+                                            ? `Membres sans appel (${callTrackingSummary?.count || 0})`
+                                            : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
+                                        }
+                                    </h3>
+                                </div>
                                 <table className={styles.table}>
                                     <thead>
                                         <tr>
-                                            <th className={styles.th}>Date</th>
-                                            <th className={styles.th}>Leader</th>
+                                            <th className={styles.th}>Membre</th>
+                                            <th className={styles.th}>Téléphone</th>
                                             <th className={styles.th}>Zone</th>
-                                            <th className={styles.th}>Type</th>
-                                            <th className={styles.th}>Présents</th>
-                                            <th className={styles.th}>Offrande</th>
+                                            <th className={styles.th}>Leader</th>
+                                            {callTrackingView === 'not_called' ? (
+                                                <th className={styles.th}>Dernière Présence</th>
+                                            ) : (
+                                                <>
+                                                    <th className={styles.th}>Date Appel</th>
+                                                    <th className={styles.th}>Résultat</th>
+                                                    <th className={styles.th}>Appelé par</th>
+                                                </>
+                                            )}
                                             <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {bacentaReportData.length > 0 ? (
-                                            bacentaReportData.map((meeting, idx) => (
-                                                <tr key={idx} className={styles.tr}>
-                                                    <td className={styles.td}>
-                                                        <div style={{ fontWeight: '600', color: 'white' }}>
-                                                            {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                                        </div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                            {new Date(meeting.meeting_date).getFullYear()}
-                                                        </div>
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        {meeting.leader ? (
-                                                            <div className={styles.userCell}>
-                                                                <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
-                                                                    {meeting.leader?.photo_url ? (
-                                                                        <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        {callTrackingData.length > 0 ? (
+                                            callTrackingData.map((item, idx) => {
+                                                const targetMember = item.member || item;
+                                                return (
+                                                    <tr key={idx} className={styles.tr}>
+                                                        <td className={styles.td}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <div style={{
+                                                                    width: '32px', height: '32px', borderRadius: '50%',
+                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    color: 'white', fontSize: '0.8rem', overflow: 'hidden'
+                                                                }}>
+                                                                    {targetMember.photo_url ? (
+                                                                        <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                                     ) : (
-                                                                        <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
+                                                                        targetMember.first_name?.[0] || 'M'
                                                                     )}
                                                                 </div>
-                                                                <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
+                                                                <div>
+                                                                    <div style={{ color: 'white', fontWeight: '500' }}>
+                                                                        {`${targetMember.first_name} ${targetMember.last_name}`}
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        ) : 'N/A'}
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                                            {meeting.area?.name || 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
-                                                            {meeting.meeting_type?.replace('_', ' ')}
-                                                        </span>
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
-                                                                {meeting.total_members_present}
-                                                            </strong>
-                                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                                                / {meeting.expected_participants || '-'}
+                                                        </td>
+                                                        <td className={styles.td} style={{ color: '#94a3b8' }}>
+                                                            {targetMember.phone_primary}
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                                                                {targetMember.area?.name || targetMember.Area?.name || '-'}
                                                             </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className={styles.td}>
-                                                        <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
-                                                        <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
-                                                    </td>
-                                                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                                                        <button
-                                                            className={styles.primaryBtn}
-                                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
-                                                            onClick={() => {
-                                                                setSelectedMeeting(meeting);
-                                                                setIsDetailsModalOpen(true);
-                                                            }}
-                                                        >
-                                                            Voir Détails
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
+                                                                targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
+                                                        </td>
+                                                        {callTrackingView === 'not_called' ? (
+                                                            <td className={styles.td} style={{ color: '#ef4444' }}>
+                                                                {item.last_attendance_date ? new Date(item.last_attendance_date).toLocaleDateString() : 'Jamais'}
+                                                            </td>
+                                                        ) : (
+                                                            <>
+                                                                <td className={styles.td}>
+                                                                    {new Date(item.call_date).toLocaleDateString()}
+                                                                </td>
+                                                                <td className={styles.td}>
+                                                                    <span className={styles.badge} style={{
+                                                                        background: item.outcome === 'Contacted' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                                        color: item.outcome === 'Contacted' ? '#34d399' : '#f87171'
+                                                                    }}>
+                                                                        {item.outcome}
+                                                                    </span>
+                                                                </td>
+                                                                <td className={styles.td} style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                                    {item.caller ? `${item.caller.first_name} ${item.caller.last_name}` : '-'}
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                        <td className={styles.td}>
+                                                            <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
+                                                                <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
+                                                                    <Phone size={18} />
+                                                                </button>
+                                                                <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
+                                                                    <ChevronRight size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         ) : (
                                             <tr>
-                                                <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                                    <div className={styles.emptyState}>
-                                                        <p>Aucun compte rendu trouvé pour cette période.</p>
-                                                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                                            Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
-                                                            <br />
-                                                            <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
-                                                            {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
-                                                        </div>
-                                                    </div>
+                                                <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                    Aucune donnée trouvée pour cette période.
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
+                            </>
+                        ) : selectedReportType === 'bacenta_meetings' ? (
+                            <div className={styles.bacentaReportWrapper}>
+                                {renderBacentaStats()}
+                                <div className={styles.tableWrapper}>
+                                    <table className={styles.table}>
+                                        <thead>
+                                            <tr>
+                                                <th className={styles.th}>Date</th>
+                                                <th className={styles.th}>Leader</th>
+                                                <th className={styles.th}>Zone</th>
+                                                <th className={styles.th}>Type</th>
+                                                <th className={styles.th}>Présents</th>
+                                                <th className={styles.th}>Offrande</th>
+                                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {bacentaReportData.length > 0 ? (
+                                                bacentaReportData.map((meeting, idx) => (
+                                                    <tr key={idx} className={styles.tr}>
+                                                        <td className={styles.td}>
+                                                            <div style={{ fontWeight: '600', color: 'white' }}>
+                                                                {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                                {new Date(meeting.meeting_date).getFullYear()}
+                                                            </div>
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            {meeting.leader ? (
+                                                                <div className={styles.userCell}>
+                                                                    <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
+                                                                        {meeting.leader?.photo_url ? (
+                                                                            <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                        ) : (
+                                                                            <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
+                                                                </div>
+                                                            ) : 'N/A'}
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                                {meeting.area?.name || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
+                                                                {meeting.meeting_type?.replace('_', ' ')}
+                                                            </span>
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
+                                                                    {meeting.total_members_present}
+                                                                </strong>
+                                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                                    / {meeting.expected_participants || '-'}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className={styles.td}>
+                                                            <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
+                                                            <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
+                                                        </td>
+                                                        <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                            <button
+                                                                className={styles.primaryBtn}
+                                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
+                                                                onClick={() => {
+                                                                    setSelectedMeeting(meeting);
+                                                                    setIsDetailsModalOpen(true);
+                                                                }}
+                                                            >
+                                                                Voir Détails
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                        <div className={styles.emptyState}>
+                                                            <p>Aucun compte rendu trouvé pour cette période.</p>
+                                                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                                                Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
+                                                                <br />
+                                                                <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
+                                                                {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    ) : selectedReportType === 'attendance' ? (
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.th}>
-                                        {attendanceReportType === 'area' ? 'Zone' :
-                                            attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
-                                    </th>
-                                    {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
-                                    {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
-                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
-                                    {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
-                                    <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {attendanceReportData.length > 0 ? (
-                                    attendanceReportData.map((item, idx) => (
-                                        <tr
-                                            key={idx}
-                                            className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
-                                            onClick={() => {
-                                                if (attendanceReportType === 'area') {
-                                                    setReportFilters({
-                                                        ...reportFilters,
-                                                        areaId: item.area_id,
-                                                        attendanceViewType: 'member_detail'
-                                                    });
-                                                }
-                                            }}
-                                            style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
-                                        >
-                                            <td className={styles.td}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                    {attendanceReportType === 'area' && (
-                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
-                                                    )}
-                                                    <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
-                                                        {attendanceReportType === 'area' ? item.area_name :
-                                                            attendanceReportType === 'member_detail' ? item.member_name :
-                                                                (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
-                                                    </strong>
-                                                </div>
-                                            </td>
-                                            {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
-                                            {attendanceReportType === 'member_detail' && (
+                        ) : selectedReportType === 'attendance' ? (
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th className={styles.th}>
+                                            {attendanceReportType === 'area' ? 'Zone' :
+                                                attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
+                                        </th>
+                                        {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
+                                        {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
+                                        <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
+                                        {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
+                                        <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {attendanceReportData.length > 0 ? (
+                                        attendanceReportData.map((item, idx) => (
+                                            <tr
+                                                key={idx}
+                                                className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
+                                                onClick={() => {
+                                                    if (attendanceReportType === 'area') {
+                                                        setReportFilters({
+                                                            ...reportFilters,
+                                                            areaId: item.area_id,
+                                                            attendanceViewType: 'member_detail'
+                                                        });
+                                                    }
+                                                }}
+                                                style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
+                                            >
                                                 <td className={styles.td}>
-                                                    <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                                        {item.status === 'active' ? 'Actif' : 'Inactif'}
-                                                    </span>
-                                                </td>
-                                            )}
-                                            <td className={styles.td}>
-                                                {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
-                                            </td>
-                                            {attendanceReportType !== 'member_detail' && (
-                                                <td className={styles.td}>{item.attendance_count}</td>
-                                            )}
-                                            <td className={styles.td}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                                                        <div
-                                                            className={styles.progressBar}
-                                                            style={{
-                                                                width: `${item.attendance_rate}%`,
-                                                                height: '100%',
-                                                                background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
-                                                                borderRadius: '4px'
-                                                            }}
-                                                        />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                        {attendanceReportType === 'area' && (
+                                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
+                                                        )}
+                                                        <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
+                                                            {attendanceReportType === 'area' ? item.area_name :
+                                                                attendanceReportType === 'member_detail' ? item.member_name :
+                                                                    (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
+                                                        </strong>
                                                     </div>
-                                                    <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
-                                                </div>
+                                                </td>
+                                                {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
+                                                {attendanceReportType === 'member_detail' && (
+                                                    <td className={styles.td}>
+                                                        <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                            {item.status === 'active' ? 'Actif' : 'Inactif'}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                <td className={styles.td}>
+                                                    {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
+                                                </td>
+                                                {attendanceReportType !== 'member_detail' && (
+                                                    <td className={styles.td}>{item.attendance_count}</td>
+                                                )}
+                                                <td className={styles.td}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                                                            <div
+                                                                className={styles.progressBar}
+                                                                style={{
+                                                                    width: `${item.attendance_rate}%`,
+                                                                    height: '100%',
+                                                                    background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
+                                                                    borderRadius: '4px'
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
+                                                Aucune donnée disponible pour cette sélection.
                                             </td>
                                         </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                            <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
-                                            Aucune donnée disponible pour cette sélection.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div style={{ padding: '2rem' }}>
-                            {renderGrowthChart()}
-                            <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                                    )}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div style={{ padding: '2rem' }}>
+                                {renderGrowthChart()}
+                                <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             </div>
         );
@@ -2672,8 +2720,10 @@ const Governor = () => {
 const MeetingDetailsModal = ({ isOpen, onClose, meeting }) => {
     if (!isOpen || !meeting) return null;
 
-    const attendanceRate = meeting.expected_participants > 0
-        ? Math.round((meeting.total_members_present / meeting.expected_participants) * 100)
+    const expectedParticipants = Number(meeting.expected_participants) || 0;
+    const totalPresent = Number(meeting.total_members_present) || 0;
+    const attendanceRate = expectedParticipants > 0
+        ? Math.round((totalPresent / expectedParticipants) * 100)
         : 0;
 
     return (

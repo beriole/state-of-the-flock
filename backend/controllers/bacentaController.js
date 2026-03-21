@@ -75,6 +75,12 @@ const bacentaController = {
         leader: meeting.leader,
         attendance: meeting.attendances?.map(att => ({
           member_id: att.member_id,
+          member: att.member, // Include member details (names, photo)
+          status: att.present ? 'present' : 'absent'
+        })) || [],
+        attendances: meeting.attendances?.map(att => ({
+          member_id: att.member_id,
+          member: att.member,
           status: att.present ? 'present' : 'absent'
         })) || [],
         offerings_breakdown: meeting.offerings?.map(off => ({

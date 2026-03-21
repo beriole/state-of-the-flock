@@ -36,6 +36,9 @@ import {
     Award,
     Calendar,
     PhoneCall,
+    Clock,
+    MapPin,
+    User,
 
     Mail,
     ArrowLeft,
@@ -98,6 +101,7 @@ const Bishop = () => {
     const [areaLeaders, setAreaLeaders] = useState([]);
 
     const [reportData, setReportData] = useState(null);
+    const [reportError, setReportError] = useState(null);
     const [reportDateRange, setReportDateRange] = useState({
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
@@ -178,34 +182,45 @@ const Bishop = () => {
     };
 
     const fetchReportDetail = async (type) => {
+        if (!type) return;
         try {
             setSelectedReport(type);
             setReportData(null);
+            setReportError(null);
 
             const params = {
                 start_date: reportDateRange.startDate,
                 end_date: reportDateRange.endDate
             };
 
+            let res;
             if (type === 'offerings') {
-                const res = await dashboardAPI.getFinancialStats();
-                setReportData(res.data);
+                res = await dashboardAPI.getFinancialStats(params);
             } else if (type === 'presence') {
-                const res = await reportAPI.getAttendanceReport(params);
-                setReportData(res.data);
+                res = await reportAPI.getAttendanceReport(params);
             } else if (type === 'calls') {
-                const res = await callLogAPI.getCallLogs({ limit: 50, ...params });
-                setReportData(res.data.logs || res.data || []);
+                res = await callLogAPI.getCallLogs({ limit: 100, ...params });
+                // Handle potential different response formats
+                const logs = res.data.logs || res.data.data || (Array.isArray(res.data) ? res.data : []);
+                setReportData(logs);
+                return;
             } else if (type === 'growth') {
-                const res = await reportAPI.getMemberGrowthReport({ period: '12months' });
-                setReportData(res.data);
+                res = await reportAPI.getMemberGrowthReport(params);
             } else if (type === 'ministries') {
-                const targetDate = params.start_date || new Date().toISOString().split('T')[0];
-                const res = await ministryAPI.getAttendanceOverview(targetDate);
-                setReportData(res.data);
+                const targetDate = reportDateRange.endDate || new Date().toISOString().split('T')[0];
+                res = await ministryAPI.getAttendanceOverview(targetDate);
+            }
+
+            if (res && res.data) {
+                // Extract array from various possible formats
+                const cleanData = res.data.data || res.data.reports || res.data.meetings || res.data;
+                setReportData(cleanData);
+            } else {
+                setReportError("Aucune donnée reçue du serveur");
             }
         } catch (error) {
             console.error("Error fetching report detail:", error);
+            setReportError("Erreur lors de la récupération des données. Veuillez réessayer.");
         }
     };
 
@@ -1241,7 +1256,19 @@ const Bishop = () => {
                 </div>
             </div>
 
-            {!reportData ? (
+            {reportError ? (
+                <div style={{ padding: '4rem', textAlign: 'center' }}>
+                    <AlertCircle size={48} color="#ef4444" style={{ margin: '0 auto 1rem' }} />
+                    <p style={{ color: '#ef4444', marginBottom: '1.5rem', fontWeight: 500 }}>{reportError}</p>
+                    <button
+                        className={styles.primaryBtn}
+                        onClick={() => fetchReportDetail(selectedReport)}
+                        style={{ padding: '0.5rem 1.5rem' }}
+                    >
+                        Réessayer
+                    </button>
+                </div>
+            ) : !reportData ? (
                 <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
                     <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 1rem' }} />
                     Chargement des données...
@@ -1310,9 +1337,13 @@ const Bishop = () => {
                                     {(Array.isArray(reportData) ? reportData : (reportData.data || reportData.logs || [])).map((log, idx) => (
                                         <tr key={idx} className={styles.tr}>
                                             <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
-                                            <td className={styles.td}>{new Date(log.created_at).toLocaleDateString()}</td>
-                                            <td className={styles.td}>{log.log_type}</td>
-                                            <td className={styles.td}>{log.status}</td>
+                                            <td className={styles.td}>{new Date(log.call_date || log.created_at).toLocaleDateString()}</td>
+                                            <td className={styles.td}>{log.contact_method || 'Phone'}</td>
+                                            <td className={styles.td}>
+                                                <span className={`${styles.statusBadge} ${styles[log.outcome?.toLowerCase()]}`}>
+                                                    {log.outcome}
+                                                </span>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1373,7 +1404,7 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reportData.map((item, idx) => (
+                                    {Array.isArray(reportData) ? reportData.map((item, idx) => (
                                         <tr key={idx} className={styles.tr}>
                                             <td className={styles.td}>{item.name}</td>
                                             <td className={styles.td}>{item.present_count}</td>
@@ -1388,7 +1419,13 @@ const Bishop = () => {
                                                 <span style={{ fontSize: '0.8rem', marginLeft: '0.5rem' }}>{item.attendance_rate}%</span>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>
+                                                Aucune donnée disponible pour cette date.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -1464,6 +1501,57 @@ const Bishop = () => {
     return (
         <div className={styles.container}>
             {renderHeader()}
+
+            <div className={styles.tabs}>
+                <button
+                    className={`${styles.tab} ${activeTab === 'dashboard' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('dashboard')}
+                >
+                    <LayoutDashboard size={18} /> Dashboard
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'governors' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('governors')}
+                >
+                    <Crown size={18} /> Gouverneurs
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'regions' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('regions')}
+                >
+                    <Shield size={18} /> Régions
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'areas' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('areas')}
+                >
+                    <Map size={18} /> Zones
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('members')}
+                >
+                    <Users size={18} /> Membres
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'bacenta' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('bacenta')}
+                >
+                    <Globe size={18} /> Bacenta
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'ministries' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('ministries')}
+                >
+                    <Library size={18} /> Ministères
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'reports' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('reports')}
+                >
+                    <FileBarChart size={18} /> Rapports
+                </button>
+            </div>
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
@@ -1669,7 +1757,7 @@ const Bishop = () => {
                         <h3 style={{ color: '#DC2626', marginBottom: '1rem', fontSize: '1.5rem' }}>{selectedBacentaMeeting.title}</h3>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-                            <div className={styles.detailRow}><Calendar size={18} /> <div><strong>Date</strong><br />{new Date(selectedBacentaMeeting.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+                            <div className={styles.detailRow}><Calendar size={18} /> <div><strong>Date</strong><br />{new Date(selectedBacentaMeeting.date || selectedBacentaMeeting.meeting_date || new Date()).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
                             <div className={styles.detailRow}><Clock size={18} /> <div><strong>Heure</strong><br />{selectedBacentaMeeting.time}</div></div>
                             <div className={styles.detailRow}><MapPin size={18} /> <div><strong>Lieu</strong><br />{selectedBacentaMeeting.location}</div></div>
                             <div className={styles.detailRow}><User size={18} /> <div><strong>Hôte / Leader</strong><br />{selectedBacentaMeeting.host}<br /><small style={{ color: '#64748b' }}>Leader: {selectedBacentaMeeting.leader?.first_name} {selectedBacentaMeeting.leader?.last_name}</small></div></div>
@@ -1709,6 +1797,35 @@ const Bishop = () => {
                                 <p style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', lineHeight: '1.6' }}>
                                     {selectedBacentaMeeting.notes}
                                 </p>
+                            </div>
+                        )}
+
+                        {selectedBacentaMeeting.attendance && selectedBacentaMeeting.attendance.length > 0 && (
+                            <div style={{ marginTop: '2rem' }}>
+                                <h4 className={styles.label} style={{ marginBottom: '0.5rem' }}>Liste de Présences</h4>
+                                <div className={styles.membersList} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+                                    {selectedBacentaMeeting.attendance.map((att, idx) => (
+                                        <div key={idx} className={styles.memberTag} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            background: att.status === 'present' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '8px',
+                                            fontSize: '0.8rem'
+                                        }}>
+                                            <div style={{
+                                                width: 8,
+                                                height: 8,
+                                                borderRadius: '50%',
+                                                background: att.status === 'present' ? '#10b981' : '#ef4444'
+                                            }} />
+                                            <span style={{ color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {att.member ? `${att.member.first_name} ${att.member.last_name}` : 'Membre'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
