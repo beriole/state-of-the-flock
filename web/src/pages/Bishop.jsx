@@ -181,10 +181,11 @@ const Bishop = () => {
         }
     };
 
-    const fetchReportDetail = async (type) => {
+    const fetchReportDetail = React.useCallback(async (type) => {
         if (!type) return;
         try {
-            setSelectedReport(type);
+            // Removing setSelectedReport(type) from here to avoid re-render loops
+            // since this function is usually triggered BY a URL change.
             setReportData(null);
             setReportError(null);
 
@@ -222,12 +223,12 @@ const Bishop = () => {
             console.error("Error fetching report detail:", error);
             setReportError("Erreur lors de la récupération des données. Veuillez réessayer.");
         }
-    };
+    }, [reportDateRange, setSelectedReport]);
 
     const fetchData = React.useCallback(async () => {
         setLoading(true);
         try {
-            if (activeTab === 'dashboard' || activeTab === 'reports') {
+            if ((activeTab === 'dashboard' || activeTab === 'reports') && !selectedReport) {
                 const [statsRes, growthRes, financialRes, rankingsRes] = await Promise.all([
                     dashboardAPI.getGlobalStats().catch(e => ({ data: {} })),
                     reportAPI.getMemberGrowthReport({ period: '3months' }).catch(e => ({ data: {} })),
@@ -286,7 +287,7 @@ const Bishop = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab, memberFilters, areaFilters]);
+    }, [activeTab, selectedReport, memberFilters, areaFilters]);
 
     useEffect(() => {
         fetchData();
@@ -1392,7 +1393,7 @@ const Bishop = () => {
                     {selectedReport === 'ministries' && reportData && (
                         <div className={styles.tableContainer}>
                             <div className={styles.sectionHeader} style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
-                                * Affichage pour la date du: {new Date(reportDateRange.startDate || new Date()).toLocaleDateString()}
+                                * Affichage pour la date du: {new Date(reportDateRange.endDate || new Date()).toLocaleDateString()}
                             </div>
                             <table className={styles.table}>
                                 <thead>
@@ -1404,9 +1405,9 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {Array.isArray(reportData) ? reportData.map((item, idx) => (
+                                    {Array.isArray(reportData) ? reportData.map((item, idx) => item && (
                                         <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{item.name}</td>
+                                            <td className={styles.td}>{item.name || 'Ministère'}</td>
                                             <td className={styles.td}>{item.present_count}</td>
                                             <td className={styles.td}>{item.total_members}</td>
                                             <td className={styles.td}>
