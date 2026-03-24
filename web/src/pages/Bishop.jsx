@@ -1288,10 +1288,10 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reportData.by_zone?.map((item, idx) => (
+                                    {reportData.by_zone?.map((item, idx) => item && (
                                         <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{item.name}</td>
-                                            <td className={styles.td}>{item.total.toLocaleString()} CFA</td>
+                                            <td className={styles.td}>{item.name || 'Zone'}</td>
+                                            <td className={styles.td}>{(item.total || 0).toLocaleString()} CFA</td>
                                             <td className={styles.td}>{item.meeting_count}</td>
                                         </tr>
                                     ))}
@@ -1311,9 +1311,9 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reportData.by_area?.map((item, idx) => (
+                                    {reportData.by_area?.map((item, idx) => item && (
                                         <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{item.name}</td>
+                                            <td className={styles.td}>{item.name || 'Zone'}</td>
                                             <td className={styles.td}>{item.percentage}%</td>
                                             <td className={styles.td}>{item.present} / {item.total}</td>
                                         </tr>
@@ -1335,9 +1335,9 @@ const Bishop = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(Array.isArray(reportData) ? reportData : (reportData.data || reportData.logs || [])).map((log, idx) => (
+                                    {(Array.isArray(reportData) ? reportData : (reportData.data || reportData.logs || [])).map((log, idx) => log && (
                                         <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{log.member?.first_name} {log.member?.last_name}</td>
+                                            <td className={styles.td}>{log.member ? `${log.member.first_name || ''} ${log.member.last_name || ''}` : 'Membre inconnu'}</td>
                                             <td className={styles.td}>{new Date(log.call_date || log.created_at).toLocaleDateString()}</td>
                                             <td className={styles.td}>{log.contact_method || 'Phone'}</td>
                                             <td className={styles.td}>
