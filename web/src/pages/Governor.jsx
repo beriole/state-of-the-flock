@@ -114,6 +114,8 @@ const Governor = () => {
     const [callTrackingView, setCallTrackingView] = useState('not_called');
     const [callTrackingSummary, setCallTrackingSummary] = useState(null);
     const [bacentaReportData, setBacentaReportData] = useState([]);
+    const [ministryReportData, setMinistryReportData] = useState([]);
+    const [selectedMinistryForReport, setSelectedMinistryForReport] = useState('');
     const [reportDebugInfo, setReportDebugInfo] = useState(null);
     const [reportError, setReportError] = useState(null);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
@@ -271,6 +273,8 @@ const Governor = () => {
                     fetchCallTrackingData();
                 } else if (selectedReportType === 'bacenta_meetings') {
                     fetchBacentaReportData();
+                } else if (selectedReportType === 'ministries') {
+                    fetchMinistryReportData();
                 }
             }
         } catch (error) {
@@ -372,6 +376,25 @@ const Governor = () => {
         }
     };
 
+    const fetchMinistryReportData = async () => {
+        setReportError(null);
+        try {
+            const targetDate = reportFilters.startDate || new Date().toISOString().split('T')[0];
+            const res = await ministryAPI.getAttendanceOverview(targetDate);
+            if (res.data) {
+                // If it's a global overview, we might need to filter by Governor/Area if the API doesn't do it
+                // But usually the backend handles permissions based on the token.
+                const cleanData = res.data.data || res.data.reports || res.data;
+                setMinistryReportData(Array.isArray(cleanData) ? cleanData : []);
+            } else {
+                throw new Error("Aucune donnée reçue du serveur");
+            }
+        } catch (error) {
+            console.error('Error fetching ministry report:', error);
+            setReportError(error.response?.data?.error || "Erreur lors du chargement du rapport des ministères");
+        }
+    };
+
     const openContactModal = (member) => {
         setSelectedMemberForContact(member);
         setIsContactModalOpen(true);
@@ -410,6 +433,8 @@ const Governor = () => {
                 fetchCallTrackingData();
             } else if (selectedReportType === 'bacenta_meetings') {
                 fetchBacentaReportData();
+            } else if (selectedReportType === 'ministries') {
+                fetchMinistryReportData();
             }
         }
     }, [reportFilters, selectedReportType, activeTab, callTrackingView]);
@@ -666,6 +691,58 @@ const Governor = () => {
         });
     };
 
+    const generateMinistryPDF = () => {
+        if (!ministryReportData || ministryReportData.length === 0) return;
+
+        const columns = ["Ministère", "Total Membres", "Présents", "Taux %"];
+        const rows = ministryReportData.map(m => [
+            m.ministry_name || m.name,
+            m.total_members,
+            m.attendance_count || m.present_count,
+            `${m.attendance_rate || m.rate}%`
+        ]);
+
+        const totalMembres = ministryReportData.reduce((acc, curr) => acc + (curr.total_members || 0), 0);
+        const totalPresents = ministryReportData.reduce((acc, curr) => acc + (curr.attendance_count || curr.present_count || 0), 0);
+
+        generateProfessionalPDF({
+            title: "Rapport des Ministères",
+            subtitle: `Date: ${reportFilters.startDate}`,
+            columns,
+            rows,
+            fileName: `Rapport_Ministeres_${reportFilters.startDate}`,
+            stats: [
+                { label: "Total Membres", value: totalMembres },
+                { label: "Total Présents", value: totalPresents, color: [16, 185, 129] },
+                { label: "Taux Moyen", value: `${Math.round((totalPresents / (totalMembres || 1)) * 100)}%`, color: [180, 83, 9] }
+            ]
+        });
+    };
+
+    const generateCallTrackingPDF = () => {
+        if (!callTrackingData || callTrackingData.length === 0) return;
+
+        const columns = ["Membre", "Dernier Appel", "Résultat", "Notes"];
+        const rows = callTrackingData.map(m => [
+            `${m.first_name} ${m.last_name}`,
+            m.last_call ? new Date(m.last_call.created_at).toLocaleDateString('fr-FR') : 'Jamais',
+            m.last_call?.outcome || '-',
+            m.last_call?.notes || '-'
+        ]);
+
+        generateProfessionalPDF({
+            title: "Suivi des Appels",
+            subtitle: `Vue: ${callTrackingView === 'called' ? 'Membres contactés' : 'À contacter'}`,
+            columns,
+            rows,
+            fileName: `Suivi_Appels_${callTrackingView}`,
+            stats: [
+                { label: "Membres", value: callTrackingData.length },
+                { label: "Total Église", value: stats?.summary?.total_members || 0, color: [59, 130, 246] }
+            ]
+        });
+    };
+
     const openLeaderModal = (leader = null) => {
         setModalError('');
         setModalLoading(false);
@@ -913,6 +990,62 @@ const Governor = () => {
         );
     };
 
+    const renderMinistryReport = () => {
+        if (!ministryReportData || ministryReportData.length === 0) {
+            return (
+                <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem' }}>
+                    <Library size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                    <p style={{ color: '#64748b' }}>Aucune donnée de ministère disponible pour cette période.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr className={styles.tr}>
+                            <th className={styles.th}>Ministère</th>
+                            <th className={styles.th}>Total Membres</th>
+                            <th className={styles.th}>Présents</th>
+                            <th className={styles.th}>Taux %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ministryReportData.map((item, idx) => (
+                            <tr key={idx} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderRadius: '0.5rem' }}>
+                                            <Shield size={16} />
+                                        </div>
+                                        <span style={{ fontWeight: 500 }}>{item.ministry_name || item.name}</span>
+                                    </div>
+                                </td>
+                                <td className={styles.td}>{item.total_members}</td>
+                                <td className={styles.td} style={{ color: '#10b981', fontWeight: 600 }}>{item.attendance_count || item.present_count}</td>
+                                <td className={styles.td}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div className={styles.progressBar} style={{ flex: 1, minWidth: '100px' }}>
+                                            <div
+                                                className={styles.progressFill}
+                                                style={{
+                                                    width: `${item.attendance_rate || item.rate}%`,
+                                                    background: (item.attendance_rate || item.rate) > 70 ? '#10b981' : ((item.attendance_rate || item.rate) > 40 ? '#f59e0b' : '#ef4444')
+                                                }}
+                                            />
+                                        </div>
+                                        <span style={{ fontWeight: 600, minWidth: '3rem' }}>{item.attendance_rate || item.rate}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
     const renderDashboard = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader} style={{ marginBottom: '1.5rem' }}>
@@ -993,7 +1126,7 @@ const Governor = () => {
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                             <table className={styles.financialTable}>
                                 <tbody>
-                                    {financialStats?.by_zone?.map(z => (
+                                    {financialStats?.by_zone?.map(z => z && (
                                         <tr key={z.id} className={styles.financialRow}>
                                             <td>{z.name}</td>
                                             <td>{z.total?.toLocaleString()}</td>
@@ -1025,7 +1158,7 @@ const Governor = () => {
                         </div>
 
                         <div className={styles.rankingList}>
-                            {rankings?.top_recruiters?.map((user, idx) => (
+                            {rankings?.top_recruiters?.map((user, idx) => user && (
                                 <div key={user.id} className={styles.rankingItem}>
                                     <div className={styles.rankUser}>
                                         <div className={`${styles.rankBadge} ${idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : idx === 2 ? styles.rank3 : styles.rankOther}`}>
@@ -1053,7 +1186,7 @@ const Governor = () => {
                         </div>
 
                         <div className={styles.rankingList}>
-                            {rankings?.top_zones?.map((zone, idx) => (
+                            {rankings?.top_zones?.map((zone, idx) => zone && (
                                 <div key={zone.id} className={styles.rankingItem}>
                                     <div className={styles.rankUser}>
                                         <div className={`${styles.rankBadge} ${idx === 0 ? styles.rank1 : idx === 1 ? styles.rank2 : idx === 2 ? styles.rank3 : styles.rankOther}`}>
@@ -1676,6 +1809,8 @@ const Governor = () => {
                                 if (selectedReportType === 'attendance') generateAttendancePDF();
                                 else if (selectedReportType === 'bacenta_meetings') generateBacentaPDF();
                                 else if (selectedReportType === 'growth') generateGrowthPDF();
+                                else if (selectedReportType === 'call_tracking') generateCallTrackingPDF();
+                                else if (selectedReportType === 'ministries') generateMinistryPDF();
                             }}
                             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem' }}
                         >
@@ -1849,42 +1984,41 @@ const Governor = () => {
                     ) : null}
 
                     {!reportError && (
-                        selectedReportType === 'ministries' ? (
-                            renderMinistryReport()
-                        ) : selectedReportType === 'call_tracking' ? (
-                            <>
-                                <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
-                                        {callTrackingView === 'not_called'
-                                            ? `Membres sans appel (${callTrackingSummary?.count || 0})`
-                                            : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
-                                        }
-                                    </h3>
-                                </div>
-                                <table className={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th className={styles.th}>Membre</th>
-                                            <th className={styles.th}>Téléphone</th>
-                                            <th className={styles.th}>Zone</th>
-                                            <th className={styles.th}>Leader</th>
-                                            {callTrackingView === 'not_called' ? (
-                                                <th className={styles.th}>Dernière Présence</th>
-                                            ) : (
-                                                <>
-                                                    <th className={styles.th}>Date Appel</th>
-                                                    <th className={styles.th}>Résultat</th>
-                                                    <th className={styles.th}>Appelé par</th>
-                                                </>
-                                            )}
-                                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {callTrackingData.length > 0 ? (
-                                            callTrackingData.map((item, idx) => {
-                                                const targetMember = item.member || item;
-                                                return (
+                        <>
+                            {selectedReportType === 'ministries' && renderMinistryReport()}
+                            
+                            {selectedReportType === 'call_tracking' && (
+                                <>
+                                    <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', margin: 0 }}>
+                                            {callTrackingView === 'not_called'
+                                                ? `Membres sans appel (${callTrackingSummary?.count || 0})`
+                                                : `Historique des appels (Période: ${callTrackingSummary?.total_in_period_debug ?? 0} / Total Absolu DB: ${callTrackingSummary?.total_all_time ?? '?'})`
+                                            }
+                                        </h3>
+                                    </div>
+                                    <table className={styles.table}>
+                                        <thead>
+                                            <tr>
+                                                <th className={styles.th}>Membre</th>
+                                                <th className={styles.th}>Téléphone</th>
+                                                <th className={styles.th}>Zone</th>
+                                                <th className={styles.th}>Leader</th>
+                                                {callTrackingView === 'not_called' ? (
+                                                    <th className={styles.th}>Dernière Présence</th>
+                                                ) : (
+                                                    <>
+                                                        <th className={styles.th}>Date Appel</th>
+                                                        <th className={styles.th}>Résultat</th>
+                                                        <th className={styles.th}>Appelé par</th>
+                                                    </>
+                                                )}
+                                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {callTrackingData.length > 0 ? (
+                                                callTrackingData.map((item, idx) => item && (
                                                     <tr key={idx} className={styles.tr}>
                                                         <td className={styles.td}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1894,30 +2028,30 @@ const Governor = () => {
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                     color: 'white', fontSize: '0.8rem', overflow: 'hidden'
                                                                 }}>
-                                                                    {targetMember.photo_url ? (
-                                                                        <img src={getPhotoUrl(targetMember.photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                    {(item.member || item).photo_url ? (
+                                                                        <img src={getPhotoUrl((item.member || item).photo_url)} alt="P" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                                     ) : (
-                                                                        targetMember.first_name?.[0] || 'M'
+                                                                        (item.member || item).first_name?.[0] || 'M'
                                                                     )}
                                                                 </div>
                                                                 <div>
                                                                     <div style={{ color: 'white', fontWeight: '500' }}>
-                                                                        {`${targetMember.first_name} ${targetMember.last_name}`}
+                                                                        {`${(item.member || item).first_name || ''} ${(item.member || item).last_name || ''}`}
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className={styles.td} style={{ color: '#94a3b8' }}>
-                                                            {targetMember.phone_primary}
+                                                            {(item.member || item).phone_primary}
                                                         </td>
                                                         <td className={styles.td}>
                                                             <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-                                                                {targetMember.area?.name || targetMember.Area?.name || '-'}
+                                                                {(item.member || item).area?.name || (item.member || item).Area?.name || '-'}
                                                             </span>
                                                         </td>
                                                         <td className={styles.td}>
-                                                            {targetMember.leader ? `${targetMember.leader.first_name} ${targetMember.leader.last_name}` :
-                                                                targetMember.Leader ? `${targetMember.Leader.first_name} ${targetMember.Leader.last_name}` : '-'}
+                                                            {(item.member || item).leader ? `${(item.member || item).leader.first_name} ${(item.member || item).leader.last_name}` :
+                                                                (item.member || item).Leader ? `${(item.member || item).Leader.first_name} ${(item.member || item).Leader.last_name}` : '-'}
                                                         </td>
                                                         {callTrackingView === 'not_called' ? (
                                                             <td className={styles.td} style={{ color: '#ef4444' }}>
@@ -1943,220 +2077,227 @@ const Governor = () => {
                                                         )}
                                                         <td className={styles.td}>
                                                             <div className={styles.actions} style={{ justifyContent: 'flex-end' }}>
-                                                                <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(targetMember)}>
+                                                                <button className={styles.actionBtn} title="Appeler" onClick={() => openContactModal(item.member || item)}>
                                                                     <Phone size={18} />
                                                                 </button>
-                                                                <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail(targetMember.id)}>
+                                                                <button className={styles.actionBtn} title="Détails" onClick={() => handleMemberDetail((item.member || item).id)}>
                                                                     <ChevronRight size={18} />
                                                                 </button>
                                                             </div>
                                                         </td>
                                                     </tr>
-                                                );
-                                            })
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                                    Aucune donnée trouvée pour cette période.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </>
-                        ) : selectedReportType === 'bacenta_meetings' ? (
-                            <div className={styles.bacentaReportWrapper}>
-                                {renderBacentaStats()}
-                                <div className={styles.tableWrapper}>
-                                    <table className={styles.table}>
-                                        <thead>
-                                            <tr>
-                                                <th className={styles.th}>Date</th>
-                                                <th className={styles.th}>Leader</th>
-                                                <th className={styles.th}>Zone</th>
-                                                <th className={styles.th}>Type</th>
-                                                <th className={styles.th}>Présents</th>
-                                                <th className={styles.th}>Offrande</th>
-                                                <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {bacentaReportData.length > 0 ? (
-                                                bacentaReportData.map((meeting, idx) => (
-                                                    <tr key={idx} className={styles.tr}>
-                                                        <td className={styles.td}>
-                                                            <div style={{ fontWeight: '600', color: 'white' }}>
-                                                                {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                                            </div>
-                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                                {new Date(meeting.meeting_date).getFullYear()}
-                                                            </div>
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            {meeting.leader ? (
-                                                                <div className={styles.userCell}>
-                                                                    <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
-                                                                        {meeting.leader?.photo_url ? (
-                                                                            <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                                        ) : (
-                                                                            <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
-                                                                        )}
-                                                                    </div>
-                                                                    <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
-                                                                </div>
-                                                            ) : 'N/A'}
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                                                {meeting.area?.name || 'N/A'}
-                                                            </span>
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
-                                                                {meeting.meeting_type?.replace('_', ' ')}
-                                                            </span>
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
-                                                                    {meeting.total_members_present}
-                                                                </strong>
-                                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                                                    / {meeting.expected_participants || '-'}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className={styles.td}>
-                                                            <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
-                                                            <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
-                                                        </td>
-                                                        <td className={styles.td} style={{ textAlign: 'right' }}>
-                                                            <button
-                                                                className={styles.primaryBtn}
-                                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
-                                                                onClick={() => {
-                                                                    setSelectedMeeting(meeting);
-                                                                    setIsDetailsModalOpen(true);
-                                                                }}
-                                                            >
-                                                                Voir Détails
-                                                            </button>
-                                                        </td>
-                                                    </tr>
                                                 ))
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                                        <div className={styles.emptyState}>
-                                                            <p>Aucun compte rendu trouvé pour cette période.</p>
-                                                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                                                Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
-                                                                <br />
-                                                                <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
-                                                                {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
-                                                            </div>
-                                                        </div>
+                                                    <td colSpan={callTrackingView === 'not_called' ? 6 : 8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                        Aucune donnée trouvée pour cette période.
                                                     </td>
                                                 </tr>
                                             )}
                                         </tbody>
                                     </table>
+                                </>
+                            )}
+
+                            {selectedReportType === 'bacenta_meetings' && (
+                                <div className={styles.bacentaReportWrapper}>
+                                    {renderBacentaStats()}
+                                    <div className={styles.tableWrapper}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th className={styles.th}>Date</th>
+                                                    <th className={styles.th}>Leader</th>
+                                                    <th className={styles.th}>Zone</th>
+                                                    <th className={styles.th}>Type</th>
+                                                    <th className={styles.th}>Présents</th>
+                                                    <th className={styles.th}>Offrande</th>
+                                                    <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {bacentaReportData.length > 0 ? (
+                                                    bacentaReportData.map((meeting, idx) => meeting && (
+                                                        <tr key={idx} className={styles.tr}>
+                                                            <td className={styles.td}>
+                                                                <div style={{ fontWeight: '600', color: 'white' }}>
+                                                                    {new Date(meeting.meeting_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                                    {new Date(meeting.meeting_date).getFullYear()}
+                                                                </div>
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                {meeting.leader ? (
+                                                                    <div className={styles.userCell}>
+                                                                        <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '0.7rem', overflow: 'hidden' }}>
+                                                                            {meeting.leader?.photo_url ? (
+                                                                                <img src={getPhotoUrl(meeting.leader.photo_url)} alt="L" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                            ) : (
+                                                                                <>{meeting.leader.first_name?.[0]}{meeting.leader.last_name?.[0]}</>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className={styles.userName}>{meeting.leader.first_name} {meeting.leader.last_name}</span>
+                                                                    </div>
+                                                                ) : 'N/A'}
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <span className={styles.badge} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                                                    {meeting.area?.name || 'N/A'}
+                                                                </span>
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <span className={styles.badge} style={{ background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
+                                                                    {meeting.meeting_type?.replace('_', ' ')}
+                                                                </span>
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                    <strong style={{ color: meeting.total_members_present > 0 ? '#10b981' : '#ef4444' }}>
+                                                                        {meeting.total_members_present}
+                                                                    </strong>
+                                                                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                                        / {meeting.expected_participants || '-'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td className={styles.td}>
+                                                                <span style={{ fontWeight: '600' }}>{Number(meeting.offering_amount).toLocaleString()}</span>
+                                                                <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '4px' }}>CFA</span>
+                                                            </td>
+                                                            <td className={styles.td} style={{ textAlign: 'right' }}>
+                                                                <button
+                                                                    className={styles.primaryBtn}
+                                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', boxShadow: 'none' }}
+                                                                    onClick={() => {
+                                                                        setSelectedMeeting(meeting);
+                                                                        setIsDetailsModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    Voir Détails
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={7} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                            <div className={styles.emptyState}>
+                                                                <p>Aucun compte rendu trouvé pour cette période.</p>
+                                                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                                                    Diagnostic : {areas.length} Zones, {leaders.length} Leaders.
+                                                                    <br />
+                                                                    <strong>Total Réunions en Base (Sans Filtre) : {reportDebugInfo?.count ?? '?'}</strong>
+                                                                    {reportDebugInfo?.count === 0 && <span style={{ color: '#ef4444', display: 'block', marginTop: '4px' }}>🔴 BASE VIDE : Aucune réunion trouvée sur ce serveur.</span>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : selectedReportType === 'attendance' ? (
-                            <table className={styles.table}>
-                                <thead>
-                                    <tr>
-                                        <th className={styles.th}>
-                                            {attendanceReportType === 'area' ? 'Zone' :
-                                                attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
-                                        </th>
-                                        {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
-                                        {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
-                                        <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
-                                        {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
-                                        <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {attendanceReportData.length > 0 ? (
-                                        attendanceReportData.map((item, idx) => (
-                                            <tr
-                                                key={idx}
-                                                className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
-                                                onClick={() => {
-                                                    if (attendanceReportType === 'area') {
-                                                        setReportFilters({
-                                                            ...reportFilters,
-                                                            areaId: item.area_id,
-                                                            attendanceViewType: 'member_detail'
-                                                        });
-                                                    }
-                                                }}
-                                                style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
-                                            >
-                                                <td className={styles.td}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                        {attendanceReportType === 'area' && (
-                                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
-                                                        )}
-                                                        <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
-                                                            {attendanceReportType === 'area' ? item.area_name :
-                                                                attendanceReportType === 'member_detail' ? item.member_name :
-                                                                    (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
-                                                        </strong>
-                                                    </div>
-                                                </td>
-                                                {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
-                                                {attendanceReportType === 'member_detail' && (
+                            )}
+
+                            {selectedReportType === 'attendance' && (
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th className={styles.th}>
+                                                {attendanceReportType === 'area' ? 'Zone' :
+                                                    attendanceReportType === 'member_detail' ? 'Membre' : 'Leader'}
+                                            </th>
+                                            {attendanceReportType === 'leader' && <th className={styles.th}>Zone</th>}
+                                            {attendanceReportType === 'member_detail' && <th className={styles.th}>Statut (Membre)</th>}
+                                            <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Présences' : 'Total Membres'}</th>
+                                            {attendanceReportType !== 'member_detail' && <th className={styles.th}>Présents</th>}
+                                            <th className={styles.th}>{attendanceReportType === 'member_detail' ? 'Taux (Indiv)' : 'Taux %'}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {attendanceReportData.length > 0 ? (
+                                            attendanceReportData.map((item, idx) => item && (
+                                                <tr
+                                                    key={idx}
+                                                    className={`${styles.tr} ${attendanceReportType === 'area' ? styles.clickableRow : ''}`}
+                                                    onClick={() => {
+                                                        if (attendanceReportType === 'area') {
+                                                            setReportFilters({
+                                                                ...reportFilters,
+                                                                areaId: item.area_id,
+                                                                attendanceViewType: 'member_detail'
+                                                            });
+                                                        }
+                                                    }}
+                                                    style={attendanceReportType === 'area' ? { cursor: 'pointer' } : {}}
+                                                >
                                                     <td className={styles.td}>
-                                                        <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
-                                                            {item.status === 'active' ? 'Actif' : 'Inactif'}
-                                                        </span>
-                                                    </td>
-                                                )}
-                                                <td className={styles.td}>
-                                                    {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
-                                                </td>
-                                                {attendanceReportType !== 'member_detail' && (
-                                                    <td className={styles.td}>{item.attendance_count}</td>
-                                                )}
-                                                <td className={styles.td}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                                                            <div
-                                                                className={styles.progressBar}
-                                                                style={{
-                                                                    width: `${item.attendance_rate}%`,
-                                                                    height: '100%',
-                                                                    background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
-                                                                    borderRadius: '4px'
-                                                                }}
-                                                            />
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                            {attendanceReportType === 'area' && (
+                                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3182ce' }}></div>
+                                                            )}
+                                                            <strong style={{ color: attendanceReportType === 'area' ? '#fff' : 'inherit' }}>
+                                                                {attendanceReportType === 'area' ? item.area_name :
+                                                                    attendanceReportType === 'member_detail' ? item.member_name :
+                                                                        (item.leader_name || (item.leader_first_name ? `${item.leader_first_name} ${item.leader_last_name}` : 'Leader'))}
+                                                            </strong>
                                                         </div>
-                                                        <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
-                                                    </div>
+                                                    </td>
+                                                    {attendanceReportType === 'leader' && <td className={styles.td}>{item.area_name}</td>}
+                                                    {attendanceReportType === 'member_detail' && (
+                                                        <td className={styles.td}>
+                                                            <span className={`${styles.badge} ${item.status === 'active' ? styles.badgeActive : styles.badgeInactive}`}>
+                                                                {item.status === 'active' ? 'Actif' : 'Inactif'}
+                                                            </span>
+                                                        </td>
+                                                    )}
+                                                    <td className={styles.td}>
+                                                        {attendanceReportType === 'member_detail' ? item.attendance_count : item.total_members}
+                                                    </td>
+                                                    {attendanceReportType !== 'member_detail' && (
+                                                        <td className={styles.td}>{item.attendance_count}</td>
+                                                    )}
+                                                    <td className={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <div className={styles.progressContainer} style={{ width: '80px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                                                                <div
+                                                                    className={styles.progressBar}
+                                                                    style={{
+                                                                        width: `${item.attendance_rate}%`,
+                                                                        height: '100%',
+                                                                        background: item.attendance_rate > 70 ? '#10b981' : item.attendance_rate > 40 ? '#f59e0b' : '#ef4444',
+                                                                        borderRadius: '4px'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <span style={{ fontWeight: 'bold' }}>{item.attendance_rate}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                                    <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
+                                                    Aucune donnée disponible pour cette sélection.
                                                 </td>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={6} className={styles.td} style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                                                <div style={{ opacity: 0.5, marginBottom: '1rem' }}><Calendar size={48} style={{ margin: '0 auto' }} /></div>
-                                                Aucune donnée disponible pour cette sélection.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div style={{ padding: '2rem' }}>
-                                {renderGrowthChart()}
-                                <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            {selectedReportType === 'growth' && (
+                                <div style={{ padding: '2rem' }}>
+                                    {renderGrowthChart()}
+                                    <div style={{ marginTop: '2rem', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <p style={{ fontSize: '1.1rem' }}>Total nouveaux membres identifiés : <strong style={{ color: '#fff', fontSize: '1.4rem' }}>{growthData?.total_new || 0}</strong></p>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         );
