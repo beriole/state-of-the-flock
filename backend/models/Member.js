@@ -18,15 +18,15 @@ module.exports = (sequelize) => {
     },
     phone_primary: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     phone_secondary: {
       type: DataTypes.STRING,
       allowNull: true
     },
     gender: {
-      type: DataTypes.ENUM('M', 'F'),
-      allowNull: false
+      type: DataTypes.ENUM('M', 'F', 'Unknown'),
+      allowNull: true
     },
     is_registered: {
       type: DataTypes.BOOLEAN,

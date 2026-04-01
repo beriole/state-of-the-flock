@@ -22,16 +22,18 @@ const MemberForm = () => {
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
-        gender: 'M',
+        gender: '',
         phone_primary: '',
         phone_secondary: '',
         // Champs par défaut ou cachés
         state: 'Sheep',
         is_active: true,
         ministry_id: '',
-        area_id: '',
-        leader_id: '',
-        region_id: ''
+        area_id: user?.area_id || '',
+        leader_id: user?.role === 'Bacenta_Leader' ? user?.id : '',
+        region_id: user?.area?.region_id || user?.governed_region?.id || '',
+        profession: '',
+        notes: ''
     });
 
     const fetchInitialData = useCallback(async () => {
@@ -59,6 +61,17 @@ const MemberForm = () => {
                     const leadersRes = await areaAPI.getAreaLeaders(memberData.area_id);
                     setLeaders(leadersRes.data || []);
                 }
+            } else {
+                // Pre-fetch for non-edit mode based on pre-initialized IDs (Governor/Bishop)
+                const effectiveRegionId = user?.area?.region_id || user?.governed_region?.id;
+                if (effectiveRegionId) {
+                    const areasRes = await areaAPI.getAreas({ region_id: effectiveRegionId });
+                    setAreas(areasRes.data?.areas || []);
+                    if (user.area_id) {
+                        const leadersRes = await areaAPI.getAreaLeaders(user.area_id);
+                        setLeaders(leadersRes.data || []);
+                    }
+                }
             }
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -66,7 +79,7 @@ const MemberForm = () => {
         } finally {
             setInitialLoading(false);
         }
-    }, [id, isEditMode]);
+    }, [id, isEditMode, user]);
 
     useEffect(() => {
         fetchInitialData();
@@ -121,6 +134,21 @@ const MemberForm = () => {
         setError('');
 
         try {
+            // Basic validation
+            if (!formData.first_name || !formData.last_name) {
+                setError('Le nom et le prénom sont obligatoires.');
+                setLoading(false);
+                return;
+            }
+
+            // Phone validation (simple check if provided)
+            const phoneRegex = /^[0-9+\s-]{8,20}$/;
+            if (formData.phone_primary && !phoneRegex.test(formData.phone_primary)) {
+                setError('Le format du numéro de téléphone principal est invalide.');
+                setLoading(false);
+                return;
+            }
+
             const dataToSend = {
                 ...formData,
                 // Sanitize ministry_id: empty string to null to allow database to clear the field
@@ -128,17 +156,26 @@ const MemberForm = () => {
                 // Valeurs par défaut pour la création si non définies
                 state: formData.state || 'Sheep',
                 is_active: formData.is_active !== undefined ? formData.is_active : true,
-                is_registered: false
+                is_registered: isEditMode ? formData.is_registered : false
             };
 
             if (isEditMode) {
                 await memberAPI.updateMember(id, dataToSend);
             } else {
-                // Pour le Bishop, on utilise les IDs sélectionnés, sinon ceux de l'admin
+                // Déterminer la zone et le leader finaux
+                const finalLeaderId = formData.leader_id || user?.id;
+                const finalAreaId = formData.area_id || user?.area_id;
+
+                if (!finalAreaId || !finalLeaderId) {
+                    setError('La zone (area) et le leader sont obligatoires pour créer un membre.');
+                    setLoading(false);
+                    return;
+                }
+
                 const finalData = {
                     ...dataToSend,
-                    leader_id: formData.leader_id || user?.id,
-                    area_id: formData.area_id || user?.area_id
+                    leader_id: finalLeaderId,
+                    area_id: finalAreaId
                 };
                 await memberAPI.createMember(finalData);
             }
@@ -158,7 +195,10 @@ const MemberForm = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <button className={styles.backButton} onClick={() => navigate('/members')}>
+                <button 
+                    className={styles.backButton} 
+                    onClick={() => navigate(user?.role === 'Bishop' ? '/bishop?tab=members' : '/members')}
+                >
                     <span key="back-icon"><ArrowLeft size={24} /></span>
                 </button>
                 <h1 className={styles.title}>
@@ -204,30 +244,31 @@ const MemberForm = () => {
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>Genre *</label>
+                            <label className={styles.label}>Genre</label>
                             <select
                                 name="gender"
                                 value={formData.gender}
                                 onChange={handleChange}
                                 className={styles.select}
                             >
+                                <option value="">Sélectionner...</option>
                                 <option value="M">Homme</option>
                                 <option value="F">Femme</option>
+                                <option value="Unknown">Non précisé</option>
                             </select>
                         </div>
 
                         <h3 className={styles.sectionTitle}>Coordonnées</h3>
 
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>Téléphone Principal *</label>
+                            <label className={styles.label}>Téléphone Principal</label>
                             <input
                                 type="tel"
                                 name="phone_primary"
                                 value={formData.phone_primary}
                                 onChange={handleChange}
                                 className={styles.input}
-                                required
-                                placeholder="ex: 0123456789"
+                                placeholder="Optionnel"
                             />
                         </div>
 
@@ -254,6 +295,7 @@ const MemberForm = () => {
                                         onChange={handleChange}
                                         className={styles.select}
                                         required={user?.role === 'Bishop' || user?.role === 'Governor'}
+                                        disabled={user?.role === 'Governor'}
                                     >
                                         <option value="">Sélectionner une région</option>
                                         {(Array.isArray(regions) ? regions : []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -307,6 +349,30 @@ const MemberForm = () => {
                                     <option key={ministry.id} value={ministry.id}>{ministry.name}</option>
                                 ))}
                             </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Profession</label>
+                            <input
+                                type="text"
+                                name="profession"
+                                value={formData.profession || ''}
+                                onChange={handleChange}
+                                className={styles.input}
+                                placeholder="Indicateur d'activité"
+                            />
+                        </div>
+
+                        <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                            <label className={styles.label}>Notes / Observations</label>
+                            <textarea
+                                name="notes"
+                                value={formData.notes || ''}
+                                onChange={handleChange}
+                                className={styles.textarea}
+                                placeholder="Informations complémentaires, situation spirituelle, etc."
+                                rows={3}
+                            />
                         </div>
                     </div>
 

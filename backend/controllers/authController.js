@@ -17,7 +17,14 @@ const authController = {
       console.log('📡 Querying database for user...');
       const user = await User.findOne({
         where: { email },
-        include: [{ model: Area, as: 'area' }],
+        include: [
+          { 
+            model: Area, 
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['id', 'name'] }]
+          },
+          { model: require('../models').Region, as: 'governed_region' }
+        ],
         attributes: { include: ['password_hash'] }
       });
 
@@ -110,7 +117,14 @@ const authController = {
   verifyToken: async (req, res) => {
     try {
       const user = await User.findByPk(req.user.userId, {
-        include: [{ model: Area, as: 'area' }],
+        include: [
+          { 
+            model: Area, 
+            as: 'area',
+            include: [{ model: require('../models').Region, as: 'region', attributes: ['id', 'name'] }]
+          },
+          { model: require('../models').Region, as: 'governed_region' }
+        ],
         attributes: { exclude: ['password_hash'] }
       });
 

@@ -161,14 +161,17 @@ const memberController = {
         notes
       } = req.body;
 
-      if (!first_name || !last_name || !phone_primary || !gender || !leader_id) {
-        return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
+      if (!first_name || !last_name || !leader_id) {
+        return res.status(400).json({ error: 'Le nom, le prénom et le leader sont obligatoires' });
       }
+
+      // Si leader_id n'est pas fourni, utiliser l'utilisateur courant comme leader
+      let finalLeaderId = leader_id || req.user.userId;
 
       // Si area_id n'est pas fourni, utiliser l'area_id du leader
       let finalAreaId = area_id;
       if (!finalAreaId) {
-        const leader = await User.findByPk(leader_id);
+        const leader = await User.findByPk(finalLeaderId);
         if (leader && leader.area_id) {
           finalAreaId = leader.area_id;
         }
@@ -199,13 +202,13 @@ const memberController = {
       const member = await Member.create({
         first_name,
         last_name,
-        phone_primary,
+        phone_primary: phone_primary || null,
         phone_secondary,
-        gender,
+        gender: gender || 'Unknown',
         is_registered: is_registered || false,
         state: state || 'Sheep',
         area_id: sanitizedAreaId,
-        leader_id,
+        leader_id: finalLeaderId,
         ministry,
         ministry_id: sanitizedMinistryId,
         profession,

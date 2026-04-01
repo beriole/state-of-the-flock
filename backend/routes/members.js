@@ -3,6 +3,9 @@ const express = require('express');
 const memberController = require('../controllers/memberController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 
@@ -23,6 +26,9 @@ router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Are
 
 // DELETE /api/members/:id
 router.delete('/:id', requireRole(['Bishop', 'Assisting_Overseer']), memberController.deleteMember);
+
+// POST /api/members/import - Import members from CSV file
+router.post('/import', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), upload.single('file'), memberController.importMembers);
 
 // POST /api/members/:id/photo
 router.post('/:id/photo', upload.single('photo'), memberController.uploadPhoto);
