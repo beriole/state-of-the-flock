@@ -162,6 +162,92 @@ app.get('/api/debug/calvin', async (req, res) => {
   }
 });
 
+// Route de correction pour Noella
+app.get('/api/fix/noella', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const GOVERNOR_EMAIL = 'noella@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Noella introuvable' });
+
+    // 1. Trouver une région sans gouverneur ou en créer une
+    let region = await Region.findOne({ where: { governor_id: null, name: 'Région 4' } });
+    if (!region) {
+       region = await Region.findOne({ where: { governor_id: null } });
+    }
+    
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Noella',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    // 2. S'assurer que la zone de Noella appartient à cette région
+    const area = await Area.findByPk(user.area_id);
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Correction effectuée pour Noella',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area ? area.name : 'Aucune zone trouvée'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import Noella
+const { importNoellaMembers } = require('./utils/importNoella');
+app.get('/api/members/seed-noella', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'noella@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
+     const result = await importNoellaMembers(user.id, user.area_id);
+     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/members/cleanup-noella', async (req, res) => {
+  try {
+    const { Member, User } = require('./models');
+    const user = await User.findOne({ where: { email: 'noella@njangui.org' } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const members = await Member.findAll({ where: { leader_id: user.id } });
+    const seen = new Set();
+    const duplicates = [];
+
+    for (const m of members) {
+      const key = `${m.first_name}-${m.last_name}-${m.phone_primary}`.toLowerCase();
+      if (seen.has(key)) {
+        duplicates.push(m.id);
+      } else {
+        seen.add(key);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      await Member.destroy({ where: { id: duplicates } });
+    }
+
+    res.json({ message: 'Cleanup complete', removed: duplicates.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Route de correction pour Calvin
 app.get('/api/fix/calvin', async (req, res) => {
   try {
