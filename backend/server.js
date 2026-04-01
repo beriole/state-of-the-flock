@@ -121,6 +121,46 @@ app.get('/api/members/cleanup-calvin', async (req, res) => {
   }
 });
 
+// Route de debug pour diagnostiquer le problème de Calvin
+app.get('/api/debug/calvin', async (req, res) => {
+  try {
+    const { User, Region, Area, Member } = require('./models');
+    const GOVERNOR_EMAIL = 'calvin.rev@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Calvin introuvable' });
+
+    const region = await Region.findOne({ 
+      where: { governor_id: user.id },
+      include: [{ model: Area, as: 'areas' }]
+    });
+
+    const directMemberCount = await Member.count({ where: { leader_id: user.id } });
+    
+    // Si pas de région, on cherche toutes les régions pour voir s'il y en a une orpheline ou pour comprendre la structure
+    const allRegions = await Region.findAll({ include: [{ model: User, as: 'governor', attributes: ['email'] }] });
+
+    res.json({
+      calvin: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        area_id: user.area_id
+      },
+      region_assigned: region ? {
+        id: region.id,
+        name: region.name,
+        area_count: region.areas.length,
+        area_ids: region.areas.map(a => a.id)
+      } : null,
+      direct_member_count: directMemberCount,
+      all_regions: allRegions.map(r => ({ id: r.id, name: r.name, governor: r.governor?.email }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
