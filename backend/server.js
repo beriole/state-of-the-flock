@@ -161,6 +161,52 @@ app.get('/api/debug/calvin', async (req, res) => {
   }
 });
 
+// Route de correction pour Calvin
+app.get('/api/fix/calvin', async (req, res) => {
+  try {
+    const { User, Region, Area, Member } = require('./models');
+    const GOVERNOR_EMAIL = 'calvin.rev@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Calvin introuvable' });
+
+    // 1. Trouver une région sans gouverneur ou en créer une
+    let region = await Region.findOne({ where: { governor_id: null, name: 'Région 3' } });
+    if (!region) {
+       region = await Region.findOne({ where: { governor_id: null } });
+    }
+    
+    if (!region) {
+      // Créer une nouvelle région si aucune n'est libre
+      region = await Region.create({
+        name: 'Région Gouverneur Calvin',
+        governor_id: user.id
+      });
+    } else {
+      // Assigner Calvin à la région trouvée
+      await region.update({ governor_id: user.id });
+    }
+
+    // 2. S'assurer que la zone de Calvin appartient à cette région
+    const area = await Area.findByPk(user.area_id);
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    // 3. (Optionnel) Vérifier et corriger les membres si nécessaire
+    // Mais s'ils sont déjà dans user.area_id, et que area est dans la région, ça devrait marcher.
+
+    res.json({
+      message: 'Correction effectuée',
+      governor: user.email,
+      assigned_region: region.name,
+      area_linked: area ? area.name : 'Aucune zone trouvée pour le user'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
