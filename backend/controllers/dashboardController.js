@@ -552,7 +552,13 @@ const dashboardController = {
       }
 
       // Configuration de la portée (Governor vs Global)
-      const userWhere = { role: 'Bacenta_Leader', is_active: true };
+      const userWhere = { is_active: true };
+      
+      // On inclut les Bacenta_Leaders et les Governors (qui peuvent avoir des membres directement)
+      userWhere[Op.or] = [
+        { role: 'Bacenta_Leader' },
+        { role: 'Governor' }
+      ];
 
       if (req.user.role === 'Governor') {
         // Filtrer les leaders par région du gouverneur
