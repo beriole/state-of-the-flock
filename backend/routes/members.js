@@ -3,6 +3,7 @@ const express = require('express');
 const memberController = require('../controllers/memberController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
