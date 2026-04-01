@@ -248,7 +248,94 @@ app.get('/api/members/cleanup-noella', async (req, res) => {
   }
 });
 
+// Route de correction pour Akongnwi
+app.get('/api/fix/akongnwi', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const GOVERNOR_EMAIL = 'akongnwi@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Akongnwi introuvable' });
+
+    // Trouver une région sans gouverneur ou en créer une
+    let region = await Region.findOne({ where: { governor_id: null, name: 'Région 5' } });
+    if (!region) {
+       region = await Region.findOne({ where: { governor_id: null } });
+    }
+    
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Akongnwi',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    // S'assurer que la zone de Akongnwi appartient à cette région
+    const area = await Area.findByPk(user.area_id);
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Correction effectuée pour Akongnwi',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area ? area.name : 'Aucune zone trouvée'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import Akongnwi
+const { importAkongnwiMembers } = require('./utils/importAkongnwi');
+app.get('/api/members/seed-akongnwi', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'akongnwi@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
+     const result = await importAkongnwiMembers(user.id, user.area_id);
+     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/members/cleanup-akongnwi', async (req, res) => {
+  try {
+    const { Member, User } = require('./models');
+    const user = await User.findOne({ where: { email: 'akongnwi@njangui.org' } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const members = await Member.findAll({ where: { leader_id: user.id } });
+    const seen = new Set();
+    const duplicates = [];
+
+    for (const m of members) {
+      const key = `${m.first_name}-${m.last_name}-${m.phone_primary}`.toLowerCase();
+      if (seen.has(key)) {
+        duplicates.push(m.id);
+      } else {
+        seen.add(key);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      await Member.destroy({ where: { id: duplicates } });
+    }
+
+    res.json({ message: 'Cleanup complete', removed: duplicates.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Route de correction pour Calvin
+
 app.get('/api/fix/calvin', async (req, res) => {
   try {
     const { User, Region, Area, Member } = require('./models');
