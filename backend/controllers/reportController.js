@@ -520,43 +520,31 @@ const reportController = {
         order: [['createdAt', 'ASC']]
       });
 
-      const memberCountsByDate = {};
-      newMembers.forEach(member => {
-        const dateStr = formatDate(member.createdAt);
-        memberCountsByDate[dateStr] = (memberCountsByDate[dateStr] || 0) + 1;
-      });
-
-      const labels = [];
-      const dataPoints = [];
       const formatDate = (date) => {
         const d = new Date(date);
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return isNaN(d.getTime()) ? 'N/A' : `${d.getDate()} ${months[d.getMonth()]}`;
       };
 
+      const labels = [];
+      const dataPoints = [];
+      
       let currentCount = initialCount;
       labels.push(formatDate(startDate));
       dataPoints.push(initialCount);
 
-      // Récupérer les dates triées
-      const sortedDates = Object.keys(memberCountsByDate).sort((a, b) => {
-        // Un tri simple par string "DD MMM" ne marchera pas parfaitement, 
-        // mais ici labels[i] correspond à ce que le frontend attend.
-        return 0; // On va faire un tri plus propre plus bas si besoin, 
-                 // mais newMembers est déjà trié par createdAt, profitons-en.
-      });
-
-      // Alternative : Parcourir newMembers (déjà trié) et n'ajouter un point que quand la date change
-      let lastDate = formatDate(startDate);
+      let lastDateLabel = formatDate(startDate);
+      
       newMembers.forEach(member => {
-        const dateStr = formatDate(member.createdAt);
+        const dateLabel = formatDate(member.createdAt);
         currentCount++;
-        if (dateStr !== lastDate) {
-          labels.push(dateStr);
+        
+        if (dateLabel !== lastDateLabel) {
+          labels.push(dateLabel);
           dataPoints.push(currentCount);
-          lastDate = dateStr;
+          lastDateLabel = dateLabel;
         } else {
-          // Mettre à jour le dernier point si c'est la même date
+          // Si c'est la même date, on met seulement à jour la valeur du dernier point
           dataPoints[dataPoints.length - 1] = currentCount;
         }
       });

@@ -29,24 +29,6 @@ const ministryRoutes = require('./routes/ministryRoutes');
 const regionRoutes = require('./routes/regionRoutes');
 
 const app = express();
-// Debug growth report for Bishop
-app.get('/api/debug/growth-bishop', async (req, res) => {
-    try {
-        const reportController = require('./controllers/reportController');
-        // Mocking req.user as a Bishop
-        const mockReq = {
-            user: { role: 'Bishop', userId: 'bishop-id' },
-            query: { period: '3months' }
-        };
-        const mockRes = {
-            json: (data) => res.json(data),
-            status: (code) => ({ json: (data) => res.status(code).json(data) })
-        };
-        await reportController.getMemberGrowthReport(mockReq, mockRes);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
 
 const PORT = process.env.PORT || 5000;
 
