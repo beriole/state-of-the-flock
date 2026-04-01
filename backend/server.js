@@ -93,6 +93,20 @@ app.get('/seed', async (req, res) => {
   }
 });
 
+// Route temporaire pour l'importation des membres de Calvin
+const { importCalvinMembers } = require('./utils/importCalvin');
+app.get('/api/members/seed-calvin', async (req, res) => {
+  try {
+    const result = await importCalvinMembers();
+    res.json({
+      message: 'Importation des membres de Calvin terminée',
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
