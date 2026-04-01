@@ -342,6 +342,106 @@ const memberController = {
       console.error('❌ Upload member photo error:', error);
       res.status(500).json({ error: 'Erreur lors de l\'upload de la photo: ' + error.message });
     }
+  },
+
+  // Importer des membres à partir d'un fichier CSV/Excel
+  importMembers: async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      const fs = require('fs');
+      const path = require('path');
+      const { Area, User } = require('../models');
+
+      console.log('📊 Début de l\'importation de membres. Fichier:', req.file.path);
+
+      // Pour l'import, on a besoin d'un leader_id ou on utilise l'utilisateur courant
+      let leaderId = req.body.leader_id || req.user.userId;
+      let leader = await User.findByPk(leaderId);
+
+      if (!leader) {
+        return res.status(404).json({ error: 'Leader non trouvé' });
+      }
+
+      const areaId = leader.area_id;
+      if (!areaId) {
+        return res.status(400).json({ error: 'Le leader doit avoir une zone assignée pour importer des membres.' });
+      }
+
+      // Lecture du fichier (simplifiée pour CSV avec tabulations ou virgules)
+      const fileContent = fs.readFileSync(req.file.path, 'utf8');
+      const lines = fileContent.split(/\r?\n/).filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        return res.status(400).json({ error: 'Le fichier est vide ou mal formé' });
+      }
+
+      // Déterminer le délimiteur (tabulation ou virgule)
+      const headerLine = lines[0];
+      const delimiter = headerLine.includes('\t') ? '\t' : (headerLine.includes(';') ? ';' : ',');
+      const header = headerLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/[\s_]/g, ''));
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
+        if (values.length < 2) continue;
+
+        const row = {};
+        header.forEach((key, index) => {
+          row[key] = values[index] || '';
+        });
+
+        const firstName = row.firstname || row.first_name || row.prenom || '';
+        const lastName = row.lastname || row.last_name || row.nom || '';
+        const phone = row.phone || row.phoneprimary || row.phone_primary || row.telephone || row.tel || '';
+        let gender = (row.gender || row.sexe || '').toString().toUpperCase();
+
+        if (!firstName || !lastName) {
+          errorCount++;
+          continue;
+        }
+
+        // Normalisation genre
+        if (gender.startsWith('M') || gender.startsWith('H')) gender = 'M';
+        else if (gender.startsWith('F')) gender = 'F';
+        else gender = 'Unknown';
+
+        try {
+          await Member.create({
+            first_name: firstName,
+            last_name: lastName,
+            phone_primary: phone || null,
+            gender: gender,
+            state: row.state || row.status || 'Sheep',
+            area_id: areaId,
+            leader_id: leaderId,
+            is_active: true
+          });
+          successCount++;
+        } catch (err) {
+          console.error(`Erreur ligne ${i+1}:`, err.message);
+          errorCount++;
+        }
+      }
+
+      // Nettoyage : supprimer le fichier temporaire
+      fs.unlinkSync(req.file.path);
+
+      res.json({
+        message: 'Importation terminée',
+        successCount,
+        errorCount,
+        total: successCount + errorCount
+      });
+
+    } catch (error) {
+      console.error('Import members error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'importation des membres' });
+    }
   }
 };
 

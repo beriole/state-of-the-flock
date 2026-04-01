@@ -3,11 +3,23 @@ const express = require('express');
 const memberController = require('../controllers/memberController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
+
+// Configuration spécifique de multer pour l'import (permet CSV/Excel)
+const importStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dest = path.join(__dirname, '..', 'uploads/imports');
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+        cb(null, dest);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `import-${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const importUpload = multer({ storage: importStorage });
 
 // Toutes les routes nécessitent une authentification
 router.use(authMiddleware);
@@ -28,7 +40,7 @@ router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Are
 router.delete('/:id', requireRole(['Bishop', 'Assisting_Overseer']), memberController.deleteMember);
 
 // POST /api/members/import - Import members from CSV file
-router.post('/import', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), upload.single('file'), memberController.importMembers);
+router.post('/import', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), importUpload.single('file'), memberController.importMembers);
 
 // POST /api/members/:id/photo
 router.post('/:id/photo', upload.single('photo'), memberController.uploadPhoto);
