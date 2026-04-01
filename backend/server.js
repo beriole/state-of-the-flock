@@ -107,6 +107,20 @@ app.get('/api/members/seed-calvin', async (req, res) => {
   }
 });
 
+// Route temporaire pour nettoyer les doublons de Calvin
+const { cleanupCalvinDuplicates } = require('./utils/cleanupCalvin');
+app.get('/api/members/cleanup-calvin', async (req, res) => {
+  try {
+    const result = await cleanupCalvinDuplicates();
+    res.json({
+      message: 'Nettoyage des doublons terminé',
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API - Version avec zones
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
