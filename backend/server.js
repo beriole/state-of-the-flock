@@ -752,6 +752,54 @@ app.get('/api/members/cleanup-clovis', async (req, res) => {
   }
 });
 
+// Route de correction pour Sandrine
+app.get('/api/fix/sandrine', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const GOVERNOR_EMAIL = 'sandrine.lp@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Sandrine introuvable' });
+
+    let region = await Region.findOne({ where: { governor_id: null, name: 'Région 16' } });
+    if (!region) {
+       region = await Region.findOne({ where: { governor_id: null } });
+    }
+    
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Sandrine',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    const area = await Area.findByPk(user.area_id);
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Correction effectuée pour Sandrine',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area ? area.name : 'Aucune zone trouvée'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import Sandrine
+const { importSandrineMembers } = require('./utils/importSandrine');
+app.get('/api/members/seed-sandrine', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'sandrine.lp@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
      const result = await importSandrineMembers(user.id, user.area_id);
      res.json(result);
   } catch (error) {
