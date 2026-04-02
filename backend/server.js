@@ -1012,7 +1012,92 @@ app.get('/api/members/cleanup-cynthia', async (req, res) => {
   }
 });
 
+// Route de correction pour Reward
+app.get('/api/fix/reward', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const GOVERNOR_EMAIL = 'reward@njangui.org';
+    
+    const user = await User.findOne({ where: { email: GOVERNOR_EMAIL } });
+    if (!user) return res.json({ error: 'Reward introuvable' });
+
+    let region = await Region.findOne({ where: { governor_id: null, name: 'Région 14' } });
+    if (!region) {
+       region = await Region.findOne({ where: { governor_id: null } });
+    }
+    
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Reward',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    const area = await Area.findByPk(user.area_id);
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Correction effectuée pour Reward',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area ? area.name : 'Aucune zone trouvée'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import Reward
+const { importRewardMembers } = require('./utils/importReward');
+app.get('/api/members/seed-reward', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'reward@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
+     const result = await importRewardMembers(user.id, user.area_id);
+     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/members/cleanup-reward', async (req, res) => {
+  try {
+    const { Member, User } = require('./models');
+    const user = await User.findOne({ where: { email: 'reward@njangui.org' } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const members = await Member.findAll({ where: { leader_id: user.id } });
+    const seen = new Set();
+    const duplicates = [];
+
+    for (const m of members) {
+      const key = `${m.first_name}-${m.last_name}-${m.phone_primary}`.toLowerCase();
+      if (seen.has(key)) {
+        duplicates.push(m.id);
+      } else {
+        seen.add(key);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      await Member.destroy({ where: { id: duplicates } });
+    }
+
+    res.json({ message: 'Cleanup complete', removed: duplicates.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Route de correction pour Calvin
+
 
 
 
