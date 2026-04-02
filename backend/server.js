@@ -783,7 +783,9 @@ app.get('/api/fix/sandrine', async (req, res) => {
     if (!area || area.name !== 'Ecole de Poste') {
       area = await Area.findOne({ where: { name: 'Ecole de Poste' } });
       if (!area) {
-        area = await Area.create({ name: 'Ecole de Poste', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Ecole de Poste', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -924,7 +926,9 @@ app.get('/api/fix/bongeh', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Bongeh') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Bongeh' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Bongeh', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Bongeh', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1002,7 +1006,9 @@ app.get('/api/fix/mercedes', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Mercedes') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Mercedes' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Mercedes', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Mercedes', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1080,7 +1086,9 @@ app.get('/api/fix/emmanuel', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Emmanuel') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Emmanuel' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Emmanuel', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Emmanuel', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1158,7 +1166,9 @@ app.get('/api/fix/priscilla', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Priscilla') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Priscilla' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Priscilla', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Priscilla', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1236,7 +1246,9 @@ app.get('/api/fix/esther', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Esther') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Esther' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Esther', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Esther', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1314,7 +1326,9 @@ app.get('/api/fix/dexter', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Dexter') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Dexter' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Dexter', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Dexter', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1392,7 +1406,9 @@ app.get('/api/fix/aime', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Aime') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Aime' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Aime', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Aime', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
@@ -1470,7 +1486,9 @@ app.get('/api/fix/marco', async (req, res) => {
     if (!area || area.name !== 'Zone Gouverneur Marco') {
       area = await Area.findOne({ where: { name: 'Zone Gouverneur Marco' } });
       if (!area) {
-        area = await Area.create({ name: 'Zone Gouverneur Marco', region_id: region.id });
+        let number = 1;
+        while (await Area.findOne({ where: { number } })) { number++; }
+        area = await Area.create({ name: 'Zone Gouverneur Marco', region_id: region.id, number });
       }
       await user.update({ area_id: area.id });
     }
