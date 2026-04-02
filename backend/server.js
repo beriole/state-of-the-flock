@@ -959,6 +959,84 @@ app.get('/api/members/seed-bongeh', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------
+// MERCEDES ONBOARDING ROUTES
+// ---------------------------------------------------------
+
+app.get('/api/fix/mercedes', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const bcrypt = require('bcrypt');
+    const EMAIL = 'mercedes.ps@njangui.org';
+    
+    let user = await User.findOne({ where: { email: EMAIL } });
+    if (!user) {
+      const password_hash = await bcrypt.hash('Mercedes@123', 12);
+      user = await User.create({
+        email: EMAIL,
+        password_hash,
+        role: 'Governor',
+        church_role: 'Governor',
+        permissions: ['READ_ALL', 'WRITE_OWN', 'DELETE_OWN'],
+        first_name: 'Mercedes',
+        last_name: 'Governor',
+        account_status: 'Active'
+      });
+    }
+
+    let region = await Region.findOne({ where: { name: 'Région Gouverneur Mercedes' } });
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Mercedes',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    let area;
+    if (user.area_id) {
+      area = await Area.findByPk(user.area_id);
+    }
+    
+    if (!area || area.name !== 'Zone Gouverneur Mercedes') {
+      area = await Area.findOne({ where: { name: 'Zone Gouverneur Mercedes' } });
+      if (!area) {
+        area = await Area.create({ name: 'Zone Gouverneur Mercedes', region_id: region.id });
+      }
+      await user.update({ area_id: area.id });
+    }
+    
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Onboarding (création/correction) effectué pour Mercedes',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area.name
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const { importMercedesMembers } = require('./utils/importMercedes');
+app.get('/api/members/seed-mercedes', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'mercedes.ps@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
+     const result = await importMercedesMembers(user.id, user.area_id);
+     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Route de correction pour Calvin
 
 
