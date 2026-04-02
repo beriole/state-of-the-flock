@@ -1115,6 +1115,84 @@ app.get('/api/members/seed-emmanuel', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------
+// PRISCILLA ONBOARDING ROUTES
+// ---------------------------------------------------------
+
+app.get('/api/fix/priscilla', async (req, res) => {
+  try {
+    const { User, Region, Area } = require('./models');
+    const bcrypt = require('bcrypt');
+    const EMAIL = 'priscilla.lp@njangui.org';
+    
+    let user = await User.findOne({ where: { email: EMAIL } });
+    if (!user) {
+      const password_hash = await bcrypt.hash('Priscilla@123', 12);
+      user = await User.create({
+        email: EMAIL,
+        password_hash,
+        role: 'Governor',
+        church_role: 'Governor',
+        permissions: ['READ_ALL', 'WRITE_OWN', 'DELETE_OWN'],
+        first_name: 'Priscilla',
+        last_name: 'Governor',
+        account_status: 'Active'
+      });
+    }
+
+    let region = await Region.findOne({ where: { name: 'Région Gouverneur Priscilla' } });
+    if (!region) {
+      region = await Region.create({
+        name: 'Région Gouverneur Priscilla',
+        governor_id: user.id
+      });
+    } else {
+      await region.update({ governor_id: user.id });
+    }
+
+    let area;
+    if (user.area_id) {
+      area = await Area.findByPk(user.area_id);
+    }
+    
+    if (!area || area.name !== 'Zone Gouverneur Priscilla') {
+      area = await Area.findOne({ where: { name: 'Zone Gouverneur Priscilla' } });
+      if (!area) {
+        area = await Area.create({ name: 'Zone Gouverneur Priscilla', region_id: region.id });
+      }
+      await user.update({ area_id: area.id });
+    }
+    
+    if (area) {
+      await area.update({ region_id: region.id });
+    }
+
+    res.json({
+      message: 'Onboarding (création/correction) effectué pour Priscilla',
+      user_id: user.id,
+      area_id: user.area_id,
+      assigned_region: region.name,
+      area_linked: area.name
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const { importPriscillaMembers } = require('./utils/importPriscilla');
+app.get('/api/members/seed-priscilla', async (req, res) => {
+  try {
+     const { User } = require('./models');
+     const user = await User.findOne({ where: { email: 'priscilla.lp@njangui.org' } });
+     if (!user) return res.status(404).json({ error: 'User not found' });
+     
+     const result = await importPriscillaMembers(user.id, user.area_id);
+     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Route de correction pour Calvin
 
 
