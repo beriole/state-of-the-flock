@@ -794,12 +794,6 @@ app.get('/api/fix/sandrine', async (req, res) => {
 
 // Import Sandrine
 const { importSandrineMembers } = require('./utils/importSandrine');
-app.get('/api/members/seed-sandrine', async (req, res) => {
-  try {
-     const { User } = require('./models');
-     const user = await User.findOne({ where: { email: 'sandrine.lp@njangui.org' } });
-     if (!user) return res.status(404).json({ error: 'User not found' });
-     
 
 // Route de correction pour Sandrine
 app.get('/api/fix/sandrine', async (req, res) => {
