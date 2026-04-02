@@ -819,7 +819,19 @@ app.get('/api/fix/sandrine', async (req, res) => {
       await region.update({ governor_id: user.id });
     }
 
-    const area = await Area.findByPk(user.area_id);
+    let area;
+    if (user.area_id) {
+      area = await Area.findByPk(user.area_id);
+    }
+    
+    if (!area || area.name !== 'Ecole de Poste') {
+      area = await Area.findOne({ where: { name: 'Ecole de Poste' } });
+      if (!area) {
+        area = await Area.create({ name: 'Ecole de Poste', region_id: region.id });
+      }
+      await user.update({ area_id: area.id });
+    }
+    
     if (area) {
       await area.update({ region_id: region.id });
     }
