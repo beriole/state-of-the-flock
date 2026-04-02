@@ -25,6 +25,14 @@ async function importMarcoMembers(marcoId, areaId) {
     return { error: 'Gouverneur n a pas de area_id (zone) assignée. Impossible de créer des membres.' };
   }
 
+  // Delete all existing members for Marco
+  try {
+    const deletedCount = await Member.destroy({ where: { leader_id: marcoId } });
+    console.log(`Deleted ${deletedCount} existing members for Marco.`);
+  } catch (err) {
+    return { error: 'Erreur lors de la suppression des anciens membres: ' + err.message };
+  }
+
   for (const m of membersData) {
     try {
       await Member.create({
