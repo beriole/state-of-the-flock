@@ -1,180 +1,178 @@
 const { Member } = require('../models');
 
-const membersData = [
-  { first_name: 'Pharel', phone: '657052412', state: 'Deer' },
-  { first_name: 'Patrick', phone: '658642948', state: 'Deer' },
-  { first_name: 'wilfred', phone: '699896605', state: 'Deer' },
-  { first_name: 'Jerry', phone: '000000000', state: 'Deer' },
-  { first_name: 'Nestor', phone: '000000000', state: 'Deer' },
-  { first_name: 'Serena', phone: '000000000', state: 'Deer' },
-  { first_name: 'Joël', phone: '659567993', state: 'Deer' },
-  { first_name: 'Savanna', phone: '699502014', state: 'Deer' },
-  { first_name: 'Emmanuel', phone: '678558985', state: 'Deer' },
-  { first_name: 'Arnaud', phone: '000000000', state: 'Deer' },
-  { first_name: 'Paul', phone: '000000000', state: 'Deer' },
-  { first_name: 'Marco', phone: '000000000', state: 'Deer' },
-  { first_name: 'Wolfie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Francis', phone: '000000000', state: 'Deer' },
-  { first_name: 'Prince', phone: '000000000', state: 'Deer' },
-  { first_name: 'Seraphina', phone: '659897911', state: 'Deer' },
-  { first_name: 'Hervan', phone: '000000000', state: 'Deer' },
-  
-  { first_name: 'Kevin ft', phone: '000000000', state: 'Deer' },
-  { first_name: 'Warren ft', phone: '000000000', state: 'Deer' },
-  { first_name: 'Wilfried', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ruth', phone: '000000000', state: 'Deer' },
-  { first_name: 'Priscille', phone: '000000000', state: 'Deer' },
-  { first_name: 'Élodie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Océane', phone: '000000000', state: 'Deer' },
-  { first_name: 'Emma', phone: '000000000', state: 'Deer' },
-  { first_name: 'Manuella', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lindey', phone: '000000000', state: 'Deer' },
-  { first_name: 'Andreas', phone: '000000000', state: 'Deer' },
-  { first_name: 'Santana', phone: '000000000', state: 'Deer' },
-  { first_name: 'Victor', phone: '000000000', state: 'Deer' },
-  { first_name: 'Scott', phone: '000000000', state: 'Deer' },
-  { first_name: 'Neba', phone: '000000000', state: 'Deer' },
-  { first_name: 'Max', phone: '000000000', state: 'Deer' },
-  { first_name: 'Nimino', phone: '000000000', state: 'Deer' },
-  { first_name: 'Tala', phone: '000000000', state: 'Deer' },
-  { first_name: 'macmillan', phone: '000000000', state: 'Deer' },
-  { first_name: 'Kebe', phone: '000000000', state: 'Deer' },
-  { first_name: 'Kebe lil sister', phone: '000000000', state: 'Deer' },
-  { first_name: 'Tracy', phone: '000000000', state: 'Deer' },
-  { first_name: 'Karlos', phone: '000000000', state: 'Deer' },
-  { first_name: 'Esso', phone: '000000000', state: 'Deer' },
-  { first_name: 'Solana', phone: '000000000', state: 'Deer' },
-  { first_name: 'Patrick 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Abigail', phone: '000000000', state: 'Deer' },
-  { first_name: 'parfait', phone: '000000000', state: 'Deer' },
-  { first_name: 'malco', phone: '000000000', state: 'Deer' },
-  { first_name: 'Danny', phone: '000000000', state: 'Deer' },
-  { first_name: 'Patricia', phone: '000000000', state: 'Deer' },
-  { first_name: 'Junior', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lorel', phone: '657477173', state: 'Deer' },
-  { first_name: 'Esther 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Samira', phone: '697523143', state: 'Deer' },
-  { first_name: 'Patricia 2', phone: '658946688', state: 'Deer' },
-  
-  { first_name: 'Florent', phone: '000000000', state: 'Deer' },
-  { first_name: 'Brel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Momo', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ivana', phone: '000000000', state: 'Deer' },
-  { first_name: 'Brenda', phone: '000000000', state: 'Deer' },
-  { first_name: 'shadrac', phone: '000000000', state: 'Deer' },
-  { first_name: 'Joycelyne', phone: '000000000', state: 'Deer' },
-  { first_name: 'Melissa', phone: '000000000', state: 'Deer' },
-  { first_name: 'Francis 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Dorcas', phone: '000000000', state: 'Deer' },
-  { first_name: 'Marcel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Flavie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Miguel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Divine', phone: '000000000', state: 'Deer' },
-  { first_name: 'Aaron', phone: '687943215', state: 'Deer' },
+const rawText = `
+SHEEP
+Mireille (Mimi-Rose)
+Mireille
+Francis 671243422
+Armelle
+Merveille 652098688
+Marina 681878025
+Melanie
+Fiona
+Grace
+Etienne
+Letitia
+Arouna 671239780
+Louise
+Tamara
+Esemuela
+Flavien
+Valérie
+Flora
+Marie
+Isabelle
+Célestin
+Chloé
+Christelle
+Hervé
+Christian M.
+Victor
+Maximilien M
+Cyrielle
+Larissa
 
-  { first_name: 'Gael', phone: '000000000', state: 'Deer' },
-  { first_name: 'Emmanuel 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Essomba', phone: '000000000', state: 'Deer' },
-  { first_name: 'Joy', phone: '000000000', state: 'Deer' },
-  { first_name: 'Nstama', phone: '000000000', state: 'Deer' },
-  { first_name: 'Cynthia', phone: '000000000', state: 'Deer' },
-  { first_name: 'Jordan', phone: '000000000', state: 'Deer' },
-  { first_name: 'Jean', phone: '000000000', state: 'Deer' },
-  { first_name: 'Paul 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Olivier', phone: '000000000', state: 'Deer' },
-  { first_name: 'Michele', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lionel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Bobi', phone: '695002290', state: 'Deer' },
-  { first_name: 'Joseph', phone: '000000000', state: 'Deer' },
-  { first_name: 'Siege', phone: '000000000', state: 'Deer' },
+GOAT
+Laeticia Mv 697960132
+Chancelle 657270216
+Amélie 698188681
+Francis 656158552
+Alexandrine 673232810
+Rachel
+Sylvain
+Aude
+Laetitia
+Céline
+Marina
+Licia
+Florian
+Pelagie
+Rolande
+Emmanuel 691763116
+Maximilien D 694086475
+Mlle Merveille (SDF)
+Esther
+Marc
+Letitia
+Mme Ndjembelle
+Landry
+Ida
+Christiane
 
-  { first_name: 'Charly', phone: '000000000', state: 'Deer' },
-  { first_name: 'Emmanuel 3', phone: '000000000', state: 'Deer' },
-  { first_name: 'David', phone: '674797786', state: 'Deer' },
-  { first_name: 'Junior 2', phone: '000000000', state: 'Deer' },
-  
-  { first_name: 'Abigail(ft)', phone: '654894681', state: 'Deer' },
-  { first_name: 'Emmanuel 4', phone: '656560449', state: 'Deer' },
-  { first_name: 'Rayan', phone: '674549402', state: 'Deer' },
-  { first_name: 'Divine 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Merveille', phone: '000000000', state: 'Deer' },
-  { first_name: 'Kevin 2', phone: '682188544', state: 'Deer' },
-  { first_name: 'Kevine', phone: '687472836', state: 'Deer' },
-  { first_name: 'Odette', phone: '000000000', state: 'Deer' },
-  { first_name: 'Elvira', phone: '000000000', state: 'Deer' },
-  { first_name: 'Steve', phone: '000000000', state: 'Deer' },
-  { first_name: 'Okpwe', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ismael', phone: '000000000', state: 'Deer' },
-  { first_name: 'Arnold', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lilian', phone: '671261743', state: 'Deer' },
-  { first_name: 'Laura', phone: '000000000', state: 'Deer' },
-  { first_name: 'Thierry', phone: '000000000', state: 'Deer' },
-  { first_name: 'Damase', phone: '000000000', state: 'Deer' },
-  { first_name: 'Favour', phone: '000000000', state: 'Deer' },
-  { first_name: 'Yvonne', phone: '000000000', state: 'Deer' },
-  { first_name: 'Rose', phone: '000000000', state: 'Deer' },
-  { first_name: 'Marie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Carielle', phone: '000000000', state: 'Deer' },
-  { first_name: 'Giselle', phone: '000000000', state: 'Deer' },
-  { first_name: 'Onana', phone: '000000000', state: 'Deer' },
-  { first_name: 'Dianabelle', phone: '000000000', state: 'Deer' },
-  { first_name: 'Faith', phone: '000000000', state: 'Deer' },
-  { first_name: 'Victor Tibue', phone: '000000000', state: 'Deer' },
-  { first_name: 'Farel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ma Myriam', phone: '000000000', state: 'Deer' },
-  { first_name: 'Gold Che', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lindiweh', phone: '000000000', state: 'Deer' },
-  
-  { first_name: 'Abena (ft)', phone: '657673316', state: 'Deer' },
-  { first_name: 'Eva (ft)', phone: '657673316', state: 'Deer' },
-  { first_name: 'Cedric', phone: '657448291', state: 'Deer' },
-  { first_name: 'Kameni', phone: '687126380', state: 'Deer' },
-  { first_name: 'Keren(ft)', phone: '692930296', state: 'Deer' },
-  { first_name: 'Andre', phone: '000000000', state: 'Deer' },
-  { first_name: 'Sylvio', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ariel', phone: '000000000', state: 'Deer' },
-  { first_name: 'Larissa', phone: '000000000', state: 'Deer' },
-  { first_name: 'Brayan', phone: '000000000', state: 'Deer' },
-  { first_name: 'Manou', phone: '000000000', state: 'Deer' },
-  { first_name: 'Diane', phone: '000000000', state: 'Deer' },
-  { first_name: 'Romeo', phone: '000000000', state: 'Deer' },
-  { first_name: 'Kings', phone: '000000000', state: 'Deer' },
-  { first_name: 'Harold', phone: '000000000', state: 'Deer' },
-  { first_name: 'Pascal', phone: '000000000', state: 'Deer' },
-  { first_name: 'Stephane 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Nih Merveille Glory', phone: '000000000', state: 'Deer' },
-  { first_name: 'Ruth2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Sam', phone: '000000000', state: 'Deer' },
-  { first_name: 'Juliette', phone: '000000000', state: 'Deer' },
-  { first_name: 'Mme Margarete', phone: '000000000', state: 'Deer' },
-  { first_name: 'Leslie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Elise', phone: '000000000', state: 'Deer' },
-  { first_name: 'Blessing', phone: '000000000', state: 'Deer' },
-  { first_name: 'Laurencia', phone: '000000000', state: 'Deer' },
-  { first_name: 'Sandrine', phone: '000000000', state: 'Deer' },
-  { first_name: 'Elizabeth', phone: '000000000', state: 'Deer' },
-  { first_name: 'Oralie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Claire', phone: '000000000', state: 'Deer' },
-  { first_name: 'Marysette', phone: '000000000', state: 'Deer' },
-  { first_name: 'Willy', phone: '000000000', state: 'Deer' },
-  { first_name: 'Noela', phone: '000000000', state: 'Deer' },
-  { first_name: 'Fabrice', phone: '000000000', state: 'Deer' },
-  { first_name: 'David 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Lucie', phone: '000000000', state: 'Deer' },
-  { first_name: 'Victor Atem', phone: '000000000', state: 'Deer' },
-  { first_name: 'Gabriella', phone: '698121708', state: 'Deer' },
-  { first_name: 'Victor 3', phone: '692723579', state: 'Deer' },
-  { first_name: 'Mme Miriam', phone: '000000000', state: 'Deer' },
-  { first_name: 'Siege 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Steve 2', phone: '000000000', state: 'Deer' },
-  { first_name: 'Esther', phone: '652342486', state: 'Deer' },
-  { first_name: 'Malika', phone: '000000000', state: 'Deer' },
-  { first_name: 'Joël 1', phone: '000000000', state: 'Deer' },
-  { first_name: 'Clovis', phone: '000000000', state: 'Deer' },
-  { first_name: 'Eric', phone: '000000000', state: 'Deer' },
-  { first_name: 'Paula', phone: '000000000', state: 'Deer' },
-  { first_name: 'Emmanuel 5', phone: '000000000', state: 'Deer' }
-];
+SHEEP
+Maimouna 655455848
+Ange 699292850
+Carine
+Yolande
+Armand
+Fidèle
+Béatrice
+Benjamin 679546051
+Augustine 656628830
+Constant 696229415
+Anaïs 686738604
+Christelle 676759528
+Catherine 696766624
+Francesca 696220816
+Corine
+
+GOAT
+Cyril 697858005
+Edouard
+Stela
+Louise 695328220
+Marthe 696739956
+Serge
+Pélagie
+Sébastien 698062840
+Paule
+Edith
+Evina 696757523
+Audrey 698188165
+Paul
+Sylvie 698725183
+Valérie 693710813
+Thierry
+William
+Christian
+Sylvain
+Michel 656401017
+Charlotte
+Janise
+
+DEER
+Marylys
+Marthe
+Quere
+Serge
+Laure
+Janet
+Cedric
+Aristide 698062846
+Paul
+Ghislain
+Claudine 691000284
+Cathérine
+Landry
+Marthe
+
+SHEEP
+Florent 696225845
+José 692842065
+Michelle 696008541
+Mme
+Chantal
+Marcelle
+Joséphine
+Mamadou 678825556
+Alex
+Franck
+Maximilien
+Yannick
+Magelan
+Grâce
+Zénob 691845112
+
+DEER
+Guy
+Serge
+Christian
+Augustine
+Yolande
+Landry
+Maximilien
+Alex
+Gilles
+Michelle
+Ismael
+Pascal 691253456
+Serge
+`;
+
+function parseMembers(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const data = [];
+  let currentState = 'Sheep';
+
+  for (const line of lines) {
+    if (['SHEEP', 'GOAT', 'DEER', 'FIRST TIMER'].includes(line.toUpperCase())) {
+      currentState = line.charAt(0).toUpperCase() + line.slice(1).toLowerCase();
+      if (currentState === 'First timer') currentState = 'First Timer';
+      continue;
+    }
+
+    // Try to extract phone number at the end
+    const match = line.match(/(.+?)\s*(\d{9})?\s*$/);
+    if (match) {
+      const name = match[1].trim();
+      const phone = match[2] ? match[2].trim() : '000000000';
+      data.push({ first_name: name, phone, state: currentState });
+    }
+  }
+  return data;
+}
+
+const membersData = parseMembers(rawText);
 
 async function importEstherMembers(estherId, areaId) {
   let imported = 0;
@@ -183,6 +181,14 @@ async function importEstherMembers(estherId, areaId) {
   
   if (!areaId) {
     return { error: 'Gouverneur n a pas de area_id (zone) assignée. Impossible de créer des membres.' };
+  }
+
+  // Delete all existing members for Esther
+  try {
+    const deletedCount = await Member.destroy({ where: { leader_id: estherId } });
+    console.log(`Deleted ${deletedCount} existing members for Esther.`);
+  } catch (err) {
+    return { error: 'Erreur lors de la suppression des anciens membres: ' + err.message };
   }
 
   for (const m of membersData) {
@@ -206,7 +212,7 @@ async function importEstherMembers(estherId, areaId) {
       skipped++;
     }
   }
-  return { imported, skipped, total: membersData.length, errors };
+  return { imported, skipped, total: membersData.length, errors, parsedData: membersData.length };
 }
 
 module.exports = { importEstherMembers };
