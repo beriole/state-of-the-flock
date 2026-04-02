@@ -243,7 +243,7 @@ const Bishop = () => {
                 const [governorsRes, regionsRes, areasRes] = await Promise.all([
                     governorAPI.getUsers({ role: 'Governor' }),
                     regionAPI.getRegions(),
-                    areaAPI.getAreas({ limit: 100 })
+                    areaAPI.getAreas({ limit: 1000 })
                 ]);
                 setGovernors(governorsRes.data.users || []);
                 setRegions(regionsRes.data || []);
@@ -271,7 +271,7 @@ const Bishop = () => {
                 const [membersRes, regionsRes, areasRes, governorsRes] = await Promise.all([
                     memberAPI.getMembers({ ...memberFilters, limit: 100 }),
                     regionAPI.getRegions(),
-                    areaAPI.getAreas(),
+                    areaAPI.getAreas({ limit: 1000 }),
                     governorAPI.getUsers({ role: 'Governor' }) // Fetch governors for member filters
                 ]);
                 setMembers(membersRes.data.members || []);

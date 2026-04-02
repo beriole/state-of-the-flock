@@ -6,7 +6,7 @@ const areaController = {
   // Lister les zones
   getAreas: async (req, res) => {
     try {
-      const { page = 1, limit = 50, search } = req.query;
+      const { page = 1, limit = 1000, search } = req.query;
 
       const offset = (page - 1) * limit;
       const whereClause = {};
