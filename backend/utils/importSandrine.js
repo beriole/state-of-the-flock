@@ -200,6 +200,12 @@ const membersData = [
 async function importSandrineMembers(sandrineId, areaId) {
   let imported = 0;
   let skipped = 0;
+  let errors = [];
+  
+  if (!areaId) {
+    return { error: 'Gouverneur n a pas de area_id (zone) assignée. Impossible de créer des membres.' };
+  }
+
   for (const m of membersData) {
     try {
       await Member.create({
@@ -215,10 +221,13 @@ async function importSandrineMembers(sandrineId, areaId) {
       imported++;
     } catch (error) {
       console.error(`Error importing ${m.first_name}:`, error.message);
+      if (errors.length < 5) {
+        errors.push(`${m.first_name}: ${error.message}`);
+      }
       skipped++;
     }
   }
-  return { imported, skipped, total: membersData.length };
+  return { imported, skipped, total: membersData.length, errors };
 }
 
 module.exports = { importSandrineMembers };
