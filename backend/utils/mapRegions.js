@@ -53,26 +53,58 @@ const data = [
 async function mapAllRegions() {
   const { User, Region, Area } = require('../models');
   const bcrypt = require('bcrypt');
-  const { Op } = require('sequelize');
 
   let logs = [];
 
   try {
-    // 1. Ensure the 4 base Regions exist
+    // 1. Bulk fetch all Regions, Areas, and Users to minimize queries
+    const existingRegions = await Region.findAll();
+    const regionMap = new Map(existingRegions.map(r => [r.name, r]));
+
+    const existingAreas = await Area.findAll();
+    const areaMap = new Map(existingAreas.map(a => [a.name, a]));
+
+    const existingUsers = await User.findAll({ attributes: ['id', 'email', 'area_id'] });
+    const userMap = new Map(existingUsers.map(u => [u.email, u]));
+
+    // 2. Ensure base Regions exist
     for (let i = 1; i <= 4; i++) {
-      let r = await Region.findOne({ where: { name: `Area ${i}` } });
-      if (!r) {
-        r = await Region.create({ name: `Area ${i}` });
-        logs.push(`Created Region Area ${i}`);
+      const regionName = `Area ${i}`;
+      if (!regionMap.has(regionName)) {
+        const r = await Region.create({ name: regionName });
+        regionMap.set(regionName, r);
+        logs.push(`Created Region ${regionName}`);
       }
     }
 
-    // 2. Loop through the list
+    // 3. Optimized Loop
     for (const gov of data) {
+      // Get appropriate Region
+      const region = regionMap.get(gov.region);
+      if (!region) {
+        logs.push(`Error: Region ${gov.region} not found for ${gov.email}`);
+        continue;
+      }
+
+      // Find or create Zone (Area)
+      let area = areaMap.get(gov.zone);
+      if (!area) {
+        // Create new area if missing
+        let number = 1 + areaMap.size;
+        area = await Area.create({ name: gov.zone, region_id: region.id, number });
+        areaMap.set(gov.zone, area);
+        logs.push(`Created Zone ${gov.zone}`);
+      } else if (area.region_id !== region.id) {
+        // Update existing area if it belongs to the wrong region
+        await area.update({ region_id: region.id });
+        logs.push(`Updated Zone ${gov.zone} to Region ${region.name}`);
+      }
+
       // Find or create User
-      let user = await User.findOne({ where: { email: gov.email } });
+      let user = userMap.get(gov.email);
       if (!user) {
-        const password_hash = await bcrypt.hash(gov.pass, 12);
+        // Use 10 rounds for speed in bulk creation
+        const password_hash = await bcrypt.hash(gov.pass, 10);
         user = await User.create({
           email: gov.email,
           password_hash,
@@ -82,43 +114,23 @@ async function mapAllRegions() {
           first_name: gov.firstName,
           last_name: gov.lastName,
           phone_primary: gov.phone,
-          account_status: 'Active'
+          account_status: 'Active',
+          area_id: area.id
         });
+        userMap.set(gov.email, user);
         logs.push(`Created user ${gov.firstName} ${gov.lastName}`);
-      } else {
-        logs.push(`Found user ${gov.email}`);
+      } else if (user.area_id !== area.id) {
+        // Map existing user to the correct area
+        await user.update({ area_id: area.id });
+        logs.push(`Mapped existing user ${gov.email} to Zone ${area.name}`);
       }
-
-      // Get appropriate Region
-      const region = await Region.findOne({ where: { name: gov.region } });
-      
-      // Get or create Zone
-      let area = await Area.findOne({ where: { name: gov.zone } });
-      if (!area) {
-        let number = 1;
-        while (await Area.findOne({ where: { number } })) { number++; }
-        area = await Area.create({ name: gov.zone, region_id: region.id, number });
-        logs.push(`Created Zone ${gov.zone}`);
-      } else {
-        await area.update({ region_id: region.id });
-        logs.push(`Updated Zone ${gov.zone} to Region ${region.name}`);
-      }
-
-      // Explicitly associate user with their area and with Region as governor (if appropriate)
-      await user.update({ area_id: area.id });
-
-      // If the region doesnt have a governor, we can set the first one, 
-      // but there are multiple governors per region here. So we just update the user's area.
     }
 
-    // 3. Clean up bad "Région Gouverneur..." if they don't have members.
-    // Actually, maybe better not to run cleanup automatically yet so we don't break anything.
-    // Let's just fix the mapping first.
-
-    return { success: true, logs };
+    return { success: true, count: data.length, logs };
 
   } catch (err) {
-    return { success: false, error: err.message, stack: err.stack };
+    console.error('Mapping error:', err);
+    return { success: false, error: err.message };
   }
 }
 
