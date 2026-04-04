@@ -57,53 +57,64 @@ async function mapAllRegions() {
   let logs = [];
 
   try {
-    // 1. Bulk fetch all Regions, Areas, and Users to minimize queries
+    // 1. Bulk fetch existing data
     const existingRegions = await Region.findAll();
-    const regionMap = new Map(existingRegions.map(r => [r.name, r]));
+    const regionByName = new Map(existingRegions.map(r => [r.name, r]));
 
     const existingAreas = await Area.findAll();
-    const areaMap = new Map(existingAreas.map(a => [a.name, a]));
+    // Use composite key "RegionID|AreaName" to handle duplicates across regions
+    const areaMap = new Map(existingAreas.map(a => [`${a.region_id}|${a.name}`, a]));
 
     const existingUsers = await User.findAll({ attributes: ['id', 'email', 'area_id'] });
-    const userMap = new Map(existingUsers.map(u => [u.email, u]));
+    const userMap = new Map(existingUsers.map(u => [u.email.toLowerCase(), u]));
 
-    // 2. Ensure base Regions exist
+    // 2. Ensure Area 1-4 Regions exist
     for (let i = 1; i <= 4; i++) {
-      const regionName = `Area ${i}`;
-      if (!regionMap.has(regionName)) {
-        const r = await Region.create({ name: regionName });
-        regionMap.set(regionName, r);
-        logs.push(`Created Region ${regionName}`);
-      }
+        const name = `Area ${i}`;
+        if (!regionByName.has(name)) {
+            const r = await Region.create({ name });
+            regionByName.set(name, r);
+            logs.push(`Region CREATED: ${name}`);
+        } else {
+            logs.push(`Region OK: ${name}`);
+        }
     }
 
-    // 3. Optimized Loop
+    // 3. Process each Governor
     for (const gov of data) {
-      // Get appropriate Region
-      const region = regionMap.get(gov.region);
-      if (!region) {
-        logs.push(`Error: Region ${gov.region} not found for ${gov.email}`);
+      const email = gov.email.toLowerCase();
+      const targetRegion = regionByName.get(gov.region);
+      
+      if (!targetRegion) {
+        logs.push(`ERROR: Target Region ${gov.region} not in DB for ${email}`);
         continue;
       }
 
-      // Find or create Zone (Area)
-      let area = areaMap.get(gov.zone);
+      // Look for Zone within PRECISE Region
+      const areaKey = `${targetRegion.id}|${gov.zone}`;
+      let area = areaMap.get(areaKey);
+
       if (!area) {
-        // Create new area if missing
-        let number = 1 + areaMap.size;
-        area = await Area.create({ name: gov.zone, region_id: region.id, number });
-        areaMap.set(gov.zone, area);
-        logs.push(`Created Zone ${gov.zone}`);
-      } else if (area.region_id !== region.id) {
-        // Update existing area if it belongs to the wrong region
-        await area.update({ region_id: region.id });
-        logs.push(`Updated Zone ${gov.zone} to Region ${region.name}`);
+        // Search globally to see if it exists but in wrong region
+        const globalArea = existingAreas.find(a => a.name === gov.zone && a.region_id !== targetRegion.id);
+        if (globalArea) {
+            logs.push(`Zone MOVED: ${gov.zone} from Region ${globalArea.region_id} to ${targetRegion.id}`);
+            await globalArea.update({ region_id: targetRegion.id });
+            area = globalArea;
+        } else {
+            // Create fresh area
+            let number = 1 + areaMap.size;
+            area = await Area.create({ name: gov.zone, region_id: targetRegion.id, number });
+            logs.push(`Zone CREATED: ${gov.zone} in ${gov.region}`);
+        }
+        areaMap.set(areaKey, area);
+      } else {
+        logs.push(`Zone OK: ${gov.zone} in ${gov.region}`);
       }
 
-      // Find or create User
-      let user = userMap.get(gov.email);
+      // Process User
+      let user = userMap.get(email);
       if (!user) {
-        // Use 10 rounds for speed in bulk creation
         const password_hash = await bcrypt.hash(gov.pass, 10);
         user = await User.create({
           email: gov.email,
@@ -117,16 +128,30 @@ async function mapAllRegions() {
           account_status: 'Active',
           area_id: area.id
         });
-        userMap.set(gov.email, user);
-        logs.push(`Created user ${gov.firstName} ${gov.lastName}`);
-      } else if (user.area_id !== area.id) {
-        // Map existing user to the correct area
-        await user.update({ area_id: area.id });
-        logs.push(`Mapped existing user ${gov.email} to Zone ${area.name}`);
+        userMap.set(email, user);
+        logs.push(`User CREATED: ${gov.firstName} ${gov.lastName} (${email}) linked to ${gov.zone}`);
+      } else {
+        // Force update area_id if wrong
+        if (user.area_id !== area.id) {
+            await user.update({ area_id: area.id });
+            logs.push(`User RE-MAPPED: ${email} moved to zone ${gov.zone}`);
+        } else {
+            logs.push(`User OK: ${email} already in ${gov.zone}`);
+        }
       }
     }
 
-    return { success: true, count: data.length, logs };
+    return { 
+        success: true, 
+        processed: data.length, 
+        summary: {
+            created: logs.filter(l => l.includes('CREATED')).length,
+            moved: logs.filter(l => l.includes('MOVED') || l.includes('RE-MAPPED')).length,
+            ok: logs.filter(l => l.includes('OK')).length,
+            errors: logs.filter(l => l.includes('ERROR')).length
+        },
+        logs 
+    };
 
   } catch (err) {
     console.error('Mapping error:', err);
