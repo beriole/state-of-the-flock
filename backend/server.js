@@ -1518,18 +1518,6 @@ app.get('/api/members/seed-marco', async (req, res) => {
      
      const result = await importMarcoMembers(user.id, user.area_id);
      res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Route de correction pour Calvin
-
-
-
-
-
-
 
 
 
