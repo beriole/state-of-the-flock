@@ -45,7 +45,11 @@ const userController = {
 
       const users = await User.findAndCountAll({
         where: whereClause,
-        include: [{ model: Area, as: 'area' }],
+        include: [{ 
+          model: Area, 
+          as: 'area',
+          include: [{ model: Region, as: 'region' }]
+        }],
         attributes: { exclude: ['password_hash'] },
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -76,7 +80,11 @@ const userController = {
 
       const user = await User.findByPk(userId, {
         include: [
-          { model: Area, as: 'area' },
+          { 
+            model: Area, 
+            as: 'area',
+            include: [{ model: Region, as: 'region' }]
+          },
           { model: Member, as: 'members' }
         ],
         attributes: { exclude: ['password_hash'] }
@@ -121,7 +129,11 @@ const userController = {
       });
 
       const userResponse = await User.findByPk(user.id, {
-        include: [{ model: Area, as: 'area' }],
+        include: [{ 
+          model: Area, 
+          as: 'area',
+          include: [{ model: Region, as: 'region' }]
+        }],
         attributes: { exclude: ['password_hash'] }
       });
 
@@ -161,7 +173,11 @@ const userController = {
       });
 
       const updatedUser = await User.findByPk(userId, {
-        include: [{ model: Area, as: 'area' }],
+        include: [{ 
+          model: Area, 
+          as: 'area',
+          include: [{ model: Region, as: 'region' }]
+        }],
         attributes: { exclude: ['password_hash'] }
       });
 
