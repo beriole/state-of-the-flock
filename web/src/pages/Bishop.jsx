@@ -269,7 +269,7 @@ const Bishop = () => {
                 setMinistries(ministriesRes.data || []);
             } else if (activeTab === 'members') {
                 const [membersRes, regionsRes, areasRes, governorsRes] = await Promise.all([
-                    memberAPI.getMembers({ ...memberFilters, limit: 100 }),
+                    memberAPI.getMembers({ ...memberFilters, limit: 5000 }),
                     regionAPI.getRegions(),
                     areaAPI.getAreas({ limit: 1000 }),
                     governorAPI.getUsers({ role: 'Governor' }) // Fetch governors for member filters
@@ -1128,7 +1128,7 @@ const Bishop = () => {
                                             alt=""
                                         />
                                         <div>
-                                            <div className={styles.userName}>{member.first_name} {member.last_name}</div>
+                                            <div className={styles.userName}>{member.first_name} {member.last_name === 'Inconnu' ? '' : member.last_name}</div>
                                             <div className={styles.userRole}>{member.bacenta_leader || 'Membre'}</div>
                                         </div>
                                     </div>
