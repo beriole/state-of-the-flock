@@ -51,7 +51,8 @@ const data = [
 ];
 
 async function mapAllRegions() {
-  const { User, Region, Area } = require('../models');
+  const { User, Region, Area, sequelize } = require('../models');
+  const { Op } = require('sequelize');
   const bcrypt = require('bcrypt');
 
   let logs = [];
@@ -141,12 +142,51 @@ async function mapAllRegions() {
       }
     }
 
+    // --- PHASE 2: CLEANUP REDUNDANT DATA ---
+    // 4. Align Member Area IDs with Leader Area IDs
+    // We update via Sequelize to safely move any members from an old redundant zone to the new official zone of their leader.
+    for (const gov of data) {
+      const email = gov.email.toLowerCase();
+      let user = userMap.get(email);
+      if (user && user.area_id) {
+         await sequelize.models.Member.update(
+           { area_id: user.area_id }, 
+           { where: { leader_id: user.id } }
+         );
+      }
+    }
+    logs.push("Cleanup: Aligned ALL Member Area IDs with their Governors' Areas.");
+
+    // 5. Delete redundant Areas (Zones) that are NOT part of the official 51 areas mapping.
+    const officialAreaIds = Array.from(areaMap.values()).map(a => a.id);
+    const deletedAreas = await Area.destroy({
+      where: {
+        id: { [Op.notIn]: officialAreaIds }
+      }
+    });
+    logs.push(`Cleanup: Deleted ${deletedAreas} old redundant Area(s).`);
+
+    // 6. Delete old redundant Regions (anything not Area 1, 2, 3, or 4)
+    const officialRegionIds = Array.from(regionByName.values())
+        .filter(r => ['Area 1', 'Area 2', 'Area 3', 'Area 4'].includes(r.name))
+        .map(r => r.id);
+
+    const deletedRegions = await Region.destroy({
+      where: {
+        id: { [Op.notIn]: officialRegionIds }
+      }
+    });
+    logs.push(`Cleanup: Deleted ${deletedRegions} old redundant Region(s).`);
+
+
     return { 
         success: true, 
         processed: data.length, 
         summary: {
             created: logs.filter(l => l.includes('CREATED')).length,
             moved: logs.filter(l => l.includes('MOVED') || l.includes('RE-MAPPED')).length,
+            deletedAreas,
+            deletedRegions,
             ok: logs.filter(l => l.includes('OK')).length,
             errors: logs.filter(l => l.includes('ERROR')).length
         },
