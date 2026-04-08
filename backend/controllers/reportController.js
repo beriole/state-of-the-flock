@@ -17,14 +17,8 @@ const reportController = {
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         memberWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Governor') {
-        const { Region } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (areaIds.length > 0) {
-          memberWhereClause.area_id = { [Op.in]: areaIds };
+        if (req.user.area_id) {
+          memberWhereClause.area_id = req.user.area_id;
         } else {
           memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
@@ -198,21 +192,19 @@ const reportController = {
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         leaderWhereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (areaIds.length > 0) {
-          leaderWhereClause.area_id = { [Op.in]: areaIds };
+        if (req.user.area_id) {
+          leaderWhereClause.area_id = req.user.area_id;
         } else {
           leaderWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
 
         // Si une zone spécifique est demandée
         if (area_id) {
-          leaderWhereClause.area_id = area_id;
+          if (area_id !== req.user.area_id) {
+            leaderWhereClause.area_id = '00000000-0000-0000-0000-000000000000';
+          } else {
+            leaderWhereClause.area_id = area_id;
+          }
         }
       }
       // Note: Bishop has no restriction (global access)
@@ -296,14 +288,8 @@ const reportController = {
       } else if ((req.user.role === 'Area_Pastor' || req.user.role === 'Assisting_Overseer') && req.user.area_id) {
         memberWhere.area_id = req.user.area_id;
       } else if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (areaIds.length > 0) {
-          memberWhere.area_id = { [Op.in]: areaIds };
+        if (req.user.area_id) {
+          memberWhere.area_id = req.user.area_id;
         } else {
           memberWhere.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
@@ -489,14 +475,8 @@ const reportController = {
       if (req.user.role === 'Bacenta_Leader') {
         whereClause.leader_id = req.user.userId;
       } else if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (areaIds.length > 0) {
-          whereClause.area_id = { [Op.in]: areaIds };
+        if (req.user.area_id) {
+          whereClause.area_id = req.user.area_id;
         } else {
           whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
@@ -589,15 +569,8 @@ const reportController = {
       }
 
       // Filtrage strict par région pour les Gouverneurs
-      let governorAreaIds = [];
       if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        governorAreaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (governorAreaIds.length === 0) {
+        if (!req.user.area_id) {
           return res.json({ report: [], type: group_by });
         }
       }

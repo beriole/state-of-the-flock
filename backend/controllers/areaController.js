@@ -11,17 +11,12 @@ const areaController = {
       const offset = (page - 1) * limit;
       const whereClause = {};
 
-      // Filtrage strict pour les Gouverneurs (voir uniquement les zones de leur région)
+      // Filtrage strict pour les Gouverneurs (voir uniquement leur propre zone)
       if (req.user.role === 'Governor') {
-        const { Region } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId }
-        });
-
-        if (region) {
-          whereClause.region_id = region.id;
+        if (req.user.area_id) {
+          whereClause.id = req.user.area_id;
         } else {
-          whereClause.region_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+          whereClause.id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
       }
 

@@ -20,23 +20,16 @@ const userController = {
 
       // Filtrage strict pour les Gouverneurs (voir uniquement les zones de leur région)
       if (req.user.role === 'Governor') {
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-
-        if (areaIds.length > 0) {
+        if (req.user.area_id) {
           if (area_id) {
-            // Si un area_id spécifique est demandé, vérifier qu'il appartient à la région
-            if (!areaIds.includes(area_id)) {
+            // Si un area_id spécifique est demandé, vérifier qu'il est identique au sien
+            if (area_id !== req.user.area_id) {
               whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
             } else {
               whereClause.area_id = area_id;
             }
           } else {
-            whereClause.area_id = { [Op.in]: areaIds };
+            whereClause.area_id = req.user.area_id;
           }
         } else {
           whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty

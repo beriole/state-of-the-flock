@@ -230,13 +230,8 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(meeting.leader?.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || meeting.leader?.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
       // Note: Bishop has no restriction (global access)
@@ -281,13 +276,8 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(meeting.leader?.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || meeting.leader?.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 
@@ -372,13 +362,8 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(meeting.leader?.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || meeting.leader?.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 
@@ -468,13 +453,8 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(meeting.leader?.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || meeting.leader?.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 
@@ -529,14 +509,9 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
         const leader = await User.findByPk(meeting.leader_id);
-        if (!leader || !areaIds.includes(leader.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || !leader || leader.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 
@@ -622,13 +597,8 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(meeting.leader?.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || meeting.leader?.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 
@@ -663,14 +633,9 @@ const bacentaController = {
       }
 
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
         const leader = await User.findByPk(meeting.leader_id);
-        if (!leader || !areaIds.includes(leader.area_id)) {
-          return res.status(403).json({ error: 'Accès non autorisé (Hors région)' });
+        if (!req.user.area_id || !leader || leader.area_id !== req.user.area_id) {
+          return res.status(403).json({ error: 'Accès non autorisé (Hors zone)' });
         }
       }
 

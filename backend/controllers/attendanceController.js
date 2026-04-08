@@ -27,6 +27,12 @@ const attendanceController = {
         whereClause['$member.area_id$'] = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause['$member.area_id$'] = req.user.area_id;
+      } else if (req.user.role === 'Governor') {
+        if (req.user.area_id) {
+          whereClause['$member.area_id$'] = req.user.area_id;
+        } else {
+          whereClause['$member.area_id$'] = '00000000-0000-0000-0000-000000000000';
+        }
       }
 
       // Filtres de date
@@ -96,13 +102,8 @@ const attendanceController = {
           }
 
           if (req.user.role === 'Governor') {
-            const governorRegion = await require('../models').Region.findOne({
-              where: { governor_id: req.user.userId },
-              include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-            });
-            const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-            if (!areaIds.includes(member.area_id)) {
-              errors.push(`Accès non autorisé (Hors région) pour le membre ${member.first_name} ${member.last_name}`);
+            if (member.area_id !== req.user.area_id) {
+              errors.push(`Accès non autorisé (Hors zone) pour le membre ${member.first_name} ${member.last_name}`);
               continue;
             }
           }
@@ -157,9 +158,7 @@ const attendanceController = {
 
       if (req.user.role === 'Bacenta_Leader') {
         whereClause['$member.leader_id$'] = req.user.userId;
-      } else if (req.user.role === 'Area_Pastor' && req.user.area_id) {
-        whereClause['$member.area_id$'] = req.user.area_id;
-      } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
+      } else if ((req.user.role === 'Area_Pastor' || req.user.role === 'Assisting_Overseer' || req.user.role === 'Governor') && req.user.area_id) {
         whereClause['$member.area_id$'] = req.user.area_id;
       }
 
