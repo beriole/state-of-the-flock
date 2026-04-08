@@ -757,10 +757,11 @@ const Bishop = () => {
                     </thead>
                     <tbody>
                         {governors.map(gov => {
-                            // Trouver la région du governor
-                            const govRegion = regions.find(r => r.governor_id === gov.id);
                             // Trouver la zone du governor
-                            const govArea = areas.find(a => a.id === gov.area_id);
+                            const govArea = areas.find(a => a.id === gov.area_id) || gov.area;
+                            // Trouver la région du governor (la région de sa zone)
+                            const govRegion = gov.area?.region || regions.find(r => r.id === govArea?.region_id) || regions.find(r => r.governor_id === gov.id);
+
                             return (
                                 <tr key={gov.id} className={styles.tr}>
                                     <td className={styles.td}>
