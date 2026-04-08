@@ -15,13 +15,14 @@ const dashboardController = {
       if (role === 'bishop' || role === 'assisting_overseer' || role === 'governor' || role === 'area_pastor') {
         try {
           let areaIds = null;
-          if (userRole === 'Governor') {
-            const region = await require('../models').Region.findOne({
-              where: { governor_id: userId },
-              include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-            });
-            areaIds = region ? region.areas.map(a => a.id) : [];
-          } else if (userRole === 'Area_Pastor') {
+          if (userRole === 'Governor' || userRole === 'Area_Pastor') {
+            // Un gouverneur ou Area_Pastor est restreint à sa propre zone (area_id)
+            if (req.user.area_id) {
+              areaIds = [req.user.area_id];
+            } else {
+              areaIds = ['00000000-0000-0000-0000-000000000000'];
+            }
+          } else if (userRole === 'Assisting_Overseer') {
             // L'Area_Pastor est restreint à sa propre zone (area_id)
             if (req.user.area_id) {
               areaIds = [req.user.area_id];
@@ -47,9 +48,6 @@ const dashboardController = {
               if (areaIds.includes(area_id)) {
                 // On remplace la liste complète par cette seule zone
                 areaIds = [area_id];
-              } else {
-                // Tentative d'accès hors zone : on ignore ou on rejette (ici on ignore pour fallback sur toute la région)
-                // areaIds reste inchangé (toute la région)
               }
             } else {
               // Bishop/Overseer : on applique le filtre directement
@@ -312,14 +310,10 @@ const dashboardController = {
         return res.status(404).json({ error: 'Zone non trouvée' });
       }
 
-      // Sécurité Gouverneur: Vérifier si la zone appartient à sa région
+      // Sécurité Gouverneur: Vérifier si la zone est sa propre zone
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        if (!governorRegion || !governorRegion.areas.some(a => a.id === area.id)) {
-          return res.status(403).json({ error: 'Accès interdit à cette zone' });
+        if (req.user.area_id !== area.id) {
+          return res.status(403).json({ error: 'Accès interdit à cette zone. Vous ne pouvez voir que votre propre zone.' });
         }
       }
 
@@ -385,14 +379,9 @@ const dashboardController = {
         return res.status(404).json({ error: 'Leader non trouvé' });
       }
 
-      // Sécurité Gouverneur: Vérifier si le leader appartient à sa région
+      // Sécurité Gouverneur: Vérifier si le leader appartient à sa propre zone
       if (req.user.role === 'Governor') {
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        if (!areaIds.includes(leader.area_id)) {
+        if (leader.area_id !== req.user.area_id) {
           return res.status(403).json({ error: 'Accès interdit à ce leader' });
         }
       }
@@ -477,21 +466,12 @@ const dashboardController = {
       };
 
       if (req.user.role === 'Governor') {
-        // Filtrage plus robuste: Récupérer d'abord les zones de la région du gouverneur
-        // (Optimisation possible via join direct, mais restons sûrs)
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-
-        // On modifie l'include pour filtrer
+        // Filtrage plus robuste: Récupérer d'abord les zones (la sienne uniquement)
         areaInclude = {
           model: Area,
           as: 'area',
           attributes: ['id', 'name'],
-          where: areaIds.length > 0 ? { id: { [Op.in]: areaIds } } : { id: null } // Force empty results if no areas
+          where: req.user.area_id ? { id: req.user.area_id } : { id: null }
         };
       }
 
@@ -561,13 +541,12 @@ const dashboardController = {
       ];
 
       if (req.user.role === 'Governor') {
-        // Filtrer les leaders par région du gouverneur
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        const areaIds = governorRegion ? governorRegion.areas.map(a => a.id) : [];
-        userWhere.area_id = { [Op.in]: areaIds };
+        // Filtrer les leaders par la zone du gouverneur
+        if (req.user.area_id) {
+          userWhere.area_id = req.user.area_id;
+        } else {
+          userWhere.id = '00000000-0000-0000-0000-000000000000'; // Force vide
+        }
       }
       // Note: Bishop has no restriction (global access)
 
@@ -605,12 +584,11 @@ const dashboardController = {
       // Récupérer toutes les zones pertinentes
       const areaWhere = {};
       if (req.user.role === 'Governor') {
-        // On réutilise areaIds
-        const governorRegion = await require('../models').Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-        if (governorRegion) areaWhere.id = { [Op.in]: governorRegion.areas.map(a => a.id) };
+        if (req.user.area_id) {
+          areaWhere.id = req.user.area_id;
+        } else {
+          areaWhere.id = '00000000-0000-0000-0000-000000000000'; // Force vide
+        }
       }
 
       const topZones = await Area.findAll({

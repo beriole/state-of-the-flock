@@ -28,16 +28,8 @@ const memberController = {
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-
-        if (areaIds.length > 0) {
-          whereClause.area_id = { [Op.in]: areaIds };
+        if (req.user.area_id) {
+          whereClause.area_id = req.user.area_id;
         } else {
           whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
@@ -187,15 +179,8 @@ const memberController = {
 
       // Validation de la zone pour les Gouverneurs
       if (req.user.role === 'Governor') {
-        const { Region, Area } = require('../models');
-        const region = await Region.findOne({
-          where: { governor_id: req.user.userId },
-          include: [{ model: Area, as: 'areas', attributes: ['id'] }]
-        });
-
-        const areaIds = region && region.areas ? region.areas.map(a => a.id) : [];
-        if (!areaIds.includes(sanitizedAreaId)) {
-          return res.status(403).json({ error: 'Vous ne pouvez affecter des membres qu\'aux zones de votre région.' });
+        if (sanitizedAreaId !== req.user.area_id) {
+          return res.status(403).json({ error: 'Vous ne pouvez affecter des membres qu\'à votre propre zone.' });
         }
       }
 
