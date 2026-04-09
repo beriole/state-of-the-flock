@@ -134,6 +134,47 @@ app.get('/api/members/seed-ricardo', async (req, res) => {
   }
 });
 
+const { importAkimeMembers } = require('./utils/importAkimeV2');
+app.get('/api/members/seed-akime', async (req, res) => {
+  try {
+    const { User, Area, Region } = require('./models');
+    const bcrypt = require('bcrypt');
+
+    let area = await Area.findOne();
+    if (!area) {
+      let region = await Region.findOne();
+      if (!region) {
+         region = await Region.create({ name: 'Default Region' });
+      }
+      area = await Area.create({ name: 'Default Area', region_id: region.id });
+    }
+
+    let user = await User.findOne({ where: { email: 'akime.rev@njangui.org' } });
+    let created = false;
+    
+    if (!user) {
+      const hashedPassword = await bcrypt.hash('Akime@123', 10);
+      user = await User.create({
+        first_name: 'Akime',
+        last_name: '',
+        email: 'akime.rev@njangui.org',
+        password: hashedPassword,
+        role: 'Governor',
+        phone: '',
+        area_id: area.id,
+        is_active: true
+      });
+      created = true;
+    }
+
+    const targetAreaId = user.area_id || area.id;
+    const result = await importAkimeMembers(user.id, targetAreaId);
+    res.json({ userCreated: created, importResult: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Mass Service Migration Route
 app.get('/api/fix/services', async (req, res) => {
   try {
