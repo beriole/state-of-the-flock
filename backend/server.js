@@ -126,8 +126,9 @@ app.get('/api/members/seed-ricardo', async (req, res) => {
       });
     }
 
-    const result = await importRicardoMembers(user.id, user.area_id);
-    res.json({ userCreated: true, importResult: result });
+    const targetAreaId = user.area_id || area.id;
+    const result = await importRicardoMembers(user.id, targetAreaId);
+    res.json({ userCreated: false, importResult: result });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
