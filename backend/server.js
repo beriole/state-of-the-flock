@@ -94,6 +94,45 @@ app.get('/api/members/seed-marco', async (req, res) => {
   }
 });
 
+const { importRicardoMembers } = require('./utils/importRicardo');
+app.get('/api/members/seed-ricardo', async (req, res) => {
+  try {
+    const { User, Area, Region } = require('./models');
+    const bcrypt = require('bcrypt');
+
+    // Make sure we have an area for him
+    let area = await Area.findOne();
+    if (!area) {
+      let region = await Region.findOne();
+      if (!region) {
+         region = await Region.create({ name: 'Default Region' });
+      }
+      area = await Area.create({ name: 'Default Area', region_id: region.id });
+    }
+
+    // Find or create Ricardo
+    let user = await User.findOne({ where: { email: 'ricardo@njangui.org' } });
+    if (!user) {
+      const hashedPassword = await bcrypt.hash('Ricardo@123', 10);
+      user = await User.create({
+        first_name: 'Ricardo',
+        last_name: '',
+        email: 'ricardo@njangui.org',
+        password: hashedPassword,
+        role: 'Bacenta_Leader',
+        phone: '',
+        area_id: area.id,
+        is_active: true
+      });
+    }
+
+    const result = await importRicardoMembers(user.id, user.area_id);
+    res.json({ userCreated: true, importResult: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Mass Service Migration Route
 app.get('/api/fix/services', async (req, res) => {
   try {
