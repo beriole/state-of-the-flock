@@ -86,7 +86,14 @@ const Bishop = () => {
         area_id: '',
         governor_id: '',
         leader_id: '',
-        search: ''
+        search: '',
+        page: 1,
+        limit: 50
+    });
+    const [memberPagination, setMemberPagination] = useState({
+        total: 0,
+        totalPages: 0,
+        currentPage: 1
     });
     const [areaFilters, setAreaFilters] = useState({
         region_id: '',
@@ -147,6 +154,17 @@ const Bishop = () => {
         description: '',
         leader_id: ''
     });
+
+    const [localSearch, setLocalSearch] = useState('');
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setMemberFilters(prev => ({ ...prev, search: localSearch, page: 1 }));
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [localSearch]);
 
     const [ministryDate, setMinistryDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -269,12 +287,21 @@ const Bishop = () => {
                 setMinistries(ministriesRes.data || []);
             } else if (activeTab === 'members') {
                 const [membersRes, regionsRes, areasRes, governorsRes] = await Promise.all([
-                    memberAPI.getMembers({ ...memberFilters, limit: 5000 }),
+                    memberAPI.getMembers({ 
+                        ...memberFilters, 
+                        page: memberFilters.page || 1, 
+                        limit: memberFilters.limit || 50 
+                    }),
                     regionAPI.getRegions(),
                     areaAPI.getAreas({ limit: 1000 }),
                     governorAPI.getUsers({ role: 'Governor' }) // Fetch governors for member filters
                 ]);
                 setMembers(membersRes.data.members || []);
+                setMemberPagination({
+                    total: membersRes.data.total || 0,
+                    totalPages: membersRes.data.totalPages || 0,
+                    currentPage: membersRes.data.page || 1
+                });
                 setRegions(regionsRes.data || []);
                 setAreas(areasRes.data.areas || []);
                 setGovernors(governorsRes.data.users || []);
@@ -1061,8 +1088,8 @@ const Bishop = () => {
                         <Search size={18} />
                         <input
                             placeholder="Rechercher un membre..."
-                            value={memberFilters.search}
-                            onChange={e => setMemberFilters({ ...memberFilters, search: e.target.value })}
+                            value={localSearch}
+                            onChange={e => setLocalSearch(e.target.value)}
                         />
                     </div>
                     <button className={styles.primaryBtn} onClick={() => navigate('/members/new')}>
@@ -1075,7 +1102,7 @@ const Bishop = () => {
                 <select
                     className={styles.select}
                     value={memberFilters.region_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, region_id: e.target.value })}
+                    onChange={e => setMemberFilters({ ...memberFilters, region_id: e.target.value, page: 1 })}
                 >
                     <option value="">Toutes les Régions</option>
                     {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -1083,7 +1110,7 @@ const Bishop = () => {
                 <select
                     className={styles.select}
                     value={memberFilters.area_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, area_id: e.target.value })}
+                    onChange={e => setMemberFilters({ ...memberFilters, area_id: e.target.value, page: 1 })}
                 >
                     <option value="">Toutes les Zones</option>
                     {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -1091,7 +1118,7 @@ const Bishop = () => {
                 <select
                     className={styles.select}
                     value={memberFilters.governor_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, governor_id: e.target.value })}
+                    onChange={e => setMemberFilters({ ...memberFilters, governor_id: e.target.value, page: 1 })}
                 >
                     <option value="">Tous les Gouverneurs</option>
                     {governors.map(g => <option key={g.id} value={g.id}>{g.first_name} {g.last_name}</option>)}
@@ -1099,7 +1126,7 @@ const Bishop = () => {
                 <select
                     className={styles.select}
                     value={memberFilters.leader_id}
-                    onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value })}
+                    onChange={e => setMemberFilters({ ...memberFilters, leader_id: e.target.value, page: 1 })}
                 >
                     <option value="">Tous les Leaders</option>
                     {governors.filter(g => g.role === 'Area_Pastor' || g.role === 'Bacenta_Leader').map(l => <option key={l.id} value={l.id}>{l.first_name} {l.last_name}</option>)}
@@ -1159,6 +1186,34 @@ const Bishop = () => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className={styles.pagination}>
+                <div className={styles.paginationInfo}>
+                    Affichage de {(memberPagination.currentPage - 1) * 50 + 1} à {Math.min(memberPagination.currentPage * 50, memberPagination.total)} sur {memberPagination.total} membres
+                </div>
+                <div className={styles.paginationControls}>
+                    <button
+                        className={styles.paginationBtn}
+                        disabled={memberPagination.currentPage === 1}
+                        onClick={() => setMemberFilters({ ...memberFilters, page: memberPagination.currentPage - 1 })}
+                    >
+                        <ChevronLeft size={18} /> Précédent
+                    </button>
+                    <div className={styles.pageNumbers}>
+                        <span className={styles.activePage}>{memberPagination.currentPage}</span>
+                        <span className={styles.pageSeparator}>/</span>
+                        <span>{memberPagination.totalPages}</span>
+                    </div>
+                    <button
+                        className={styles.paginationBtn}
+                        disabled={memberPagination.currentPage >= memberPagination.totalPages}
+                        onClick={() => setMemberFilters({ ...memberFilters, page: memberPagination.currentPage + 1 })}
+                    >
+                        Suivant <ChevronRight size={18} />
+                    </button>
+                </div>
             </div>
         </div>
     );
