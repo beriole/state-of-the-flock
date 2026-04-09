@@ -260,6 +260,10 @@ const MemberDetail = () => {
                                 <span className={styles.infoValue}>{member.area?.name || 'N/A'}</span>
                             </div>
                             <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Culte (Service)</span>
+                                <span className={styles.infoValue}>{member.service_type || 'L\' Expérience Service'}</span>
+                            </div>
+                            <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Berger</span>
                                 <span className={styles.infoValue}>{member.leader ? `${member.leader.first_name} ${member.leader.last_name}` : 'N/A'}</span>
                             </div>

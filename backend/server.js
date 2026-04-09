@@ -94,6 +94,46 @@ app.get('/api/members/seed-marco', async (req, res) => {
   }
 });
 
+// Mass Service Migration Route
+app.get('/api/fix/services', async (req, res) => {
+  try {
+    const { User, Member } = require('./models');
+    
+    // 1. Update all members to the default service (if not already set correctly)
+    const result1 = await Member.update(
+      { service_type: 'L\' Expérience Service' },
+      { where: { service_type: null } }
+    );
+    // Let's also ensure those that might be empty are set correctly
+    await Member.update(
+      { service_type: 'L\' Expérience Service' },
+      { where: { service_type: '' } }
+    );
+
+    // 2. Find Dexter's User ID
+    const dexterUser = await User.findOne({ where: { email: 'dexter.ps@njangui.org' } });
+    let dexterUpdates = 0;
+    
+    // 3. If Dexter exists, update his members to FLES
+    if (dexterUser) {
+      const dbResult = await Member.update(
+        { service_type: 'FLES' },
+        { where: { leader_id: dexterUser.id } }
+      );
+      dexterUpdates = dbResult[0] || 0; // dbResult[0] contains the number of affected rows
+    }
+
+    res.json({
+      message: 'Migration des services terminée',
+      global_updates_count: result1[0] || 0,
+      dexter_fles_updates_count: dexterUpdates
+    });
+  } catch (error) {
+    console.error('Migration des services erreur:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

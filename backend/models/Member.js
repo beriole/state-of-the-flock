@@ -36,6 +36,10 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('Sheep', 'Goat', 'Deer'),
       defaultValue: 'Sheep'
     },
+    service_type: {
+      type: DataTypes.STRING,
+      defaultValue: 'L\' Expérience Service'
+    },
     area_id: {
       type: DataTypes.UUID,
       allowNull: false,

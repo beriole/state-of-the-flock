@@ -27,6 +27,7 @@ const MemberForm = () => {
         phone_secondary: '',
         // Champs par défaut ou cachés
         state: 'Sheep',
+        service_type: 'L\' Expérience Service',
         is_active: true,
         ministry_id: '',
         area_id: user?.area_id || '',
@@ -255,6 +256,22 @@ const MemberForm = () => {
                                 <option value="M">Homme</option>
                                 <option value="F">Femme</option>
                                 <option value="Unknown">Non précisé</option>
+                            </select>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Culte (Service)</label>
+                            <select
+                                name="service_type"
+                                value={formData.service_type || 'L\' Expérience Service'}
+                                onChange={handleChange}
+                                className={styles.select}
+                            >
+                                <option value="JES">JES — Jesus Encounter Service</option>
+                                <option value="GES">GES — Gospel Encounter</option>
+                                <option value="FLES">FLES — First Love Encounter Service</option>
+                                <option value="FES">FES — Faith Encounter Service</option>
+                                <option value="L' Expérience Service">L' Expérience Service</option>
                             </select>
                         </div>
 

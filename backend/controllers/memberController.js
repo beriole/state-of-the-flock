@@ -150,7 +150,8 @@ const memberController = {
         ministry,
         ministry_id,
         profession,
-        notes
+        notes,
+        service_type
       } = req.body;
 
       if (!first_name || !last_name || !leader_id) {
@@ -198,6 +199,7 @@ const memberController = {
         ministry_id: sanitizedMinistryId,
         profession,
         notes,
+        service_type: service_type || 'L\' Expérience Service',
         is_active: true
       });
 
