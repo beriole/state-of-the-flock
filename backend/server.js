@@ -285,6 +285,53 @@ app.get('/api/members/seed-rosa', async (req, res) => {
   }
 });
 
+const { importDexterV2Members } = require('./utils/importDexterV2');
+app.get('/api/members/seed-dexter-v2', async (req, res) => {
+  try {
+    const { User, Area, Region } = require('./models');
+    const bcrypt = require('bcrypt');
+
+    let area = await Area.findOne();
+    if (!area) {
+      let region = await Region.findOne();
+      if (!region) {
+         region = await Region.create({ name: 'Default Region' });
+      }
+      area = await Area.create({ name: 'Default Area', region_id: region.id });
+    }
+
+    let user = await User.findOne({ where: { email: 'dexter.ps@njangui.org' } });
+    let created = false;
+    
+    if (!user) {
+      const hashedPassword = await bcrypt.hash('Dexter@123', 10);
+      user = await User.create({
+        first_name: 'Dexter',
+        last_name: 'Leader',
+        email: 'dexter.ps@njangui.org',
+        password: hashedPassword,
+        role: 'Governor',
+        phone: '',
+        area_id: area.id,
+        is_active: true
+      });
+      created = true;
+    }
+
+    const targetAreaId = user.area_id || area.id;
+    
+    // Sync the area_id to avoid 0-members glitch
+    if (!user.area_id || user.area_id !== targetAreaId) {
+      await user.update({ area_id: targetAreaId });
+    }
+
+    const result = await importDexterV2Members(user.id, targetAreaId);
+    res.json({ userCreated: created, forcedAreaSync: true, importResult: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Mass Service Migration Route
 app.get('/api/fix/services', async (req, res) => {
   try {
