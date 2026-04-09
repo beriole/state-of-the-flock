@@ -115,6 +115,48 @@ app.get('/api/fix/leader-areas', async (req, res) => {
   }
 });
 
+app.get('/api/fix/ricardo-exact', async (req, res) => {
+  try {
+    const { User, Region, Area, Member } = require('./models');
+    
+    // Ensure Region "Area 2" exists
+    let region = await Region.findOne({ where: { name: 'Area 2' } });
+    if (!region) {
+      region = await Region.create({ name: 'Area 2' });
+    }
+
+    // Ensure Area "General" exists under "Area 2"
+    let area = await Area.findOne({ where: { name: 'General', region_id: region.id } });
+    if (!area) {
+      area = await Area.create({ name: 'General', region_id: region.id });
+    }
+
+    // Update Ricardo
+    const ricardo = await User.findOne({ where: { email: 'ricardo@njangui.org' } });
+    if (ricardo) {
+      await ricardo.update({
+        first_name: 'Ricardo',
+        last_name: 'Leader', // using exact data from user
+        phone: '680445566',
+        area_id: area.id,
+        role: 'Governor'
+      });
+
+      // Move his members to the right Area
+      const updatedMembers = await Member.update(
+        { area_id: area.id },
+        { where: { leader_id: ricardo.id } }
+      );
+
+      res.json({ message: "Ricardo & members fully migrated to Area 2 / General", membersMoved: updatedMembers[0] });
+    } else {
+      res.status(404).json({ error: "Ricardo not found" });
+    }
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const { importRicardoMembers } = require('./utils/importRicardo');
 app.get('/api/members/seed-ricardo', async (req, res) => {
   try {
