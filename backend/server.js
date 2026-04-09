@@ -94,6 +94,27 @@ app.get('/api/members/seed-marco', async (req, res) => {
   }
 });
 
+app.get('/api/fix/leader-areas', async (req, res) => {
+  try {
+    const { User, Member } = require('./models');
+    // Find all users who are leaders/governors but have NO area_id
+    const usersWithoutArea = await User.findAll({ where: { area_id: null } });
+    let fixedCount = 0;
+    
+    for (let u of usersWithoutArea) {
+      // Check if they have members
+      const member = await Member.findOne({ where: { leader_id: u.id } });
+      if (member && member.area_id) {
+        await u.update({ area_id: member.area_id });
+        fixedCount++;
+      }
+    }
+    res.json({ message: "Area fix applied successfully", fixedCount });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const { importRicardoMembers } = require('./utils/importRicardo');
 app.get('/api/members/seed-ricardo', async (req, res) => {
   try {
