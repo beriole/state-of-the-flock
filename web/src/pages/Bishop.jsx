@@ -27,6 +27,7 @@ import {
     CheckCircle,
     X,
     ChevronRight,
+    ChevronLeft,
     Library,
     Shield,
     Globe,
@@ -296,15 +297,21 @@ const Bishop = () => {
                     areaAPI.getAreas({ limit: 1000 }),
                     governorAPI.getUsers({ role: 'Governor' }) // Fetch governors for member filters
                 ]);
-                setMembers(membersRes.data.members || []);
+                // Defensive check for API results
+                const membersData = membersRes?.data?.members || [];
+                const total = membersRes?.data?.total || 0;
+                const totalPages = membersRes?.data?.totalPages || 0;
+                const currentPage = membersRes?.data?.page || 1;
+
+                setMembers(Array.isArray(membersData) ? membersData : []);
                 setMemberPagination({
-                    total: membersRes.data.total || 0,
-                    totalPages: membersRes.data.totalPages || 0,
-                    currentPage: membersRes.data.page || 1
+                    total: total,
+                    totalPages: totalPages,
+                    currentPage: currentPage
                 });
-                setRegions(regionsRes.data || []);
-                setAreas(areasRes.data.areas || []);
-                setGovernors(governorsRes.data.users || []);
+                setRegions(regionsRes?.data || []);
+                setAreas(areasRes?.data?.areas || []);
+                setGovernors(governorsRes?.data?.users || []);
             } else if (activeTab === 'bacenta') {
                 const meetingsRes = await bacentaAPI.getMeetings({ limit: 50 });
                 setBacentaMeetings(meetingsRes.data.meetings || []);
@@ -1189,32 +1196,34 @@ const Bishop = () => {
             </div>
 
             {/* Pagination Controls */}
-            <div className={styles.pagination}>
-                <div className={styles.paginationInfo}>
-                    Affichage de {(memberPagination.currentPage - 1) * 50 + 1} à {Math.min(memberPagination.currentPage * 50, memberPagination.total)} sur {memberPagination.total} membres
-                </div>
-                <div className={styles.paginationControls}>
-                    <button
-                        className={styles.paginationBtn}
-                        disabled={memberPagination.currentPage === 1}
-                        onClick={() => setMemberFilters({ ...memberFilters, page: memberPagination.currentPage - 1 })}
-                    >
-                        <ChevronLeft size={18} /> Précédent
-                    </button>
-                    <div className={styles.pageNumbers}>
-                        <span className={styles.activePage}>{memberPagination.currentPage}</span>
-                        <span className={styles.pageSeparator}>/</span>
-                        <span>{memberPagination.totalPages}</span>
+            {memberPagination?.total > 0 && (
+                <div className={styles.pagination}>
+                    <div className={styles.paginationInfo}>
+                        Affichage de {((memberPagination?.currentPage || 1) - 1) * 50 + 1} à {Math.min((memberPagination?.currentPage || 1) * 50, memberPagination?.total || 0)} sur {memberPagination?.total || 0} membres
                     </div>
-                    <button
-                        className={styles.paginationBtn}
-                        disabled={memberPagination.currentPage >= memberPagination.totalPages}
-                        onClick={() => setMemberFilters({ ...memberFilters, page: memberPagination.currentPage + 1 })}
-                    >
-                        Suivant <ChevronRight size={18} />
-                    </button>
+                    <div className={styles.paginationControls}>
+                        <button
+                            className={styles.paginationBtn}
+                            disabled={(memberPagination?.currentPage || 1) === 1}
+                            onClick={() => setMemberFilters(prev => ({ ...prev, page: (memberPagination?.currentPage || 1) - 1 }))}
+                        >
+                            <ChevronLeft size={18} /> Précédent
+                        </button>
+                        <div className={styles.pageNumbers}>
+                            <span className={styles.activePage}>{memberPagination?.currentPage || 1}</span>
+                            <span className={styles.pageSeparator}>/</span>
+                            <span>{memberPagination?.totalPages || 1}</span>
+                        </div>
+                        <button
+                            className={styles.paginationBtn}
+                            disabled={(memberPagination?.currentPage || 1) >= (memberPagination?.totalPages || 1)}
+                            onClick={() => setMemberFilters(prev => ({ ...prev, page: (memberPagination?.currentPage || 1) + 1 }))}
+                        >
+                            Suivant <ChevronRight size={18} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 
