@@ -1,65 +1,41 @@
 const { Member, User } = require('../models');
 
+// Extracted from the provided list
 const membersData = [
-  { first_name: 'LP Frantz Babila', phone: '' },
-  { first_name: 'Cisse Dialo', phone: '' },
-  { first_name: 'Annie Ebale', phone: '698242882' },
-  { first_name: 'Margret Ayuk', phone: '675721101' },
-  { first_name: 'Matile Mbida', phone: '' },
-  { first_name: 'James Harold', phone: '' },
-  { first_name: 'Corinna Harold', phone: '' },
-  { first_name: 'Angi ft', phone: '695721101' },
-  { first_name: 'Arisida', phone: '' },
-  { first_name: 'Marco Devala', phone: '681534220' },
-  { first_name: 'Mama Theresse', phone: '' },
-  { first_name: 'Mme Harold', phone: '' },
-  { first_name: 'Scholastique', phone: '' },
-  { first_name: 'Nji', phone: '698242882' },
-  { first_name: 'Christian', phone: '695721101' },
-  { first_name: 'Danila', phone: '' },
-  { first_name: 'Junior', phone: '681170037' },
-  { first_name: 'Mme Nicholas', phone: '677017442' },
-  { first_name: 'Mélanie', phone: '651634812' },
-  { first_name: 'Melissa', phone: '651478712' },
-  { first_name: 'Benjamne', phone: '677017442' },
-  { first_name: 'Marcel', phone: '651117417' },
-  { first_name: 'Bertile', phone: '671412807' },
-  { first_name: 'Rhoda', phone: '695022131' },
-  { first_name: 'Christine', phone: '651154271' },
-  { first_name: 'Marly', phone: '671158276' },
-  { first_name: 'Franck', phone: '651132204' },
-  { first_name: 'Pierre', phone: '654271101' },
-  { first_name: 'Pauline', phone: '671233452' },
-  { first_name: 'Leocadie', phone: '653517411' },
-  { first_name: 'Chantal', phone: '656154625' },
-  { first_name: 'Emma', phone: '691717311' },
-  { first_name: 'Michel', phone: '670451883' },
-  { first_name: 'Mireille', phone: '681534220' },
-  { first_name: 'Priscille', phone: '651214434' },
-  { first_name: 'Patience', phone: '677017112' },
-  { first_name: 'Anyi', phone: '651132204' },
-  { first_name: 'Suzy', phone: '674227380' },
-  { first_name: 'Atena', phone: '671253452' },
-  { first_name: 'Tsibal Valery', phone: '691034442' },
-  { first_name: 'Melissa 2', phone: '654271101' },
-  { first_name: 'Paule', phone: '653517417' },
-  { first_name: 'Alida', phone: '695022143' },
-  { first_name: 'Giles', phone: '651214434' },
-  { first_name: 'Ngwa', phone: '677017112' },
-  { first_name: 'Fongang', phone: '651132204' },
-  { first_name: 'Blessing', phone: '674227380' },
-  { first_name: 'Favour', phone: '671007710' },
-  { first_name: 'Rachel', phone: '651145457' },
-  { first_name: 'Chidou', phone: '699745312' },
-  { first_name: 'Cecile', phone: '671253452' },
-  { first_name: 'Noe', phone: '653517417' },
-  { first_name: 'Sandra', phone: '677017112' },
-  { first_name: 'Benila', phone: '671412804' },
-  { first_name: 'Bil Ghislain', phone: '652434551' },
-  { first_name: 'Njume', phone: '681283620' },
-  { first_name: 'Mme Harold 2', phone: '670451883' },
-  { first_name: 'Hubre', phone: '681534220' },
-  { first_name: 'Marco Devala 2', phone: '681534220' }
+  { first_name: 'Prisca', phone: '651239556' },
+  { first_name: 'Mama Victorine', phone: '' },
+  { first_name: 'Clariss', phone: '671141753' },
+  { first_name: 'Odilia', phone: '670678604' },
+  { first_name: 'Cliford', phone: '653915858' },
+  { first_name: 'Favour', phone: '' },
+  { first_name: 'Sandrine', phone: '' },
+  { first_name: 'Grace', phone: '672327399' },
+  { first_name: 'Mama Emerencia', phone: '' },
+  { first_name: 'Lydie', phone: '' },
+  { first_name: 'Nadesh', phone: '679267154' },
+  { first_name: 'Emmanuel', phone: '' },
+  { first_name: 'Chantal', phone: '' },
+  { first_name: 'Mama Marie', phone: '' },
+  { first_name: 'Evrad', phone: '681577741' },
+  { first_name: 'Bena', phone: '' },
+  { first_name: 'Prince', phone: '' },
+  { first_name: 'Lovinnes', phone: '' },
+  { first_name: 'Mme Folefack', phone: '' },
+  { first_name: 'Alvine', phone: '671408803' },
+  { first_name: 'Marie', phone: '678311400' },
+  { first_name: 'Elvira', phone: '' },
+  { first_name: 'Hortense', phone: '672439977' },
+  { first_name: 'Serge', phone: '656722880' },
+  { first_name: 'Abigail', phone: '654228990' },
+  { first_name: 'Joel', phone: '694332211' },
+  { first_name: 'Pascaline', phone: '691234455' },
+  { first_name: 'Mado', phone: '678990011' },
+  { first_name: 'Estella', phone: '' },
+  { first_name: 'Mme Akono', phone: '' },
+  { first_name: 'Rose', phone: '' },
+  { first_name: 'Roseline', phone: '' },
+  { first_name: 'Krys', phone: '' },
+  { first_name: 'Mama Caro', phone: '' }
 ];
 
 async function importSamuelJESMembers(samuelId, areaId) {
@@ -84,6 +60,7 @@ async function importSamuelJESMembers(samuelId, areaId) {
       });
 
       if (existingMember) {
+        // We update the service type to JES as requested and prevent duplicates
         await existingMember.update({ service_type: 'JES' });
         updated++;
       } else {
@@ -108,7 +85,7 @@ async function importSamuelJESMembers(samuelId, areaId) {
     }
   }
 
-  // Force all existing members of this leader to JES
+  // Force all existing members of this leader to JES if they weren't already
   await Member.update(
     { service_type: 'JES' },
     { where: { leader_id: samuelId } }
