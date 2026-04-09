@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import {
     governorAPI,
     areaAPI,
@@ -29,6 +29,7 @@ import {
     CheckCircle,
     X,
     ChevronRight,
+    ChevronDown,
     ChevronLeft,
     Library,
     Shield,
@@ -117,6 +118,7 @@ const Bishop = () => {
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
+    const [expandedAreaId, setExpandedAreaId] = useState(null);
 
     const [showBacentaModal, setShowBacentaModal] = useState(false);
     const [selectedBacentaMeeting, setSelectedBacentaMeeting] = useState(null);
@@ -1334,7 +1336,7 @@ const Bishop = () => {
         doc.setFontSize(10);
         doc.text(`Période : ${reportDateRange.startDate || 'Debut'} au ${reportDateRange.endDate || 'Aujourd\'hui'}`, 14, 40);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: 45,
             head: head,
             body: body,
@@ -1451,11 +1453,36 @@ const Bishop = () => {
                                 </thead>
                                 <tbody>
                                     {reportData.by_area?.map((item, idx) => item && (
-                                        <tr key={idx} className={styles.tr}>
-                                            <td className={styles.td}>{item.name || 'Zone'}</td>
-                                            <td className={styles.td}>{item.percentage}%</td>
-                                            <td className={styles.td}>{item.present} / {item.total}</td>
-                                        </tr>
+                                        <React.Fragment key={idx}>
+                                            <tr className={styles.tr} onClick={() => setExpandedAreaId(expandedAreaId === item.id ? null : item.id)} style={{ cursor: 'pointer' }}>
+                                                <td className={styles.td}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        {expandedAreaId === item.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                        {item.name || 'Zone'}
+                                                    </div>
+                                                </td>
+                                                <td className={styles.td}>{item.percentage}%</td>
+                                                <td className={styles.td}>{item.present} / {item.total}</td>
+                                            </tr>
+                                            {expandedAreaId === item.id && (
+                                                <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
+                                                    <td colSpan="3" style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <div style={{ fontSize: '0.9rem' }}>
+                                                            <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#e11d48' }}>Membres Présents :</strong>
+                                                            {item.present_members && item.present_members.length > 0 ? (
+                                                                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.3rem' }}>
+                                                                    {item.present_members.map(m => (
+                                                                        <li key={m.id} style={{ color: '#cbd5e1' }}>{m.first_name} {m.last_name || ''}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <span style={{ color: '#64748b' }}>Aucun membre répertorié.</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>

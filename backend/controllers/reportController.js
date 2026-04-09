@@ -113,7 +113,7 @@ const reportController = {
             include: [{
               model: Member,
               as: 'member',
-              attributes: ['area_id'],
+              attributes: ['id', 'first_name', 'last_name', 'area_id'],
               where: memberWhereClause
             }],
             raw: true
@@ -122,9 +122,20 @@ const reportController = {
           const areaAttendanceStats = Object.values(allAttendancesForAreas.reduce((acc, curr) => {
             const areaId = curr['member.area_id'] || curr.area_id; // Support different raw:true alias formats
             if (!areaId) return acc;
-            if (!acc[areaId]) acc[areaId] = { area_id: areaId, total_records: 0, total_present: 0 };
+            if (!acc[areaId]) acc[areaId] = { area_id: areaId, total_records: 0, total_present: 0, present_members_map: {} };
+            
             acc[areaId].total_records += 1;
-            if (curr.present) acc[areaId].total_present += 1;
+            if (curr.present) {
+               acc[areaId].total_present += 1;
+               const memId = curr['member.id'] || curr.member_id || curr.id;
+               if (memId && !acc[areaId].present_members_map[memId]) {
+                 acc[areaId].present_members_map[memId] = {
+                   id: memId,
+                   first_name: curr['member.first_name'] || curr.first_name || 'Inconnu',
+                   last_name: curr['member.last_name'] || curr.last_name || ''
+                 };
+               }
+            }
             return acc;
           }, {}));
 
@@ -149,11 +160,13 @@ const reportController = {
             const totalPresent = parseInt(attendanceStat?.total_present || 0);
 
             return {
+              id: a.id,
               name: a.name,
               total: totalMembers,
               records: totalRecords,
               present: totalPresent,
-              percentage: totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0
+              percentage: totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0,
+              present_members: Object.values(attendanceStat?.present_members_map || {})
             };
           }).filter(a => a.total > 0); // Only show areas with members
         })(),
