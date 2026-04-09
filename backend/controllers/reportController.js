@@ -57,7 +57,7 @@ const reportController = {
           as: 'leader',
           attributes: ['id', 'first_name', 'last_name']
         }],
-        group: ['Member.leader_id'],
+        group: ['Member.leader_id', 'leader.id', 'leader.first_name', 'leader.last_name'],
         raw: true
       });
 
