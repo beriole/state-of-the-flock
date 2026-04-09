@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import {
     governorAPI,
     areaAPI,
@@ -45,7 +47,8 @@ import {
     ArrowLeft,
     ClipboardCheck,
     HomeIcon,
-    LogIn
+    LogIn,
+    Download
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -1281,6 +1284,68 @@ const Bishop = () => {
         </div>
     );
 
+    const exportPDF = (type) => {
+        if (!reportData) return;
+        const doc = new jsPDF();
+        let title = "Rapport";
+        let head = [];
+        let body = [];
+
+        if (type === 'presence') {
+            title = "Rapport de Présence Globale";
+            head = [['Zone', 'Taux de Présence', 'Membres Présents']];
+            body = reportData.by_area?.map(item => [
+                item.name || 'Zone',
+                `${item.percentage}%`,
+                `${item.present} / ${item.total}`
+            ]) || [];
+        } else if (type === 'offerings') {
+            title = "Rapport d'Offrandes et Finances";
+            head = [['Zone', 'Total Offrandes', 'Nombre de Réunions']];
+            body = reportData.by_zone?.map(item => [
+                item.name || 'Zone',
+                `${(item.total || 0).toLocaleString()} CFA`,
+                item.meeting_count
+            ]) || [];
+        } else if (type === 'calls') {
+            title = "Rapport d'Appels";
+            head = [['Membre', 'Date', 'Type', 'Statut']];
+            const logsArray = Array.isArray(reportData) ? reportData : (reportData.data || reportData.logs || []);
+            body = logsArray.map(log => [
+                log.member ? `${log.member.first_name || ''} ${log.member.last_name || ''}` : 'Membre inconnu',
+                new Date(log.call_date || log.created_at).toLocaleDateString(),
+                log.contact_method || 'Phone',
+                log.outcome || ''
+            ]);
+        } else if (type === 'growth') {
+            title = "Rapport de Croissance";
+            head = [['Date', 'Total Membres']];
+            body = reportData.history?.map(hist => [
+                hist.date,
+                hist.count
+            ]) || [];
+        }
+
+        doc.setFontSize(18);
+        doc.text("State of the Flock", 14, 22);
+        doc.setFontSize(14);
+        doc.setTextColor(100);
+        doc.text(title, 14, 32);
+        doc.setFontSize(10);
+        doc.text(`Période : ${reportDateRange.startDate || 'Debut'} au ${reportDateRange.endDate || 'Aujourd\'hui'}`, 14, 40);
+
+        doc.autoTable({
+            startY: 45,
+            head: head,
+            body: body,
+            theme: 'grid',
+            headStyles: { fillColor: [225, 29, 72], textColor: 255 }, // Red color to match branding
+            styles: { fontSize: 10, cellPadding: 5 }
+        });
+
+        doc.save(`${title.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const renderReportDetail = () => (
         <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -1319,6 +1384,15 @@ const Bishop = () => {
                     >
                         Filtrer
                     </button>
+                    {reportData && (
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={() => exportPDF(selectedReport)}
+                            style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', backgroundColor: '#e11d48', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                            <Download size={16} /> Exporter PDF
+                        </button>
+                    )}
                 </div>
             </div>
 
