@@ -62,26 +62,19 @@ const reportController = {
       });
 
       // Statistiques de présence
-      const attendanceStats = await Attendance.findAll({
+      const totalRecords = await Attendance.count({
         where: whereClause,
-        attributes: [
-          [Attendance.sequelize.fn('COUNT', Attendance.sequelize.col('id')), 'total_records'],
-          [Attendance.sequelize.fn('SUM', Attendance.sequelize.col('present')), 'total_present']
-        ],
-        include: [{
-          model: Member,
-          as: 'member',
-          where: memberWhereClause,
-          attributes: []
-        }],
-        raw: true
+        include: [{ model: Member, as: 'member', where: memberWhereClause, attributes: [] }]
+      });
+
+      const totalPresent = await Attendance.count({
+        where: { ...whereClause, present: true },
+        include: [{ model: Member, as: 'member', where: memberWhereClause, attributes: [] }]
       });
 
       // Membres avec plus de 2 absences consécutives
       const consecutiveAbsences = []; // Temporairement vide pour éviter les erreurs 500 en attendant un fix SQL
 
-      const totalRecords = parseInt(attendanceStats[0]?.total_records || 0);
-      const totalPresent = parseInt(attendanceStats[0]?.total_present || 0);
       const overallPercentage = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
 
       res.json({
@@ -113,23 +106,27 @@ const reportController = {
             raw: true
           });
 
-          // Optimization: Get attendance stats per area
-          const areaAttendanceStats = await Attendance.findAll({
+          // Optimization: Get attendance stats per area (in JavaScript to bypass strict Postgres GROUP BY rules)
+          const allAttendancesForAreas = await Attendance.findAll({
             where: whereClause,
-            attributes: [
-              [Member.sequelize.col('member.area_id'), 'area_id'],
-              [Attendance.sequelize.fn('COUNT', Attendance.sequelize.col('Attendance.id')), 'total_records'],
-              [Attendance.sequelize.fn('SUM', Attendance.sequelize.col('present')), 'total_present']
-            ],
+            attributes: ['present'],
             include: [{
               model: Member,
               as: 'member',
-              attributes: [],
+              attributes: ['area_id'],
               where: memberWhereClause
             }],
-            group: [Member.sequelize.col('member.area_id')],
             raw: true
           });
+          
+          const areaAttendanceStats = Object.values(allAttendancesForAreas.reduce((acc, curr) => {
+            const areaId = curr['member.area_id'] || curr.area_id; // Support different raw:true alias formats
+            if (!areaId) return acc;
+            if (!acc[areaId]) acc[areaId] = { area_id: areaId, total_records: 0, total_present: 0 };
+            acc[areaId].total_records += 1;
+            if (curr.present) acc[areaId].total_present += 1;
+            return acc;
+          }, {}));
 
           // Fetch area names - restricted to relevant areas for Governor
           const areaQueryWhere = {};
