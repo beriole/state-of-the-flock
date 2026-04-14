@@ -1,5 +1,5 @@
 // controllers/areaController.js
-const { Area, User } = require('../models');
+const { Area, User, Oversee } = require('../models');
 const { Op } = require('sequelize');
 
 const areaController = {
@@ -11,12 +11,19 @@ const areaController = {
       const offset = (page - 1) * limit;
       const whereClause = {};
 
-      // Filtrage strict pour les Gouverneurs (voir uniquement leur propre zone)
+      // Filtrage strict pour les rôles restreints
       if (req.user.role === 'Governor') {
         if (req.user.area_id) {
           whereClause.id = req.user.area_id;
         } else {
           whereClause.id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
+      } else if (req.user.role === 'Overseer') {
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+          whereClause.oversee_id = oversee.id;
+        } else {
+          whereClause.id = '00000000-0000-0000-0000-000000000000';
         }
       }
 

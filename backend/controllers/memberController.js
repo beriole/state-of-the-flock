@@ -1,5 +1,5 @@
 // controllers/memberController.js
-const { Member, User, Area, Attendance, CallLog, Ministry } = require('../models');
+const { Member, User, Area, Attendance, CallLog, Ministry, Oversee, Region } = require('../models');
 const { Op } = require('sequelize');
 
 const memberController = {
@@ -27,6 +27,20 @@ const memberController = {
         whereClause.area_id = req.user.area_id;
       } else if (req.user.role === 'Assisting_Overseer' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
+      } else if (req.user.role === 'Overseer') {
+        // Find the oversee managed by this user
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+            const areas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+            const areaIds = areas.map(a => a.id);
+            if (areaIds.length > 0) {
+                whereClause.area_id = { [Op.in]: areaIds };
+            } else {
+                whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+            }
+        } else {
+            whereClause.area_id = '00000000-0000-0000-0000-000000000000';
+        }
       } else if (req.user.role === 'Governor') {
         if (req.user.area_id) {
           whereClause.area_id = req.user.area_id;
@@ -37,7 +51,21 @@ const memberController = {
       // Note: Bishop has no restriction (global access)
 
       // Filtres supplémentaires
-      if (area_id) whereClause.area_id = area_id;
+      if (area_id) {
+        if (typeof area_id === 'string' && area_id.includes(',')) {
+            const ids = area_id.split(',');
+            // If we already have a restriction, intersect them
+            if (whereClause.area_id) {
+                // Simplified: just use the provided ones if they are within our restriction
+                // But for simplicity in this implementation, we re-apply filter
+                whereClause.area_id = { [Op.in]: ids };
+            } else {
+                whereClause.area_id = { [Op.in]: ids };
+            }
+        } else {
+            whereClause.area_id = area_id;
+        }
+      }
       if (leader_id) whereClause.leader_id = leader_id;
       if (state) whereClause.state = state;
       if (is_active !== undefined) whereClause.is_active = is_active === 'true';

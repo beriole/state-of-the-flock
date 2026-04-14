@@ -1,5 +1,5 @@
 // controllers/dashboardController.js
-const { Area, Region, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, sequelize } = require('../models');
+const { Area, Region, Member, Attendance, User, CallLog, BacentaMeeting, BacentaOffering, BacentaAttendance, Oversee, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 const dashboardController = {
@@ -12,31 +12,28 @@ const dashboardController = {
 
       console.log(`📊 Dashboard request for role: ${userRole}, user: ${userId}`);
 
-      if (role === 'bishop' || role === 'assisting_overseer' || role === 'governor' || role === 'area_pastor') {
+      if (role === 'bishop' || role === 'assisting_overseer' || role === 'governor' || role === 'area_pastor' || role === 'overseer') {
         try {
           let areaIds = null;
-          if (userRole === 'Governor' || userRole === 'Area_Pastor') {
+          if (userRole === 'Governor' || userRole === 'Area_Pastor' || userRole === 'Assisting_Overseer') {
             // Un gouverneur ou Area_Pastor est restreint à sa propre zone (area_id)
             if (req.user.area_id) {
               areaIds = [req.user.area_id];
             } else {
               areaIds = ['00000000-0000-0000-0000-000000000000'];
             }
-          } else if (userRole === 'Assisting_Overseer') {
-            // L'Area_Pastor est restreint à sa propre zone (area_id)
-            if (req.user.area_id) {
-              areaIds = [req.user.area_id];
-            } else {
-              // Si pas de zone assignée, pas de membres (ou tous ? Généralement on restreint)
+          } else if (userRole === 'Overseer') {
+            // Find areas for this overseer's managed regroupment
+            const oversee = await Oversee.findOne({ where: { overseer_id: userId } });
+            if (oversee) {
+              const managedAreas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+              areaIds = managedAreas.map(a => a.id);
+            }
+            if (!areaIds || areaIds.length === 0) {
               areaIds = ['00000000-0000-0000-0000-000000000000'];
             }
-          } else if (userRole === 'Assisting_Overseer') {
-            // L'Assisting_Overseer a souvent accès à une zone spécifique aussi
-            if (req.user.area_id) {
-              areaIds = [req.user.area_id];
-            }
           }
-          // Note: Bishop and Assisting_Overseer (global) leave areaIds as null
+          // Note: Bishop and Assisting_Overseer (global) leave areaIds as null (if not handled above)
 
           // Récupérer le filtre de zone optionnel
           const { area_id } = req.query;
