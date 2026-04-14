@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const overseeController = require('../controllers/overseeController');
-const authMiddleware = require('../middleware/authMiddleware');
-const roleMiddleware = require('../middleware/roleMiddleware');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 // Only Bishop can manage oversees
 router.use(authMiddleware);
-router.use(roleMiddleware('Bishop'));
+const bishopOnly = ['Bishop'];
 
-router.post('/', overseeController.createOversee);
-router.get('/', overseeController.getAllOversees);
-router.put('/:id', overseeController.updateOversee);
-router.delete('/:id', overseeController.deleteOversee);
+router.post('/', requireRole(bishopOnly), overseeController.createOversee);
+router.get('/', requireRole(bishopOnly), overseeController.getAllOversees);
+router.put('/:id', requireRole(bishopOnly), overseeController.updateOversee);
+router.delete('/:id', requireRole(bishopOnly), overseeController.deleteOversee);
 
 module.exports = router;
