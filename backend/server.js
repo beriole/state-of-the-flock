@@ -1019,7 +1019,10 @@ app.use((err, req, res, next) => {
     setupAssociations();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT}`);
-      sequelize.sync({ alter: true }).then(() => console.log('✅ DB Synchronized'));
+      // Force le sync du nouveau modèle Oversee avant le sync global pour éviter les erreurs de relations manquantes sur Postgres
+      sequelize.models.Oversee.sync({ alter: true }).then(() => {
+        return sequelize.sync({ alter: true });
+      }).then(() => console.log('✅ DB Synchronized'));
     });
   } catch (error) {
     console.error('❌ Erreur fatale au démarrage:', error.message);
