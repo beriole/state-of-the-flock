@@ -133,6 +133,7 @@ export const governorAPI = {
     deleteBacentaLeader: (id) => api.delete(`/users/${id}`),
     createUser: (data) => api.post('/users', data),
     updateUser: (id, data) => api.put(`/users/${id}`, data),
+    deleteUser: (id) => api.delete(`/users/${id}`),
     uploadUserPhoto: (id, formData) => api.post(`/users/${id}/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),

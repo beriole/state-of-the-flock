@@ -131,6 +131,7 @@ const Bishop = () => {
     const [showRegionModal, setShowRegionModal] = useState(false);
     const [showAreaModal, setShowAreaModal] = useState(false);
     const [showOverseeModal, setShowOverseeModal] = useState(false);
+    const [showOverseerUserModal, setShowOverseerUserModal] = useState(false);
     const [showMinistryModal, setShowMinistryModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
@@ -163,6 +164,15 @@ const Bishop = () => {
         name: '',
         description: '',
         leader_id: ''
+    });
+
+    const [overseerUserForm, setOverseerUserForm] = useState({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        password: '',
+        role: 'Overseer'
     });
 
     const [overseeForm, setOverseeForm] = useState({
@@ -339,6 +349,9 @@ const Bishop = () => {
                 setRegions(regionsRes.data || []);
                 setAreas(areasRes.data.areas || []);
                 setOverseers(overseersRes.data.users || []);
+            } else if (activeTab === 'overseers_users') {
+                const res = await governorAPI.getUsers({ role: 'Overseer' });
+                setOverseers(res.data.users || []);
             } else if (activeTab === 'bacenta') {
                 const meetingsRes = await bacentaAPI.getMeetings({ limit: 50 });
                 setBacentaMeetings(meetingsRes.data.meetings || []);
@@ -502,6 +515,31 @@ const Bishop = () => {
         setShowOverseeModal(true);
     };
 
+    const openOverseerUserModal = (overseer = null) => {
+        setEditingItem(overseer);
+        setModalError('');
+        if (overseer) {
+            setOverseerUserForm({
+                first_name: overseer.first_name,
+                last_name: overseer.last_name,
+                email: overseer.email,
+                phone: overseer.phone || '',
+                password: '',
+                role: 'Overseer'
+            });
+        } else {
+            setOverseerUserForm({
+                first_name: '',
+                last_name: '',
+                email: '',
+                phone: '',
+                password: '',
+                role: 'Overseer'
+            });
+        }
+        setShowOverseerUserModal(true);
+    };
+
     // --- Save Handlers ---
 
     const handleSaveGovernor = async (e) => {
@@ -627,6 +665,48 @@ const Bishop = () => {
             setModalError(error.response?.data?.error || "Erreur lors de l'enregistrement");
         } finally {
             setModalLoading(false);
+        }
+    };
+
+    const handleSaveOverseerUser = async (e) => {
+        e.preventDefault();
+        setModalLoading(true);
+        setModalError('');
+        try {
+            const userData = {
+                first_name: overseerUserForm.first_name,
+                last_name: overseerUserForm.last_name,
+                email: overseerUserForm.email,
+                phone: overseerUserForm.phone,
+                role: 'Overseer'
+            };
+
+            if (!editingItem && overseerUserForm.password) {
+                userData.password = overseerUserForm.password;
+            }
+
+            if (editingItem) {
+                await governorAPI.updateUser(editingItem.id, userData);
+            } else {
+                await governorAPI.createUser(userData);
+            }
+
+            setShowOverseerUserModal(false);
+            fetchData();
+        } catch (error) {
+            setModalError(error.response?.data?.error || "Erreur lors de l'enregistrement");
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleDeleteOverseerUser = async (id) => {
+        if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet Overseer ?")) return;
+        try {
+            await governorAPI.deleteUser(id);
+            fetchData();
+        } catch (error) {
+            alert("Erreur lors de la suppression");
         }
     };
 
@@ -833,6 +913,68 @@ const Bishop = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+
+    const renderOverseerUsers = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Gestion des Responsables (Overseers)</h2>
+                <button className={styles.primaryBtn} onClick={() => openOverseerUserModal()}>
+                    <Plus size={20} /> Nouvel Overseer
+                </button>
+            </div>
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Nom</th>
+                            <th className={styles.th}>Email</th>
+                            <th className={styles.th}>Téléphone</th>
+                            <th className={styles.th}>Oversee Assigné</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {overseers.map(ov => {
+                            const managedOversee = oversees.find(o => o.overseer_id === ov.id);
+                            return (
+                                <tr key={ov.id} className={styles.tr}>
+                                    <td className={styles.td}>
+                                        <div className={styles.userCell}>
+                                            <div className={styles.avatar}>
+                                                {ov.first_name[0]}{ov.last_name[0]}
+                                            </div>
+                                            <span className={styles.userName}>{ov.first_name} {ov.last_name}</span>
+                                        </div>
+                                    </td>
+                                    <td className={styles.td}>{ov.email}</td>
+                                    <td className={styles.td}>{ov.phone || '-'}</td>
+                                    <td className={styles.td}>{managedOversee?.name || '-'}</td>
+                                    <td className={styles.td} style={{ textAlign: 'right' }}>
+                                        <div className={styles.actions}>
+                                            <button
+                                                className={styles.actionBtn}
+                                                onClick={() => handleConnectAs(ov)}
+                                                title="Se connecter à son espace"
+                                                style={{ color: '#059669' }}
+                                            >
+                                                <LogIn size={18} />
+                                            </button>
+                                            <button className={styles.actionBtn} onClick={() => openOverseerUserModal(ov)}>
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteOverseerUser(ov.id)}>
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -1859,6 +2001,13 @@ const Bishop = () => {
                 >
                     <FileBarChart size={18} /> Rapports
                 </button>
+                <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', height: '24px', margin: '0 8px' }} />
+                <button
+                    className={`${styles.tab} ${activeTab === 'overseers_users' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('overseers_users')}
+                >
+                    <Award size={18} /> Responsables
+                </button>
             </div>
 
             {loading ? (
@@ -1875,6 +2024,7 @@ const Bishop = () => {
                     {activeTab === 'bacenta' && renderBacenta()}
                     {activeTab === 'ministries' && renderMinistries()}
                     {activeTab === 'oversees' && renderOverseeTab()}
+                    {activeTab === 'overseers_users' && renderOverseerUsers()}
                     {activeTab === 'reports' && renderReports()}
                 </>
             )}
@@ -2042,13 +2192,7 @@ const Bishop = () => {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
-
-            {showBacentaModal && renderBacentaDetailModal()}
-
-            {showOverseeModal && (
+                {showOverseeModal && (
                 <div className={styles.modalOverlay} onClick={() => setShowOverseeModal(false)}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                         <div className={styles.modalHeader}>
@@ -2140,6 +2284,50 @@ const Bishop = () => {
                     </div>
                 </div>
             )}
+
+            {showOverseerUserModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowOverseerUserModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>{editingItem ? 'Modifier Overseer' : 'Nouvel Overseer (Utilisateur)'}</h3>
+                            <button className={styles.closeBtn} onClick={() => setShowOverseerUserModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleSaveOverseerUser}>
+                            {modalError && <div className={styles.errorBanner}><AlertCircle size={16} />{modalError}</div>}
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Prénom</label>
+                                <input className={styles.input} value={overseerUserForm.first_name} onChange={e => setOverseerUserForm({ ...overseerUserForm, first_name: e.target.value })} required />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Nom</label>
+                                <input className={styles.input} value={overseerUserForm.last_name} onChange={e => setOverseerUserForm({ ...overseerUserForm, last_name: e.target.value })} required />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Email</label>
+                                <input type="email" className={styles.input} value={overseerUserForm.email} onChange={e => setOverseerUserForm({ ...overseerUserForm, email: e.target.value })} required />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Téléphone</label>
+                                <input className={styles.input} value={overseerUserForm.phone} onChange={e => setOverseerUserForm({ ...overseerUserForm, phone: e.target.value })} />
+                            </div>
+                            {!editingItem && (
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Mot de passe</label>
+                                    <input type="password" className={styles.input} value={overseerUserForm.password} onChange={e => setOverseerUserForm({ ...overseerUserForm, password: e.target.value })} required />
+                                </div>
+                            )}
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowOverseerUserModal(false)}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showBacentaModal && renderBacentaDetailModal()}
         </div>
     );
 
