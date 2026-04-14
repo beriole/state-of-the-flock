@@ -35,6 +35,7 @@ module.exports = (sequelize) => {
     role: {
       type: DataTypes.ENUM(
         'Bishop',
+        'Overseer',
         'Assisting_Overseer',
         'Governor',
         'Area_Pastor',

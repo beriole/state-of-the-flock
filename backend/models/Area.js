@@ -45,6 +45,14 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    oversee_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'oversees',
+        key: 'id'
+      }
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true

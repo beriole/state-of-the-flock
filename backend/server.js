@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notifications');
 const areaRoutes = require('./routes/areas');
 const ministryRoutes = require('./routes/ministryRoutes');
 const regionRoutes = require('./routes/regionRoutes');
+const overseeRoutes = require('./routes/oversees');
 
 const app = express();
 
@@ -997,6 +998,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/areas', areaRoutes);
 app.use('/api/ministries', ministryRoutes);
 app.use('/api/regions', regionRoutes);
+app.use('/api/oversees', overseeRoutes);
 
 // Fallback
 app.use((req, res) => {

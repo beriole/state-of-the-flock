@@ -39,6 +39,7 @@ const Layout = () => {
 
     const isBishop = user?.role === 'Bishop';
     const isGovernor = user?.role === 'Governor';
+    const isOverseer = user?.role === 'Overseer';
 
     let navSections = [];
 
@@ -53,7 +54,20 @@ const Layout = () => {
                 { path: '/bishop?tab=members', label: 'Membres', icon: <Users size={20} /> },
                 { path: '/bishop?tab=bacenta', label: 'Bacenta', icon: <HomeIcon size={20} /> },
                 { path: '/bishop?tab=ministries', label: 'Ministères', icon: <Library size={20} /> },
+                { path: '/bishop?tab=oversees', label: 'Oversees', icon: <Users size={20} /> },
                 { path: '/bishop?tab=reports', label: 'Rapports', icon: <FileBarChart size={20} /> },
+            ]
+        });
+    }
+
+    if (isOverseer) {
+        navSections.push({
+            title: 'OVERSEER SPACE',
+            items: [
+                { path: '/overseer?tab=dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={20} /> },
+                { path: '/overseer?tab=areas', label: 'Mes Zones', icon: <Globe size={20} /> },
+                { path: '/overseer?tab=members', label: 'Membres', icon: <Users size={20} /> },
+                { path: '/overseer?tab=reports', label: 'Rapports', icon: <FileBarChart size={20} /> },
             ]
         });
     }
@@ -72,7 +86,7 @@ const Layout = () => {
         });
     }
 
-    if (!isBishop && !isGovernor) {
+    if (!isBishop && !isGovernor && !isOverseer) {
         navSections.push(
             {
                 title: 'MENU',

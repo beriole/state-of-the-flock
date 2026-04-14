@@ -14,6 +14,7 @@ import CallCenter from './pages/CallCenter';
 import Attendance from './pages/Attendance';
 import Governor from './pages/Governor';
 import Bishop from './pages/Bishop';
+import Overseer from './pages/Overseer';
 
 // Composant pour protéger les routes
 const PrivateRoute = ({ children }) => {
@@ -115,6 +116,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Governor />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/overseer"
+              element={
+                <PrivateRoute>
+                  <Overseer />
                 </PrivateRoute>
               }
             />

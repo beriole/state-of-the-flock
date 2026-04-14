@@ -189,4 +189,11 @@ export const regionAPI = {
     deleteRegion: (id) => api.delete(`/regions/${id}`),
 };
 
+export const overseeAPI = {
+    getOversees: () => api.get('/oversees'),
+    createOversee: (data) => api.post('/oversees', data),
+    updateOversee: (id, data) => api.put(`/oversees/${id}`, data),
+    deleteOversee: (id) => api.delete(`/oversees/${id}`),
+};
+
 export default api;

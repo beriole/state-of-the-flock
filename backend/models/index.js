@@ -12,6 +12,7 @@ const BacentaAttendanceModel = require('./BacentaAttendance');
 const BacentaOfferingModel = require('./BacentaOffering');
 const NotificationModel = require('./Notification');
 const MinistryHeadcountModel = require('./MinistryHeadcount');
+const OverseeModel = require('./Oversee');
 
 let sequelize;
 
@@ -87,6 +88,7 @@ const BacentaAttendance = BacentaAttendanceModel(sequelize);
 const BacentaOffering = BacentaOfferingModel(sequelize);
 const Notification = NotificationModel(sequelize);
 const MinistryHeadcount = MinistryHeadcountModel(sequelize);
+const Oversee = OverseeModel(sequelize);
 
 // Associations
 function setupAssociations() {
@@ -106,12 +108,20 @@ function setupAssociations() {
 
   // Region
   Region.hasMany(Area, { foreignKey: 'region_id', as: 'areas' });
+  Region.hasMany(Oversee, { foreignKey: 'region_id', as: 'oversees' });
   Region.belongsTo(User, { foreignKey: 'governor_id', as: 'governor' });
+
+  // Oversee
+  Oversee.belongsTo(Region, { foreignKey: 'region_id', as: 'region' });
+  Oversee.hasMany(Area, { foreignKey: 'oversee_id', as: 'areas' });
+  Oversee.belongsTo(User, { foreignKey: 'overseer_id', as: 'overseer' });
+  User.hasOne(Oversee, { foreignKey: 'overseer_id', as: 'managed_oversee' });
 
   // Area
   Area.hasMany(User, { foreignKey: 'area_id', as: 'leaders' });
   Area.hasMany(Member, { foreignKey: 'area_id', as: 'members' });
   Area.belongsTo(User, { foreignKey: 'overseer_id', as: 'overseer' });
+  Area.belongsTo(Oversee, { foreignKey: 'oversee_id', as: 'oversee' });
   // New associations for Area
   Area.belongsTo(Region, { foreignKey: 'region_id', as: 'region' });
   Area.belongsTo(User, { foreignKey: 'leader_id', as: 'leader_user' }); // Renamed to avoid confusion with potential existing 'leader' methods/mixins
@@ -180,6 +190,7 @@ module.exports = {
   sequelize,
   User,
   Region,
+  Oversee,
   Area,
   Ministry,
   MinistryAttendance,

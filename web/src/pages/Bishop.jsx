@@ -12,6 +12,7 @@ import {
     bacentaAPI,
     authAPI,
     callLogAPI,
+    overseeAPI,
     getPhotoUrl
 } from '../utils/api';
 import {
@@ -79,6 +80,8 @@ const Bishop = () => {
     const [governors, setGovernors] = useState([]);
     const [regions, setRegions] = useState([]);
     const [areas, setAreas] = useState([]);
+    const [oversees, setOversees] = useState([]);
+    const [overseers, setOverseers] = useState([]);
     const [ministries, setMinistries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [growthData, setGrowthData] = useState(null);
@@ -127,6 +130,7 @@ const Bishop = () => {
     const [showGovernorModal, setShowGovernorModal] = useState(false);
     const [showRegionModal, setShowRegionModal] = useState(false);
     const [showAreaModal, setShowAreaModal] = useState(false);
+    const [showOverseeModal, setShowOverseeModal] = useState(false);
     const [showMinistryModal, setShowMinistryModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
@@ -159,6 +163,13 @@ const Bishop = () => {
         name: '',
         description: '',
         leader_id: ''
+    });
+
+    const [overseeForm, setOverseeForm] = useState({
+        name: '',
+        region_id: '',
+        overseer_id: '',
+        areas: [] // Selected area IDs
     });
 
     const [localSearch, setLocalSearch] = useState('');
@@ -317,6 +328,17 @@ const Bishop = () => {
                 setRegions(regionsRes?.data || []);
                 setAreas(areasRes?.data?.areas || []);
                 setGovernors(governorsRes?.data?.users || []);
+            } else if (activeTab === 'oversees') {
+                const [overseesRes, regionsRes, areasRes, overseersRes] = await Promise.all([
+                    overseeAPI.getOversees(),
+                    regionAPI.getRegions(),
+                    areaAPI.getAreas({ limit: 1000 }),
+                    governorAPI.getUsers({ role: 'Overseer' })
+                ]);
+                setOversees(overseesRes.data || []);
+                setRegions(regionsRes.data || []);
+                setAreas(areasRes.data.areas || []);
+                setOverseers(overseersRes.data.users || []);
             } else if (activeTab === 'bacenta') {
                 const meetingsRes = await bacentaAPI.getMeetings({ limit: 50 });
                 setBacentaMeetings(meetingsRes.data.meetings || []);
@@ -458,6 +480,28 @@ const Bishop = () => {
         setShowMinistryModal(true);
     };
 
+    const openOverseeModal = (oversee = null) => {
+        setModalError('');
+        if (oversee) {
+            setEditingItem(oversee);
+            setOverseeForm({
+                name: oversee.name,
+                region_id: oversee.region_id || '',
+                overseer_id: oversee.overseer_id || '',
+                areas: oversee.areas ? oversee.areas.map(a => a.id) : []
+            });
+        } else {
+            setEditingItem(null);
+            setOverseeForm({
+                name: '',
+                region_id: '',
+                overseer_id: '',
+                areas: []
+            });
+        }
+        setShowOverseeModal(true);
+    };
+
     // --- Save Handlers ---
 
     const handleSaveGovernor = async (e) => {
@@ -559,6 +603,25 @@ const Bishop = () => {
                 await ministryAPI.createMinistry(ministryForm);
             }
             setShowMinistryModal(false);
+            fetchData();
+        } catch (error) {
+            setModalError(error.response?.data?.error || "Erreur lors de l'enregistrement");
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleSaveOversee = async (e) => {
+        e.preventDefault();
+        setModalLoading(true);
+        setModalError('');
+        try {
+            if (editingItem) {
+                await overseeAPI.updateOversee(editingItem.id, overseeForm);
+            } else {
+                await overseeAPI.createOversee(overseeForm);
+            }
+            setShowOverseeModal(false);
             fetchData();
         } catch (error) {
             setModalError(error.response?.data?.error || "Erreur lors de l'enregistrement");
@@ -1286,6 +1349,78 @@ const Bishop = () => {
         </div>
     );
 
+    const renderOverseeTab = () => (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Gestion des Oversees (Regroupements)</h2>
+                <button className={styles.primaryBtn} onClick={() => openOverseeModal()}>
+                    <Plus size={20} /> Nouvel Oversee
+                </button>
+            </div>
+
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th className={styles.th}>Nom du Groupement</th>
+                            <th className={styles.th}>Région</th>
+                            <th className={styles.th}>Overseer (Responsable)</th>
+                            <th className={styles.th}>Zones (Areas)</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {oversees.map(oversee => (
+                            <tr key={oversee.id} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <div className={styles.userName}>{oversee.name}</div>
+                                </td>
+                                <td className={styles.td}>
+                                    <span className={styles.badge}>{oversee.region?.name || 'N/A'}</span>
+                                </td>
+                                <td className={styles.td}>
+                                    {oversee.overseer ? (
+                                        <div className={styles.userName}>{oversee.overseer.first_name} {oversee.overseer.last_name}</div>
+                                    ) : (
+                                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>Non assigné</span>
+                                    )}
+                                </td>
+                                <td className={styles.td}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                        {oversee.areas && oversee.areas.length > 0 ? (
+                                            oversee.areas.map(a => (
+                                                <span key={a.id} className={styles.badge} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>{a.name}</span>
+                                            ))
+                                        ) : (
+                                            <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Aucune zone</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className={styles.td} style={{ textAlign: 'right' }}>
+                                    <div className={styles.actions}>
+                                        <button className={styles.actionBtn} onClick={() => openOverseeModal(oversee)}>
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => handleDeleteOversee(oversee.id)}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {oversees.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className={styles.td} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                                    Aucun regroupement Oversee créé pour le moment.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     const exportPDF = (type) => {
         if (!reportData) return;
         const doc = new jsPDF();
@@ -1713,6 +1848,12 @@ const Bishop = () => {
                     <Library size={18} /> Ministères
                 </button>
                 <button
+                    className={`${styles.tab} ${activeTab === 'oversees' ? styles.tabActive : ''}`}
+                    onClick={() => setActiveTab('oversees')}
+                >
+                    <Users size={18} /> Oversees
+                </button>
+                <button
                     className={`${styles.tab} ${activeTab === 'reports' ? styles.tabActive : ''}`}
                     onClick={() => setActiveTab('reports')}
                 >
@@ -1733,6 +1874,7 @@ const Bishop = () => {
                     {activeTab === 'members' && renderMembers()}
                     {activeTab === 'bacenta' && renderBacenta()}
                     {activeTab === 'ministries' && renderMinistries()}
+                    {activeTab === 'oversees' && renderOverseeTab()}
                     {activeTab === 'reports' && renderReports()}
                 </>
             )}
@@ -1905,6 +2047,99 @@ const Bishop = () => {
             )}
 
             {showBacentaModal && renderBacentaDetailModal()}
+
+            {showOverseeModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowOverseeModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                        <div className={styles.modalHeader}>
+                            <h3 className={styles.modalTitle}>{editingItem ? 'Modifier Oversee' : 'Nouveau Regroupement (Oversee)'}</h3>
+                            <button className={styles.closeBtn} onClick={() => setShowOverseeModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleSaveOversee}>
+                            {modalError && <div className={styles.errorBanner}><AlertCircle size={16} />{modalError}</div>}
+                            
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Nom du Regroupement</label>
+                                <input 
+                                    className={styles.input} 
+                                    value={overseeForm.name} 
+                                    onChange={e => setOverseeForm({ ...overseeForm, name: e.target.value })} 
+                                    placeholder="Ex: Oversee Nord-Ouest"
+                                    required 
+                                />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Région Appartenante</label>
+                                <select 
+                                    className={styles.select} 
+                                    value={overseeForm.region_id} 
+                                    onChange={e => setOverseeForm({ ...overseeForm, region_id: e.target.value })} 
+                                    required
+                                >
+                                    <option value="">Sélectionner une Région</option>
+                                    {regions.map(r => (
+                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Overseer Responsable</label>
+                                <select 
+                                    className={styles.select} 
+                                    value={overseeForm.overseer_id} 
+                                    onChange={e => setOverseeForm({ ...overseeForm, overseer_id: e.target.value })}
+                                >
+                                    <option value="">Sélectionner un Overseer</option>
+                                    {overseers.map(o => (
+                                        <option key={o.id} value={o.id}>{o.first_name} {o.last_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Zones (Areas) à inclure</label>
+                                <div style={{ 
+                                    maxHeight: '200px', 
+                                    overflowY: 'auto', 
+                                    border: '1px solid rgba(255,255,255,0.05)', 
+                                    borderRadius: '8px',
+                                    padding: '10px',
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '8px'
+                                }}>
+                                    {areas
+                                        .filter(a => !overseeForm.region_id || a.region_id === overseeForm.region_id)
+                                        .map(area => (
+                                            <label key={area.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={overseeForm.areas.includes(area.id)}
+                                                    onChange={(e) => {
+                                                        const newAreas = e.target.checked 
+                                                            ? [...overseeForm.areas, area.id]
+                                                            : overseeForm.areas.filter(id => id !== area.id);
+                                                        setOverseeForm({ ...overseeForm, areas: newAreas });
+                                                    }}
+                                                />
+                                                {area.name}
+                                            </label>
+                                        ))}
+                                </div>
+                            </div>
+
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowOverseeModal(false)}>Annuler</button>
+                                <button type="submit" className={styles.submitBtn} disabled={modalLoading}>
+                                    {modalLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 
