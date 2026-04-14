@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Plus, Search, Phone, Edit2, Trash2 } from 'lucide-react';
-import { memberAPI, getPhotoUrl } from '../utils/api';
+import { Download, Plus, Search, Phone, Edit2, Trash2, Users } from 'lucide-react';
+import { memberAPI, getPhotoUrl, governorAPI } from '../utils/api';
 import { generateProfessionalPDF } from '../utils/pdfGenerator';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,12 @@ const Members = () => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [selectedMember, setSelectedMember] = useState(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+    const [bacentaLeaders, setBacentaLeaders] = useState([]);
+    const [selectedLeaderId, setSelectedLeaderId] = useState('');
+    const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
+
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -31,6 +37,47 @@ const Members = () => {
             console.error('Error fetching members:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCheckboxChange = (id) => {
+        if (selectedMemberIds.includes(id)) {
+            setSelectedMemberIds(selectedMemberIds.filter(mId => mId !== id));
+        } else {
+            setSelectedMemberIds([...selectedMemberIds, id]);
+        }
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedMemberIds(filteredMembers.map(m => m.id));
+        } else {
+            setSelectedMemberIds([]);
+        }
+    };
+
+    const openBulkAssignModal = async () => {
+        setShowBulkAssignModal(true);
+        try {
+            const response = await governorAPI.getBacentaLeaders();
+            setBacentaLeaders(response.data || []);
+        } catch (e) {
+            console.error("Error fetching leaders", e);
+        }
+    };
+
+    const confirmBulkAssign = async () => {
+        if (!selectedLeaderId) return alert('Veuillez sélectionner un leader');
+        setBulkAssignLoading(true);
+        try {
+            await memberAPI.bulkAssign({ member_ids: selectedMemberIds, leader_id: selectedLeaderId });
+            setShowBulkAssignModal(false);
+            setSelectedMemberIds([]);
+            fetchMembers(); // Actualiser la grille
+        } catch (e) {
+            alert("Erreur lors de l'assignation");
+        } finally {
+            setBulkAssignLoading(false);
         }
     };
 
@@ -99,6 +146,19 @@ const Members = () => {
                 </div>
             </div>
 
+            {selectedMemberIds.length > 0 && (user?.role === 'Governor' || user?.role === 'Bishop') && (
+                <div style={{ backgroundColor: '#1e293b', padding: '10px 15px', borderRadius: '8px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#fff', fontSize: '0.9rem' }}>{selectedMemberIds.length} membre(s) sélectionné(s)</span>
+                    <button 
+                        className={styles.primaryBtn} 
+                        style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', backgroundColor: '#3b82f6', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer' }}
+                        onClick={openBulkAssignModal}
+                    >
+                        <Users size={16} /> Assigner à un Leader
+                    </button>
+                </div>
+            )}
+
             <div className={styles.filters}>
                 <div className={styles.searchWrapper}>
                     <Search className={styles.searchIcon} size={20} />
@@ -131,6 +191,15 @@ const Members = () => {
                     <table className={styles.table}>
                         <thead>
                             <tr>
+                                {(user?.role === 'Governor' || user?.role === 'Bishop') && (
+                                    <th style={{ width: '40px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            onChange={handleSelectAll} 
+                                            checked={selectedMemberIds.length === filteredMembers.length && filteredMembers.length > 0} 
+                                        />
+                                    </th>
+                                )}
                                 <th>Membre</th>
                                 <th>Téléphone</th>
                                 <th>Statut</th>
@@ -140,6 +209,15 @@ const Members = () => {
                         <tbody>
                             {filteredMembers.map((member) => (
                                 <tr key={member.id}>
+                                    {(user?.role === 'Governor' || user?.role === 'Bishop') && (
+                                        <td>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedMemberIds.includes(member.id)} 
+                                                onChange={() => handleCheckboxChange(member.id)} 
+                                            />
+                                        </td>
+                                    )}
                                     <td>
                                         <div
                                             className={styles.memberInfo}
@@ -208,6 +286,46 @@ const Members = () => {
                 authUser={user}
                 onActionComplete={handleActionComplete}
             />
+
+            {/* Bulk Assign Modal */}
+            {showBulkAssignModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '12px', width: '400px', maxWidth: '90%', border: '1px solid #334155' }}>
+                        <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '20px' }}>Assigner à un Bacenta Leader</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '15px' }}>Vous assignez {selectedMemberIds.length} membre(s) sélectionné(s).</p>
+                        
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '8px' }}>Sélectionnez un leader</label>
+                            <select 
+                                value={selectedLeaderId}
+                                onChange={(e) => setSelectedLeaderId(e.target.value)}
+                                style={{ width: '100%', padding: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
+                            >
+                                <option value="">-- Choisir --</option>
+                                {bacentaLeaders.map(leader => (
+                                    <option key={leader.id} value={leader.id}>{leader.first_name} {leader.last_name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <button 
+                                onClick={() => setShowBulkAssignModal(false)}
+                                style={{ padding: '8px 16px', backgroundColor: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={confirmBulkAssign}
+                                disabled={bulkAssignLoading || !selectedLeaderId}
+                                style={{ padding: '8px 16px', backgroundColor: '#2563eb', border: 'none', color: '#fff', borderRadius: '6px', cursor: (bulkAssignLoading || !selectedLeaderId) ? 'not-allowed' : 'pointer', opacity: (bulkAssignLoading || !selectedLeaderId) ? 0.7 : 1 }}
+                            >
+                                {bulkAssignLoading ? 'Assignation...' : 'Confirmer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

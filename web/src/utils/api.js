@@ -81,6 +81,7 @@ export const memberAPI = {
     getMembers: (params = {}) => api.get('/members', { params }),
     getMemberById: (id) => api.get(`/members/${id}`),
     createMember: (data) => api.post('/members', data),
+    bulkAssign: (data) => api.put('/members/bulk-assign', data),
     updateMember: (id, data) => api.put(`/members/${id}`, data),
     deleteMember: (id) => api.delete(`/members/${id}`),
     uploadPhoto: (id, formData) => api.post(`/members/${id}/photo`, formData, {

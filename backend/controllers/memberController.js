@@ -221,6 +221,40 @@ const memberController = {
     }
   },
 
+  // Assigner en masse des membres à un leader
+  bulkAssign: async (req, res) => {
+    try {
+      const { member_ids, leader_id } = req.body;
+      
+      if (!member_ids || !Array.isArray(member_ids) || member_ids.length === 0) {
+        return res.status(400).json({ error: 'Liste des membres requise' });
+      }
+
+      // Vérification de sécurité pour le Governor (ne peut assigner qu'à des leaders de sa zone)
+      if (req.user.role === 'Governor' && leader_id) {
+        const leader = await User.findByPk(leader_id);
+        if (leader && leader.area_id !== req.user.area_id) {
+           return res.status(403).json({ error: 'Ce leader n\'appartient pas à votre zone' });
+        }
+      }
+
+      await Member.update(
+        { leader_id: leader_id || null }, 
+        { 
+          where: { 
+            id: { [require('sequelize').Op.in]: member_ids },
+            ...(req.user.role === 'Governor' ? { area_id: req.user.area_id } : {})
+          } 
+        }
+      );
+
+      res.json({ message: `${member_ids.length} membre(s) assigné(s) avec succès.` });
+    } catch (error) {
+      console.error('Bulk assign error:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'assignation en masse' });
+    }
+  },
+
   // Modifier un membre
   updateMember: async (req, res) => {
     try {

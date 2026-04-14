@@ -34,6 +34,9 @@ router.get('/:id', memberController.getMemberById);
 // POST /api/members
 router.post('/', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.createMember);
 
+// PUT /api/members/bulk-assign
+router.put('/bulk-assign', requireRole(['Bishop', 'Assisting_Overseer', 'Governor']), memberController.bulkAssign);
+
 // PUT /api/members/:id
 router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.updateMember);
 
