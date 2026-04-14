@@ -2192,7 +2192,11 @@ const Bishop = () => {
                                 </button>
                             </div>
                         </form>
-                {showOverseeModal && (
+                    </div>
+                </div>
+            )}
+
+            {showOverseeModal && (
                 <div className={styles.modalOverlay} onClick={() => setShowOverseeModal(false)}>
                     <div className={styles.modalContent} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                         <div className={styles.modalHeader}>
