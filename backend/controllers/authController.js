@@ -1,7 +1,7 @@
 // controllers/authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { User, Area } = require('../models');
+const { User, Area, Oversee, Region } = require('../models');
 
 const authController = {
   // Connexion
@@ -23,7 +23,12 @@ const authController = {
             as: 'area',
             include: [{ model: require('../models').Region, as: 'region', attributes: ['id', 'name'] }]
           },
-          { model: require('../models').Region, as: 'governed_region' }
+          { model: Region, as: 'governed_region' },
+          { 
+            model: Oversee, 
+            as: 'managed_oversee',
+            include: [{ model: Area, as: 'areas', attributes: ['id', 'name', 'number'] }]
+          }
         ],
         attributes: { include: ['password_hash'] }
       });
@@ -94,7 +99,8 @@ const authController = {
         phone: user.phone,
         photo_url: user.photo_url,
         is_active: user.is_active,
-        last_login: user.last_login
+        last_login: user.last_login,
+        managed_oversee: user.managed_oversee
       };
 
       res.json({
@@ -123,7 +129,12 @@ const authController = {
             as: 'area',
             include: [{ model: require('../models').Region, as: 'region', attributes: ['id', 'name'] }]
           },
-          { model: require('../models').Region, as: 'governed_region' }
+          { model: Region, as: 'governed_region' },
+          { 
+            model: Oversee, 
+            as: 'managed_oversee',
+            include: [{ model: Area, as: 'areas', attributes: ['id', 'name', 'number'] }]
+          }
         ],
         attributes: { exclude: ['password_hash'] }
       });

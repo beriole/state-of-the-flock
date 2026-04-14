@@ -49,24 +49,30 @@ const Overseer = () => {
         const fetchOverseeContext = async () => {
             setLoading(true);
             try {
-                // Fetch all oversees and find the one managed by this user
-                const res = await overseeAPI.getOversees();
-                const myOversee = res.data.find(o => o.overseer_id === user.id);
-                
-                if (myOversee) {
-                    setOverseeData(myOversee);
-                    // Extract areas associated with this oversee
-                    setAreas(myOversee.areas || []);
+                // If user object already contains the managed_oversee (from auth), use it
+                if (user?.managed_oversee) {
+                    setOverseeData(user.managed_oversee);
+                    setAreas(user.managed_oversee.areas || []);
+                } else {
+                    // Fallback to searching if not in user object
+                    const res = await overseeAPI.getOversees();
+                    const myOversee = res.data.find(o => o.overseer_id === user.id);
                     
+                    if (myOversee) {
+                        setOverseeData(myOversee);
+                        setAreas(myOversee.areas || []);
+                    }
+                }
+
+                // If we have an oversee (either from user object or search), fetch related data
+                const currentOversee = user?.managed_oversee || overseeData;
+                if (currentOversee) {
                     // Fetch data based on active tab
                     if (activeTab === 'dashboard') {
-                        // For now we get generic stats but ideally we'd have a filtered endpoint
-                        // We will filter members locally or by area_id if needed
                         const statsRes = await dashboardAPI.getGlobalStats(); 
                         setStats(statsRes.data);
                     } else if (activeTab === 'members') {
-                        // Fetch members for all areas in this oversee
-                        const areaIds = myOversee.areas?.map(a => a.id) || [];
+                        const areaIds = (user?.managed_oversee?.areas || currentOversee.areas)?.map(a => a.id) || [];
                         if (areaIds.length > 0) {
                             const membersRes = await memberAPI.getMembers({ 
                                 area_id: areaIds.join(','),
