@@ -1,5 +1,5 @@
 // controllers/reportController.js
-const { Member, Attendance, CallLog, BacentaMeeting, User, Area, BacentaAttendance, BacentaOffering } = require('../models');
+const { Member, Attendance, CallLog, BacentaMeeting, User, Area, BacentaAttendance, BacentaOffering, Oversee } = require('../models');
 const { Op } = require('sequelize');
 
 const reportController = {
@@ -23,7 +23,15 @@ const reportController = {
           memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
       }
-      // Note: Bishop has no restriction (global access)
+      } else if (req.user.role === 'Overseer') {
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+          const managedAreas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+          memberWhereClause.area_id = { [Op.in]: managedAreas.map(a => a.id) };
+        } else {
+          memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000';
+        }
+      }
       if (area_id) {
         // Validation pour Gouverneur
         if (req.user.role === 'Governor') {
@@ -217,7 +225,15 @@ const reportController = {
           }
         }
       }
-      // Note: Bishop has no restriction (global access)
+      } else if (req.user.role === 'Overseer') {
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+          const managedAreas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+          leaderWhereClause.area_id = { [Op.in]: managedAreas.map(a => a.id) };
+        } else {
+          leaderWhereClause.area_id = '00000000-0000-0000-0000-000000000000';
+        }
+      }
 
       if (leader_id) whereClause.leader_id = leader_id;
 
@@ -302,6 +318,14 @@ const reportController = {
           memberWhere.area_id = req.user.area_id;
         } else {
           memberWhere.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
+      } else if (req.user.role === 'Overseer') {
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+          const managedAreas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+          memberWhere.area_id = { [Op.in]: managedAreas.map(a => a.id) };
+        } else {
+          memberWhere.area_id = '00000000-0000-0000-0000-000000000000';
         }
       }
 
@@ -489,6 +513,14 @@ const reportController = {
           whereClause.area_id = req.user.area_id;
         } else {
           whereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
+        }
+      } else if (req.user.role === 'Overseer') {
+        const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
+        if (oversee) {
+          const managedAreas = await Area.findAll({ where: { oversee_id: oversee.id }, attributes: ['id'] });
+          whereClause.area_id = { [Op.in]: managedAreas.map(a => a.id) };
+        } else {
+          whereClause.area_id = '00000000-0000-0000-0000-000000000000';
         }
       } else if (req.user.role !== 'Bishop' && req.user.area_id) {
         whereClause.area_id = req.user.area_id;
