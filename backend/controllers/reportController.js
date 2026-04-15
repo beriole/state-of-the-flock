@@ -22,7 +22,6 @@ const reportController = {
         } else {
           memberWhereClause.area_id = '00000000-0000-0000-0000-000000000000'; // Force empty
         }
-      }
       } else if (req.user.role === 'Overseer') {
         const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
         if (oversee) {
@@ -224,7 +223,6 @@ const reportController = {
             leaderWhereClause.area_id = area_id;
           }
         }
-      }
       } else if (req.user.role === 'Overseer') {
         const oversee = await Oversee.findOne({ where: { overseer_id: req.user.userId } });
         if (oversee) {
