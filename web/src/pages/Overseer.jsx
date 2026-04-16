@@ -19,7 +19,8 @@ import {
     Shield,
     X,
     Repeat,
-    UserCheck
+    UserCheck,
+    TrendingUp
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -111,13 +112,18 @@ const Overseer = () => {
                         setMembers(membersRes.data.members || []);
                     }
                 } else if (activeTab === 'staff') {
-                    // Fetch governors and bacenta leaders
-                    Promise.all([
-                        governorAPI.getUsers({ role: 'Governor' }),
-                        governorAPI.getUsers({ role: 'Bacenta_Leader' })
-                    ]).then(([govRes, bacentasRes]) => {
-                        setStaffList([...(govRes.data.users || []), ...(bacentasRes.data.users || [])]);
-                    }).catch(err => console.error("Error fetching staff:", err));
+                    // Fetch governors and bacenta leaders, but ONLY filter those in the overseer's assigned areas
+                    if (areaIds.length > 0) {
+                        Promise.all([
+                            governorAPI.getUsers({ role: 'Governor' }),
+                            governorAPI.getUsers({ role: 'Bacenta_Leader' })
+                        ]).then(([govRes, bacentasRes]) => {
+                            const allStaff = [...(govRes.data.users || []), ...(bacentasRes.data.users || [])];
+                            // Critical FIX: ensure only staff associated with the currently managed areas are listed
+                            const localStaff = allStaff.filter(user => areaIds.includes(user.area_id));
+                            setStaffList(localStaff);
+                        }).catch(err => console.error("Error fetching staff:", err));
+                    }
                 }
             }
         } catch (error) {
@@ -217,147 +223,143 @@ const Overseer = () => {
     });
 
     const renderHeader = () => (
-        <header className={styles.header}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
             <div>
-                <h1 className={styles.title}>Espace Overseer Prémium</h1>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    Espace Overseer Prémium
+                </h1>
                 <p style={{ color: '#94a3b8', marginTop: '0.5rem', fontWeight: 500, fontSize: '1.1rem' }}>
                     {overseeData ? `Responsable du Groupe : ${overseeData.name}` : 'Supervision Principale'}
                 </p>
             </div>
-            <div className={styles.headerActions}>
-                <button className={styles.primaryBtn} onClick={() => setShowMemberModal(true)}>
-                    <UserPlus size={18} /> Ajouter Membre
+            <div>
+                <button className={styles.primaryBtn} onClick={() => setShowMemberModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.75rem', background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)' }}>
+                    <UserPlus size={18} /> Intégrer un Fidèle
                 </button>
             </div>
         </header>
     );
 
     const renderDashboard = () => (
-        <div className={styles.section}>
-            <div className={styles.statsGrid}>
-                {/* Stats cards unchanged */}
-                <div className={styles.statCard}>
-                    <div className={styles.statHeader}>
-                        <div className={styles.statIcon} style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626' }}>
-                            <Users size={24} />
-                        </div>
+        <div style={{ animation: 'slideUp 0.5s ease' }}>
+            {/* Professional Grid for Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', backdropFilter: 'blur(10px)', borderRadius: '1.5rem', padding: '2rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '1.25rem', borderRadius: '1rem' }}>
+                        <Users size={32} />
                     </div>
                     <div>
-                        <h3 className={styles.statValue}>{stats?.summary?.total_members || 0}</h3>
-                        <p className={styles.statLabel}>Membres supervisés</p>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', lineHeight: '1' }}>{stats?.summary?.total_members || 0}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Membres Actifs Supervisés</div>
                     </div>
                 </div>
-                <div className={styles.statCard}>
-                    <div className={styles.statHeader}>
-                        <div className={styles.statIcon} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                            <Globe size={24} />
-                        </div>
+
+                <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', backdropFilter: 'blur(10px)', borderRadius: '1.5rem', padding: '2rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '1.25rem', borderRadius: '1rem' }}>
+                        <Globe size={32} />
                     </div>
                     <div>
-                        <h3 className={styles.statValue}>{areas.length || 0}</h3>
-                        <p className={styles.statLabel}>Zones Officielles</p>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', lineHeight: '1' }}>{areas.length || 0}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Zones Officielles (Areas)</div>
                     </div>
                 </div>
-                <div className={styles.statCard}>
-                    <div className={styles.statHeader}>
-                        <div className={styles.statIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                            <FileBarChart size={24} />
-                        </div>
+
+                <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', backdropFilter: 'blur(10px)', borderRadius: '1.5rem', padding: '2rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '1.25rem', borderRadius: '1rem' }}>
+                        <TrendingUp size={32} />
                     </div>
                     <div>
-                        <h3 className={styles.statValue}>{stats?.summary?.last_attendance_percentage || 0}%</h3>
-                        <p className={styles.statLabel}>Présence Globale Actuelle</p>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', lineHeight: '1' }}>{stats?.summary?.last_attendance_percentage || 0}%</div>
+                        <div style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Présence Globale Actuelle</div>
                     </div>
                 </div>
             </div>
 
-            <div className={styles.dashboardLayout}>
-                <div className={styles.mainColumn}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Aperçu de vos Secteurs</h2>
-                        <button className={styles.actionBtn} onClick={() => setActiveTab('areas')}>Gérer</button>
-                    </div>
-                    <div className={styles.tableContainer}>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th className={styles.th}>Zone</th>
-                                    <th className={styles.th}>Responsable</th>
-                                    <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Aperçu Rapide de vos Secteurs</h2>
+                    <button style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontWeight: 600 }} onClick={() => setActiveTab('areas')}>Tout lister &rarr;</button>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ padding: '1rem 2rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Zone & Identifiant</th>
+                                <th style={{ padding: '1rem 2rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Responsable</th>
+                                <th style={{ padding: '1rem 2rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'right' }}>Administration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {areas.slice(0, 5).map(area => (
+                                <tr key={area.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                    <td style={{ padding: '1rem 2rem' }}>
+                                        <div style={{ fontWeight: 600, color: 'white' }}>{area.name}</div>
+                                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Secteur N° {area.number}</div>
+                                    </td>
+                                    <td style={{ padding: '1rem 2rem' }}>
+                                        {area.leader_user ? (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                                                <Shield size={14} />
+                                                {area.leader_user.first_name} {area.leader_user.last_name}
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: '#64748b', fontSize: '0.85rem', fontStyle: 'italic' }}>Non assigné</span>
+                                        )}
+                                    </td>
+                                    <td style={{ padding: '1rem 2rem', textAlign: 'right' }}>
+                                        <button onClick={() => {
+                                            setSelectedArea(area);
+                                            setAreaForm({ name: area.name, number: area.number });
+                                            setShowAreaModal(true);
+                                        }} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Edit2 size={16} /> Éditer
+                                        </button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {areas.slice(0, 5).map(area => (
-                                    <tr key={area.id} className={styles.tr}>
-                                        <td className={styles.td}>
-                                            <div className={styles.userName}>{area.name}</div>
-                                            <div className={styles.userRole}>Secteur N° {area.number}</div>
-                                        </td>
-                                        <td className={styles.td}>
-                                            {area.leader_user ? (
-                                                <span className={styles.userIdentity}>
-                                                    <Shield size={14} style={{ display: 'inline', marginRight: 4, color: '#f59e0b'}} />
-                                                    {area.leader_user.first_name} {area.leader_user.last_name}
-                                                </span>
-                                            ) : (
-                                                <span style={{ color: '#64748b' }}>Non assigné</span>
-                                            )}
-                                        </td>
-                                        <td className={styles.td} style={{ textAlign: 'right' }}>
-                                            <button className={styles.actionBtn} onClick={() => {
-                                                setSelectedArea(area);
-                                                setAreaForm({ name: area.name, number: area.number });
-                                                setShowAreaModal(true);
-                                            }}>
-                                                <Edit2 size={18} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     );
 
     const renderAreas = () => (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Gestion Administrative des Zones</h2>
-            </div>
-            <div className={styles.tableContainer}>
-                <table className={styles.table}>
+        <div style={{ animation: 'slideUp 0.5s ease', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', padding: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 2rem 0' }}>Gestion Administrative des Zones</h2>
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr>
-                            <th className={styles.th}>Détail de la Zone</th>
-                            <th className={styles.th}>Numéro</th>
-                            <th className={styles.th}>Status Leader</th>
-                            <th className={styles.th} style={{ textAlign: 'right' }}>Gestion</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Nom Officiel</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Numérotation</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Statut Leadership</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {areas.map(area => (
-                            <tr key={area.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div className={styles.userName}>{area.name}</div>
+                            <tr key={area.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ padding: '1rem', fontWeight: 600, color: 'white' }}>{area.name}</td>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 }}>N° {area.number}</span>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={styles.badge} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}>N° {area.number}</span>
-                                </td>
-                                <td className={styles.td}>
-                                    <span className={area.leader_user ? styles.badgeActive : styles.badgeInactive}>
-                                        {area.leader_user ? 'Leader Assigné' : 'En Attente'}
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ 
+                                        color: area.leader_user ? '#10b981' : '#f59e0b',
+                                        background: area.leader_user ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 
+                                    }}>
+                                        {area.leader_user ? 'Leader Assisgné' : 'En Attente'}
                                     </span>
                                 </td>
-                                <td className={styles.td} style={{ textAlign: 'right' }}>
-                                    <button className={styles.actionBtn} title="Modifier la zone" onClick={() => {
+                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                    <button style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
                                         setSelectedArea(area);
                                         setAreaForm({ name: area.name, number: area.number });
                                         setShowAreaModal(true);
                                     }}>
-                                        <Edit2 size={18} /> Éditer
+                                        <Edit2 size={16} /> Éditer
                                     </button>
                                 </td>
                             </tr>
@@ -369,87 +371,93 @@ const Overseer = () => {
     );
 
     const renderMembers = () => (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Répertoire des Membres ({filteredMembers.length})</h2>
-            </div>
+        <div style={{ animation: 'slideUp 0.5s ease', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', padding: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 2rem 0' }}>Répertoire des Membres ({filteredMembers.length})</h2>
             
-            <div className={styles.filtersBar} style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div className={styles.searchBox} style={{ width: '250px' }}>
-                    <Search size={18} />
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', margin: '0 0 2rem 0', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', padding: '0.5rem 1rem', flex: '1', minWidth: '250px' }}>
+                    <Search size={18} color="#64748b" />
                     <input 
                         type="text" 
-                        placeholder="Chercher un nom..." 
+                        placeholder="Recherche par nom..." 
+                        style={{ background: 'transparent', border: 'none', color: 'white', width: '100%', outline: 'none' }}
                         value={memberFilters.search}
                         onChange={(e) => setMemberFilters({...memberFilters, search: e.target.value})}
                     />
                 </div>
-                <select className={styles.select} style={{ width: '200px' }} value={memberFilters.area} onChange={(e) => setMemberFilters({...memberFilters, area: e.target.value})}>
-                    <option value="all">Toutes les Zones</option>
-                    {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                <select style={{ background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', padding: '0.75rem 1rem', color: 'white', minWidth: '200px', outline: 'none' }} value={memberFilters.area} onChange={(e) => setMemberFilters({...memberFilters, area: e.target.value})}>
+                    <option value="all" style={{ color: 'black' }}>Toutes les Zones</option>
+                    {areas.map(a => <option style={{ color: 'black' }} key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
-                <select className={styles.select} style={{ width: '200px' }} value={memberFilters.status} onChange={(e) => setMemberFilters({...memberFilters, status: e.target.value})}>
-                    <option value="all">Tous les Statuts</option>
-                    <option value="active">Actifs (Fidèles)</option>
-                    <option value="inactive">Inactifs / Départs</option>
+                <select style={{ background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', padding: '0.75rem 1rem', color: 'white', minWidth: '150px', outline: 'none' }} value={memberFilters.status} onChange={(e) => setMemberFilters({...memberFilters, status: e.target.value})}>
+                    <option value="all" style={{ color: 'black' }}>Tous les status</option>
+                    <option value="active" style={{ color: 'black' }}>Seulement Actifs</option>
+                    <option value="inactive" style={{ color: 'black' }}>Inactifs / Départs</option>
                 </select>
             </div>
 
-            <div className={styles.tableContainer}>
-                <table className={styles.table}>
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr>
-                            <th className={styles.th}>Identité</th>
-                            <th className={styles.th}>Zone Affectée</th>
-                            <th className={styles.th}>Statut Actif</th>
-                            <th className={styles.th} style={{ textAlign: 'right' }}>Actions Rapides / Détails</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Identité Complète</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Zone Attribuée</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Statut</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'right' }}>Supervision</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredMembers.length > 0 ? filteredMembers.map(member => (
-                            <tr key={member.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div className={styles.userCell}>
-                                        <div className={styles.avatar}>
+                            <tr key={member.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ padding: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: '0.5rem', background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, overflow: 'hidden' }}>
                                             {member.photo_url ? (
-                                                <img src={getPhotoUrl(member.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                                <img src={getPhotoUrl(member.photo_url)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
                                                 <>{member.first_name[0]}{member.last_name[0]}</>
                                             )}
                                         </div>
                                         <div>
-                                            <span className={styles.userName}>{member.first_name} {member.last_name}</span>
-                                            <span className={styles.userEmail}>{member.phone_primary || 'Pas de numéro'}</span>
+                                            <span style={{ fontWeight: 600, display: 'block' }}>{member.first_name} {member.last_name}</span>
+                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{member.phone_primary || 'Pas de numéro'}</span>
                                         </div>
                                     </div>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={styles.badgeArea}>{member.area?.name || 'Aucune'}</span>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 }}>
+                                        {member.area?.name || 'Aucune'}
+                                    </span>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={member.is_active ? styles.badgeActive : styles.badgeInactive}>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ 
+                                        color: member.is_active ? '#10b981' : '#ef4444',
+                                        background: member.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        border: member.is_active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 
+                                    }}>
                                         {member.is_active ? 'Fidèle' : 'Inactif'}
                                     </span>
                                 </td>
-                                <td className={styles.td} style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    
-                                    <button className={styles.actionBtn} onClick={() => {
-                                        setSelectedMember(member);
-                                        setTransferForm({ new_area_id: member.area_id || '' });
-                                        setShowTransferModal(true);
-                                    }} title="Transférer vers une autre zone" style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)' }}>
-                                        <Repeat size={16} /> Transférer
-                                    </button>
-                                    
-                                    <button className={styles.actionBtn} onClick={() => navigate(`/members/${member.id}`)}>
-                                        Consulter <ChevronRight size={18} style={{ display: 'inline', verticalAlign: 'middle'}}/>
-                                    </button>
+                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        <button onClick={() => {
+                                            setSelectedMember(member);
+                                            setTransferForm({ new_area_id: member.area_id || '' });
+                                            setShowTransferModal(true);
+                                        }} title="Transférer" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Repeat size={16} /> Transférer
+                                        </button>
+                                        <button onClick={() => navigate(`/members/${member.id}`)} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>
+                                            Détail <ChevronRight size={16} style={{ marginLeft: 4 }}/>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="4" className={styles.td} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                                    <p style={{ marginBottom: '1rem' }}>Pas de membres correspondant aux critères.</p>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                                    Pas de membres correspondant à vos critères actuels.
                                 </td>
                             </tr>
                         )}
@@ -460,53 +468,61 @@ const Overseer = () => {
     );
 
     const renderStaff = () => (
-        <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Hiérarchie du Regroupement (Governors & Leaders)</h2>
-            </div>
+        <div style={{ animation: 'slideUp 0.5s ease', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', padding: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 2rem 0' }}>Hiérarchie du Regroupement</h2>
+            <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Cette liste affiche exclusivement les Governors et Bacenta Leaders associés à vos zones.</p>
             
-            <div className={styles.tableContainer}>
-                <table className={styles.table}>
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr>
-                            <th className={styles.th}>Identité</th>
-                            <th className={styles.th}>Rôle (Titre)</th>
-                            <th className={styles.th}>Statut Actif</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Identité Staff</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Fonction (Rôle)</th>
+                            <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Statut Actif</th>
                         </tr>
                     </thead>
                     <tbody>
                         {staffList.length > 0 ? staffList.map(item => (
-                            <tr key={item.id} className={styles.tr}>
-                                <td className={styles.td}>
-                                    <div className={styles.userCell}>
-                                        <div className={styles.avatar} style={{ background: item.role === 'Governor' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : '' }}>
+                            <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ padding: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: '0.5rem', background: item.role === 'Governor' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 700, overflow: 'hidden' }}>
                                             {item.photo_url ? (
-                                                <img src={getPhotoUrl(item.photo_url)} alt="Profile" className={styles.avatarImage} />
+                                                <img src={getPhotoUrl(item.photo_url)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
                                                 <>{item.first_name[0]}{item.last_name[0]}</>
                                             )}
                                         </div>
                                         <div>
-                                            <span className={styles.userName}>{item.first_name} {item.last_name}</span>
-                                            <span className={styles.userEmail}>{item.email}</span>
+                                            <span style={{ fontWeight: 600, display: 'block' }}>{item.first_name} {item.last_name}</span>
+                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.email}</span>
                                         </div>
                                     </div>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={styles.badgeArea} style={{ background: item.role === 'Governor' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: item.role === 'Governor' ? '#a78bfa' : '#60a5fa', borderColor: item.role === 'Governor' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)' }}>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ 
+                                        background: item.role === 'Governor' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
+                                        color: item.role === 'Governor' ? '#a78bfa' : '#60a5fa', 
+                                        border: item.role === 'Governor' ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 
+                                    }}>
                                         {item.role.replace('_', ' ')}
                                     </span>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={item.is_active ? styles.badgeActive : styles.badgeInactive}>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{ 
+                                        color: item.is_active ? '#10b981' : '#ef4444',
+                                        background: item.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 
+                                    }}>
                                         {item.is_active ? 'Actif' : 'Inactif'}
                                     </span>
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="3" className={styles.td} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                                    Aucun membre du staff trouvé.
+                                <td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                                    Aucun membre du staff trouvé (Gouverneur ou Leader) pour vos zones.
                                 </td>
                             </tr>
                         )}
@@ -519,9 +535,9 @@ const Overseer = () => {
     const renderReports = () => {
         if (reportLoading) {
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
-                    <Loader2 className={styles.spinnerSmall} style={{ width: 48, height: 48, color: '#DC2626', animation: 'spin 1s linear infinite' }} />
-                    <p style={{ marginTop: '1rem', color: '#94a3b8' }}>Génération sécurisée des rapports et courbes...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem' }}>
+                    <Loader2 style={{ width: 48, height: 48, color: '#DC2626', animation: 'spin 1s linear infinite' }} />
+                    <p style={{ marginTop: '1.5rem', color: '#94a3b8', fontWeight: 600 }}>Compilation des rapports en cours...</p>
                 </div>
             );
         }
@@ -530,50 +546,59 @@ const Overseer = () => {
         const meetings = reports.meetings;
 
         return (
-            <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Rapports de Performance & Évolution</h2>
-                </div>
-                
-                <div className={styles.statsGrid}>
-                    <div className={styles.statCard}>
-                        <div className={styles.statHeader}>
-                            <div className={styles.statIcon} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <div style={{ animation: 'slideUp 0.5s ease' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                    <div style={{ background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%)', borderRadius: '1.5rem', padding: '2rem', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '0.75rem', borderRadius: '1rem' }}>
                                 <FileBarChart size={24} />
                             </div>
+                            <h3 style={{ color: '#94a3b8', margin: 0, fontWeight: 600, fontSize: '1.1rem' }}>Indice de Présence</h3>
                         </div>
-                        <div>
-                            <h3 className={styles.statValue}>{attendance?.summary?.overall_percentage || 0}%</h3>
-                            <p className={styles.statLabel}>Indice de Présence</p>
+                        <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'white', lineHeight: '1' }}>
+                            {attendance?.summary?.overall_percentage || 0}%
+                        </div>
+                    </div>
+                    
+                    <div style={{ background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%)', borderRadius: '1.5rem', padding: '2rem', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '0.75rem', borderRadius: '1rem' }}>
+                                <Calendar size={24} />
+                            </div>
+                            <h3 style={{ color: '#94a3b8', margin: 0, fontWeight: 600, fontSize: '1.1rem' }}>Réunions Validées</h3>
+                        </div>
+                        <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'white', lineHeight: '1' }}>
+                            {meetings.length || 0}
                         </div>
                     </div>
                 </div>
                 
-                <div className={styles.chartContainer} style={{ marginTop: '2rem' }}>
-                    <div className={styles.chartHeader}>
-                        <h3 className={styles.chartTitle}>Rapports consolidés par Zone affiliée</h3>
-                    </div>
-                    {/* Placeholder for comprehensive reports similar to Bishop */}
-                    <div className={styles.tableContainer}>
-                        <table className={styles.table}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', padding: '2rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 1.5rem 0' }}>Répartition Consolidée par Zone</h3>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
                                 <tr>
-                                    <th className={styles.th}>Zone</th>
-                                    <th className={styles.th}>Evolution (Indice)</th>
+                                    <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Nom de Zone</th>
+                                    <th style={{ padding: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Performance Constatée</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {attendance?.by_area?.length > 0 ? attendance.by_area.map((item, idx) => (
-                                    <tr key={idx} className={styles.tr}>
-                                        <td className={styles.td}>{item.name}</td>
-                                        <td className={styles.td}>
-                                            <span style={{ color: item.percentage > 70 ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-                                                {item.percentage}% des fidèles
+                                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{item.name}</td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{ 
+                                                display: 'inline-flex', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.85rem', fontWeight: 700,
+                                                color: item.percentage >= 70 ? '#10b981' : (item.percentage >= 40 ? '#f59e0b' : '#ef4444'),
+                                                background: item.percentage >= 70 ? 'rgba(16, 185, 129, 0.1)' : (item.percentage >= 40 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
+                                            }}>
+                                                {item.percentage}% d'assiduité
                                             </span>
                                         </td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan="2" className={styles.td} style={{ opacity: 0.5 }}>Aucun rapport disponible.</td></tr>
+                                    <tr><td colSpan="2" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Acucun rapport consolidé pour le moment.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -588,7 +613,7 @@ const Overseer = () => {
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a', color: 'white' }}>
                 <Loader2 style={{ width: 64, height: 64, marginBottom: '1.5rem', color: '#DC2626', animation: 'spin 1s linear infinite' }} />
                 <h2 style={{ color: 'white', fontWeight: 700 }}>Initialisation de l'Espace Overseer...</h2>
-                <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>Synchronisation des droits administratifs</p>
+                <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>Synchronisation des accès administratifs</p>
             </div>
         );
     }
@@ -612,24 +637,24 @@ const Overseer = () => {
     }
 
     return (
-        <div className={styles.container}>
+        <div style={{ padding: '2rem', color: 'white', maxWidth: '1600px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
             {renderHeader()}
 
-            <div className={styles.tabs}>
-                <button className={`${styles.tab} ${activeTab === 'dashboard' ? styles.tabActive : ''}`} onClick={() => setActiveTab('dashboard')}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '3rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '1rem', width: 'fit-content', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                <button style={{ padding: '0.75rem 1.5rem', background: activeTab === 'dashboard' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeTab === 'dashboard' ? 'white' : '#94a3b8', fontWeight: 600, borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('dashboard')}>
                     <LayoutDashboard size={18} /> Tableau de bord
                 </button>
-                <button className={`${styles.tab} ${activeTab === 'areas' ? styles.tabActive : ''}`} onClick={() => setActiveTab('areas')}>
+                <button style={{ padding: '0.75rem 1.5rem', background: activeTab === 'areas' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeTab === 'areas' ? 'white' : '#94a3b8', fontWeight: 600, borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('areas')}>
                     <Globe size={18} /> Administration Zones
                 </button>
-                <button className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : ''}`} onClick={() => setActiveTab('members')}>
+                <button style={{ padding: '0.75rem 1.5rem', background: activeTab === 'members' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeTab === 'members' ? 'white' : '#94a3b8', fontWeight: 600, borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('members')}>
                     <Users size={18} /> Registre Membres
                 </button>
-                <button className={`${styles.tab} ${activeTab === 'staff' ? styles.tabActive : ''}`} onClick={() => setActiveTab('staff')}>
+                <button style={{ padding: '0.75rem 1.5rem', background: activeTab === 'staff' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeTab === 'staff' ? 'white' : '#94a3b8', fontWeight: 600, borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('staff')}>
                     <UserCheck size={18} /> Staff & Hiérarchie
                 </button>
-                <button className={`${styles.tab} ${activeTab === 'reports' ? styles.tabActive : ''}`} onClick={() => setActiveTab('reports')}>
-                    <FileBarChart size={18} /> Évolution
+                <button style={{ padding: '0.75rem 1.5rem', background: activeTab === 'reports' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeTab === 'reports' ? 'white' : '#94a3b8', fontWeight: 600, borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('reports')}>
+                    <FileBarChart size={18} /> Rapports
                 </button>
             </div>
 
@@ -643,13 +668,13 @@ const Overseer = () => {
 
             {/* Modal: Transfer Member */}
             {showTransferModal && selectedMember && (
-                <div className={styles.modalOverlay}>
-                    <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
-                        <div className={styles.modalHeaderPremium}>
-                            <h2 className={styles.modalTitle} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Repeat size={24} /> Transférer {selectedMember.first_name}
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '2rem', width: '100%', maxWidth: '500px', overflow: 'hidden' }}>
+                        <div style={{ padding: '2.5rem 2rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 0, 0, 0.2))', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Repeat size={24} color="#60a5fa" /> Transférer {selectedMember.first_name}
                             </h2>
-                            <button className={styles.closeBtn} onClick={() => setShowTransferModal(false)}>
+                            <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }} onClick={() => setShowTransferModal(false)}>
                                 <X size={20} />
                             </button>
                         </div>
@@ -658,14 +683,14 @@ const Overseer = () => {
                                 Vous pouvez affecter ce membre à une autre zone qui dépend de votre juridiction.
                             </p>
                             <form onSubmit={handleTransferMember}>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Nouvelle Zone Affectée</label>
-                                    <select required className={styles.select} value={transferForm.new_area_id} onChange={e => setTransferForm({...transferForm, new_area_id: e.target.value})}>
-                                        <option value="">Sélectionner une zone d'arrivée</option>
-                                        {areas.map(a => <option key={a.id} value={a.id}>{a.name} (N° {a.number})</option>)}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Nouvelle Zone Affectée</label>
+                                    <select required style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={transferForm.new_area_id} onChange={e => setTransferForm({...transferForm, new_area_id: e.target.value})}>
+                                        <option value="" style={{color: 'black'}}>Sélectionner une zone d'arrivée</option>
+                                        {areas.map(a => <option style={{color: 'black'}} key={a.id} value={a.id}>{a.name} (N° {a.number})</option>)}
                                     </select>
                                 </div>
-                                <button type="submit" disabled={actionLoading} className={styles.primaryBtn} style={{ width: '100%', justifyContent: 'center', marginTop: '1rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}>
+                                <button type="submit" disabled={actionLoading} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 700, cursor: 'pointer', marginTop: '1rem', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)' }}>
                                     {actionLoading ? <Loader2 className={styles.spinnerSmall} /> : 'Valider le Transfert'}
                                 </button>
                             </form>
@@ -674,40 +699,40 @@ const Overseer = () => {
                 </div>
             )}
 
-            {/* Add Member Modal (Unchanged structurally, kept functional) */}
+            {/* Modal: Add Member */}
             {showMemberModal && (
-                <div className={styles.modalOverlay}>
-                    <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
-                        <div className={styles.modalHeaderPremium}>
-                            <h2 className={styles.modalTitle} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <UserPlus size={24} /> Enregistrer un Membre
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '2rem', width: '100%', maxWidth: '500px', overflow: 'hidden' }}>
+                        <div style={{ padding: '2.5rem 2rem', background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(0, 0, 0, 0.2))', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <UserPlus size={24} color="#ef4444" /> Enregistrer un Membre
                             </h2>
-                            <button className={styles.closeBtn} onClick={() => setShowMemberModal(false)}>
+                            <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }} onClick={() => setShowMemberModal(false)}>
                                 <X size={20} />
                             </button>
                         </div>
                         <div style={{ padding: '2rem' }}>
                             <form onSubmit={handleCreateMember}>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Prénom</label>
-                                    <input required className={styles.input} value={memberForm.first_name} onChange={e => setMemberForm({...memberForm, first_name: e.target.value})} placeholder="Entrez le prénom" />
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Prénom</label>
+                                    <input required style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={memberForm.first_name} onChange={e => setMemberForm({...memberForm, first_name: e.target.value})} placeholder="Prénom" />
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Nom de famille</label>
-                                    <input required className={styles.input} value={memberForm.last_name} onChange={e => setMemberForm({...memberForm, last_name: e.target.value})} placeholder="Entrez le nom" />
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Nom de famille</label>
+                                    <input required style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={memberForm.last_name} onChange={e => setMemberForm({...memberForm, last_name: e.target.value})} placeholder="Nom" />
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Téléphone</label>
-                                    <input className={styles.input} value={memberForm.phone_primary} onChange={e => setMemberForm({...memberForm, phone_primary: e.target.value})} placeholder="+225..." />
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Téléphone</label>
+                                    <input style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={memberForm.phone_primary} onChange={e => setMemberForm({...memberForm, phone_primary: e.target.value})} placeholder="+225..." />
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Affecter à une Zone</label>
-                                    <select required className={styles.select} value={memberForm.area_id} onChange={e => setMemberForm({...memberForm, area_id: e.target.value})}>
-                                        <option value="">Sélectionner une zone</option>
-                                        {areas.map(a => <option key={a.id} value={a.id}>{a.name} (N° {a.number})</option>)}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Affecter à une Zone</label>
+                                    <select required style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={memberForm.area_id} onChange={e => setMemberForm({...memberForm, area_id: e.target.value})}>
+                                        <option value="" style={{color: 'black'}}>Sélectionner une zone</option>
+                                        {areas.map(a => <option style={{color: 'black'}} key={a.id} value={a.id}>{a.name} (N° {a.number})</option>)}
                                     </select>
                                 </div>
-                                <button type="submit" disabled={actionLoading} className={styles.primaryBtn} style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+                                <button type="submit" disabled={actionLoading} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 700, cursor: 'pointer', marginTop: '1rem', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)' }}>
                                     {actionLoading ? <Loader2 className={styles.spinnerSmall} /> : 'Valider la création'}
                                 </button>
                             </form>
@@ -716,30 +741,29 @@ const Overseer = () => {
                 </div>
             )}
 
-            {/* Edit Area Modal (Unchanged structurally, kept functional) */}
+            {/* Modal: Edit Area */}
             {showAreaModal && selectedArea && (
-                <div className={styles.modalOverlay}>
-                    <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
-                        <div className={styles.modalHeaderPremium}>
-                            <h2 className={styles.modalTitle} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Edit2 size={24} /> Sécuriser la Zone
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '2rem', width: '100%', maxWidth: '500px', overflow: 'hidden' }}>
+                        <div style={{ padding: '2.5rem 2rem', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(0, 0, 0, 0.2))', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Edit2 size={24} color="#f59e0b" /> Sécuriser la Zone
                             </h2>
-                            <button className={styles.closeBtn} onClick={() => setShowAreaModal(false)}>
+                            <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }} onClick={() => setShowAreaModal(false)}>
                                 <X size={20} />
                             </button>
                         </div>
                         <div style={{ padding: '2rem' }}>
                             <form onSubmit={handleUpdateArea}>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Nom Officiel de la Zone</label>
-                                    <input required className={styles.input} value={areaForm.name} onChange={e => setAreaForm({...areaForm, name: e.target.value})} />
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Nom Officiel de la Zone</label>
+                                    <input required style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={areaForm.name} onChange={e => setAreaForm({...areaForm, name: e.target.value})} />
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label className={styles.label}>Numérotation Structurale</label>
-                                    <input required type="number" className={styles.input} value={areaForm.number} onChange={e => setAreaForm({...areaForm, number: e.target.value})} />
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>Numérotation Structurale</label>
+                                    <input required type="number" style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white', outline: 'none' }} value={areaForm.number} onChange={e => setAreaForm({...areaForm, number: e.target.value})} />
                                 </div>
-                                
-                                <button type="submit" disabled={actionLoading} className={styles.primaryBtn} style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
+                                <button type="submit" disabled={actionLoading} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 700, cursor: 'pointer', marginTop: '1rem', boxShadow: '0 4px 14px rgba(245, 158, 11, 0.4)' }}>
                                     {actionLoading ? <Loader2 className={styles.spinnerSmall} /> : 'Enregistrer les modifications'}
                                 </button>
                             </form>
