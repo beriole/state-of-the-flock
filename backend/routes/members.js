@@ -32,19 +32,19 @@ router.get('/', memberController.getMembers);
 router.get('/:id', memberController.getMemberById);
 
 // POST /api/members
-router.post('/', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.createMember);
+router.post('/', requireRole(['Bishop', 'Overseer', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.createMember);
 
 // PUT /api/members/bulk-assign
-router.put('/bulk-assign', requireRole(['Bishop', 'Assisting_Overseer', 'Governor']), memberController.bulkAssign);
+router.put('/bulk-assign', requireRole(['Bishop', 'Overseer', 'Assisting_Overseer', 'Governor']), memberController.bulkAssign);
 
 // PUT /api/members/:id
-router.put('/:id', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.updateMember);
+router.put('/:id', requireRole(['Bishop', 'Overseer', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), memberController.updateMember);
 
 // DELETE /api/members/:id
-router.delete('/:id', requireRole(['Bishop', 'Assisting_Overseer']), memberController.deleteMember);
+router.delete('/:id', requireRole(['Bishop', 'Overseer', 'Assisting_Overseer', 'Governor']), memberController.deleteMember);
 
 // POST /api/members/import - Import members from CSV file
-router.post('/import', requireRole(['Bishop', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), importUpload.single('file'), memberController.importMembers);
+router.post('/import', requireRole(['Bishop', 'Overseer', 'Assisting_Overseer', 'Governor', 'Area_Pastor', 'Data_Clerk', 'Bacenta_Leader']), importUpload.single('file'), memberController.importMembers);
 
 // POST /api/members/:id/photo
 router.post('/:id/photo', upload.single('photo'), memberController.uploadPhoto);

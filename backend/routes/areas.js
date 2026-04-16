@@ -8,8 +8,8 @@ const router = express.Router();
 // Toutes les routes nécessitent une authentification
 router.use(authMiddleware);
 
-// Routes pour les zones (réservées aux Bishops et Administrateurs)
-const areaRoles = ['Bishop', 'Governor'];
+// Routes pour les zones (réservées aux Bishops, Governors et Overseers)
+const areaRoles = ['Bishop', 'Governor', 'Overseer'];
 
 // GET /api/areas
 router.get('/', requireRole(areaRoles), areaController.getAreas);
